@@ -1,3 +1,7 @@
+#!/bin/bash
+
+# Configure Firebase hosting for Next.js static export
+cat > firebase.json << 'EOF'
 {
   "firestore": {
     "rules": "firestore.rules",
@@ -25,3 +29,6 @@
     ]
   }
 }
+EOF
+
+echo "Firebase hosting configured for Next.js static export"
