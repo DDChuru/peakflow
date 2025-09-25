@@ -21,6 +21,42 @@ import {
   BankAccountInfo
 } from '@/types/bank-statement';
 
+type RawTransaction = {
+  date?: string;
+  description?: string;
+  reference?: string;
+  debit?: string | number | null;
+  credit?: string | number | null;
+  balance?: string | number | null;
+};
+
+function parseSafeNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.-]/g, '');
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+}
+
+function parseCount(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.trunc(value);
+  }
+
+  if (typeof value === 'string') {
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  return 0;
+}
+
 // Helper function to ensure user is authenticated and ready
 async function ensureAuthenticated() {
   const user = auth.currentUser;
@@ -94,12 +130,6 @@ export async function processBankStatement(
       throw new Error(result.error || 'Failed to process bank statement');
     }
 
-    // Parse and structure the extracted data with proper number parsing
-    const parseSafeNumber = (value: any): number => {
-      const parsed = parseFloat(value);
-      return isNaN(parsed) ? 0 : parsed;
-    };
-
     // Parse summary data with safe number conversion
     const summary = result.data.summary || {};
     const parsedSummary: BankStatementSummary = {
@@ -109,7 +139,7 @@ export async function processBankStatement(
       totalWithdrawals: parseSafeNumber(summary.totalWithdrawals),
       totalFees: parseSafeNumber(summary.totalFees),
       interestEarned: parseSafeNumber(summary.interestEarned),
-      transactionCount: parseInt(summary.transactionCount) || 0,
+      transactionCount: parseCount(summary.transactionCount),
       statementPeriod: summary.statementPeriod || { from: '', to: '' }
     };
 
@@ -195,24 +225,17 @@ export async function processBankStatement(
 }
 
 // Process and categorize transactions
-function processTransactions(rawTransactions: any[]): BankTransaction[] {
-  const parseSafeNumber = (value: any): number => {
-    if (value === null || value === undefined || value === '') return 0;
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
-  return rawTransactions.map(tx => {
+function processTransactions(rawTransactions: RawTransaction[]): BankTransaction[] {
+  return rawTransactions.map((rawTransaction) => {
     const transaction: BankTransaction = {
-      date: tx.date || '',
-      description: tx.description || '',
-      reference: tx.reference,
-      debit: parseSafeNumber(tx.debit),
-      credit: parseSafeNumber(tx.credit),
-      balance: parseSafeNumber(tx.balance)
+      date: rawTransaction.date ?? '',
+      description: rawTransaction.description ?? '',
+      reference: rawTransaction.reference,
+      debit: parseSafeNumber(rawTransaction.debit),
+      credit: parseSafeNumber(rawTransaction.credit),
+      balance: parseSafeNumber(rawTransaction.balance)
     };
 
-    // Categorize transaction
     transaction.type = categorizeTransaction(transaction);
     transaction.category = getTransactionCategory(transaction.description);
 
@@ -284,18 +307,12 @@ export async function getCompanyBankStatements(
 
     const snapshot = await getDocs(statementsQuery);
 
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-
-      // Ensure summary has safe numbers
-      const parseSafeNumber = (value: any): number => {
-        const parsed = parseFloat(value);
-        return isNaN(parsed) ? 0 : parsed;
-      };
-
+    return snapshot.docs.map((docSnapshot) => {
+      const data = docSnapshot.data();
       const summary = data.summary || {};
+
       const safeStatement: BankStatement = {
-        id: doc.id,
+        id: docSnapshot.id,
         ...data,
         uploadedAt: data.uploadedAt?.toDate() || new Date(),
         processedAt: data.processedAt?.toDate(),
@@ -306,7 +323,7 @@ export async function getCompanyBankStatements(
           totalWithdrawals: parseSafeNumber(summary.totalWithdrawals),
           totalFees: parseSafeNumber(summary.totalFees),
           interestEarned: parseSafeNumber(summary.interestEarned),
-          transactionCount: parseInt(summary.transactionCount) || 0,
+          transactionCount: parseCount(summary.transactionCount),
           statementPeriod: summary.statementPeriod || { from: '', to: '' }
         }
       };
@@ -332,12 +349,6 @@ export async function getBankStatement(statementId: string): Promise<BankStateme
 
     const data = docSnap.data();
 
-    // Ensure summary has safe numbers
-    const parseSafeNumber = (value: any): number => {
-      const parsed = parseFloat(value);
-      return isNaN(parsed) ? 0 : parsed;
-    };
-
     const summary = data.summary || {};
     const safeStatement: BankStatement = {
       id: docSnap.id,
@@ -351,7 +362,7 @@ export async function getBankStatement(statementId: string): Promise<BankStateme
         totalWithdrawals: parseSafeNumber(summary.totalWithdrawals),
         totalFees: parseSafeNumber(summary.totalFees),
         interestEarned: parseSafeNumber(summary.interestEarned),
-        transactionCount: parseInt(summary.transactionCount) || 0,
+        transactionCount: parseCount(summary.transactionCount),
         statementPeriod: summary.statementPeriod || { from: '', to: '' }
       }
     };

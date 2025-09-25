@@ -62,9 +62,10 @@ export default function NewCompanyPage() {
       await companiesService.createCompany(companyData, user.uid);
       toast.success('Company created successfully!');
       router.push('/companies');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating company:', error);
-      toast.error(error.message || 'Failed to create company');
+      const message = error instanceof Error ? error.message : 'Failed to create company';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

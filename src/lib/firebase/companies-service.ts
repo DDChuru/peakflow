@@ -82,7 +82,7 @@ export class CompaniesService {
   async createCompany(company: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<Company> {
     try {
       // Filter out undefined values
-      const cleanCompanyData: any = {
+      const cleanCompanyData: Record<string, unknown> = {
         name: company.name,
         type: company.type,
         createdBy: userId,

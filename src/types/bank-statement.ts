@@ -44,7 +44,7 @@ export interface BankStatement {
   accountInfo: BankAccountInfo;
   summary: BankStatementSummary;
   transactions: BankTransaction[];
-  extractedData?: any; // Raw extracted data from Gemini
+  extractedData?: unknown; // Raw extracted data from Gemini
   error?: string;
   userId: string;
 }

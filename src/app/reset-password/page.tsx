@@ -77,8 +77,9 @@ export default function ResetPasswordPage() {
           toast.error(result.message);
         }
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send reset request');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to send reset request';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -101,8 +102,9 @@ export default function ResetPasswordPage() {
       
       toast.success('Password reset successfully!');
       router.push('/login');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to reset password');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to reset password';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

@@ -3,16 +3,10 @@
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import BankStatementsView from '@/components/bank-statement/BankStatementsView';
 
-interface PageProps {
-  params: {
-    companyId: string;
-  };
-}
-
-export default function CompanyBankStatementsPage({ params }: PageProps) {
+export default function BankStatementsPage() {
   return (
     <ProtectedRoute>
-      <BankStatementsView companyIdOverride={params.companyId} />
+      <BankStatementsView />
     </ProtectedRoute>
   );
 }

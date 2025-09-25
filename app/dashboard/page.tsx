@@ -3,244 +3,301 @@
 import { useAuth } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/navigation';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FadeIn, StaggerList } from '@/components/ui/motion';
+import {
+  Mail,
+  ShieldCheck,
+  Building2,
+  Users,
+  Banknote,
+  Sparkles,
+  Key,
+  LogOut,
+  type LucideIcon,
+} from 'lucide-react';
+
+type Tone = 'positive' | 'warning' | 'neutral';
+
+const toneClasses: Record<Tone, string> = {
+  positive: 'bg-emerald-100 text-emerald-700',
+  warning: 'bg-amber-100 text-amber-700',
+  neutral: 'bg-indigo-100 text-indigo-700',
+};
+
+const roleBadge = (role: string) => {
+  switch (role) {
+    case 'admin':
+      return 'bg-red-100 text-red-700';
+    case 'developer':
+      return 'bg-blue-100 text-blue-700';
+    default:
+      return 'bg-emerald-100 text-emerald-700';
+  }
+};
+
+interface StatItem {
+  label: string;
+  value: string;
+  helper: string;
+  tone: Tone;
+  icon: LucideIcon;
+}
 
 export default function DashboardPage() {
   const { user, company, logout, isAdmin, hasRole } = useAuth();
 
+  const stats: StatItem[] = [
+    {
+      label: 'Primary email',
+      value: user?.email ?? '—',
+      helper: user?.emailVerified ? 'Email verified' : 'Verify your email address',
+      tone: user?.emailVerified ? 'positive' : 'warning',
+      icon: Mail,
+    },
+    {
+      label: 'Account status',
+      value: user?.isActive ? 'Active' : 'Inactive',
+      helper: user?.isActive ? 'You have full platform access' : 'Contact support to reactivate',
+      tone: user?.isActive ? 'positive' : 'warning',
+      icon: ShieldCheck,
+    },
+    {
+      label: 'Assigned company',
+      value: company?.name ?? 'Awaiting assignment',
+      helper: company
+        ? `${company.type === 'peakflow' ? 'PeakFlow' : 'Client'} tenant`
+        : 'Ask an administrator to be added to a company',
+      tone: company ? 'neutral' : 'warning',
+      icon: Building2,
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: 'Bank statements',
+      description: 'Upload, categorise, and reconcile transactions in seconds.',
+      href: '/bank-statements',
+      icon: Banknote,
+      visible: Boolean(user?.companyId),
+    },
+    {
+      title: 'Manage companies',
+      description: 'Create, approve, and audit PeakFlow tenants.',
+      href: '/companies',
+      icon: Building2,
+      visible: hasRole('admin') || hasRole('developer'),
+    },
+    {
+      title: 'User management',
+      description: 'Control roles, status, and company assignments.',
+      href: '/admin/users',
+      icon: Users,
+      visible: isAdmin(),
+    },
+  ].filter((action) => action.visible);
+
+  const showDeveloperCard = hasRole('developer');
+
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
-        <nav className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex">
-                <div className="flex-shrink-0 flex items-center">
-                  <h1 className="text-xl font-bold text-indigo-600">PeakFlow</h1>
-                </div>
-                <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                  <Link
-                    href="/dashboard"
-                    className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                  >
-                    Dashboard
-                  </Link>
-                  {company && (
-                    <Link
-                      href={`/dashboard/bank-statements/${company.id}`}
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Bank Statements
-                    </Link>
-                  )}
-                  {(hasRole('admin') || hasRole('developer')) && (
-                    <Link
-                      href="/companies"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Companies
-                    </Link>
-                  )}
-                  {isAdmin() && (
-                    <Link
-                      href="/admin/users"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      User Management
-                    </Link>
-                  )}
-                  {hasRole('developer') && (
-                    <Link
-                      href="/developer"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Developer Tools
-                    </Link>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={logout}
-                    className="relative inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50">
+        <PageHeader
+          title={user?.fullName ? `Welcome back, ${user.fullName.split(' ')[0]}` : 'Welcome back'}
+          subtitle="Stay on top of your companies, statements, and permissions."
+          breadcrumbs={[{ label: 'Dashboard' }]}
+          actions={
+            <div className="flex items-center gap-2">
+              {user?.companyId && (
+                <Link href="/bank-statements">
+                  <Button variant="outline" size="sm">
+                    Bank statements
+                  </Button>
+                </Link>
+              )}
+              {(hasRole('admin') || hasRole('developer')) && (
+                <Link href="/companies">
+                  <Button variant="outline" size="sm">
+                    Manage companies
+                  </Button>
+                </Link>
+              )}
+              <Button variant="destructive" size="sm" onClick={logout}>
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
             </div>
-          </div>
-        </nav>
+          }
+        />
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            {/* Welcome Section */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Welcome back, {user?.fullName}!
-                </h2>
-                
-                {/* User Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Profile Information</h3>
-                    <dl className="space-y-1">
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Email</dt>
-                        <dd className="text-sm text-gray-900">{user?.email}</dd>
-                      </div>
-                      {user?.phoneNumber && (
-                        <div>
-                          <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                          <dd className="text-sm text-gray-900">{user.phoneNumber}</dd>
-                        </div>
-                      )}
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Email Verified</dt>
-                        <dd className="text-sm text-gray-900">
-                          {user?.emailVerified ? (
-                            <span className="text-green-600">✓ Verified</span>
-                          ) : (
-                            <span className="text-red-600">✗ Not Verified</span>
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Access & Permissions</h3>
-                    <dl className="space-y-1">
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Roles</dt>
-                        <dd className="text-sm text-gray-900">
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {user?.roles.map(role => (
-                              <span
-                                key={role}
-                                className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                  role === 'admin' 
-                                    ? 'bg-red-100 text-red-800'
-                                    : role === 'developer'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-green-100 text-green-800'
-                                }`}
-                              >
-                                {role.charAt(0).toUpperCase() + role.slice(1)}
-                              </span>
-                            ))}
+        <main className="max-w-7xl mx-auto px-4 pb-16 sm:px-6 lg:px-8 space-y-12">
+          <section>
+            <StaggerList className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {stats.map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                  <FadeIn key={stat.label} delay={index * 0.05}>
+                    <Card hover className="bg-white">
+                      <div className="p-6 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              {stat.label}
+                            </p>
+                            <p className="mt-2 text-xl font-semibold text-gray-900">{stat.value}</p>
+                            <p className="text-sm text-gray-500">{stat.helper}</p>
                           </div>
-                        </dd>
+                          <span
+                            className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${toneClasses[stat.tone]}`}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Company</dt>
-                        <dd className="text-sm text-gray-900">
-                          {company ? company.name : 'No company assigned'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500">Account Status</dt>
-                        <dd className="text-sm text-gray-900">
-                          {user?.isActive ? (
-                            <span className="text-green-600">✓ Active</span>
-                          ) : (
-                            <span className="text-red-600">✗ Inactive</span>
-                          )}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
+                    </Card>
+                  </FadeIn>
+                );
+              })}
+            </StaggerList>
+          </section>
 
-                {/* Role-based Content */}
-                <div className="border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {company && (
-                      <Link
-                        href={`/dashboard/bank-statements/${company.id}`}
-                        className="bg-green-50 border border-green-200 rounded-lg p-4 hover:bg-green-100 transition-colors"
-                      >
-                        <h4 className="font-medium text-green-900">Bank Statements</h4>
-                        <p className="text-sm text-green-700 mt-1">
-                          Upload and analyze bank statements
-                        </p>
+          {(quickActions.length > 0 || showDeveloperCard) && (
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold text-gray-900">Quick actions</h2>
+              <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {quickActions.map((action, index) => {
+                  const Icon = action.icon;
+                  return (
+                    <FadeIn key={action.title} delay={0.1 + index * 0.05}>
+                      <Link href={action.href} className="block focus:outline-none">
+                        <Card hover className="bg-white transition-shadow">
+                          <div className="p-6 space-y-3">
+                            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                              <Icon className="h-5 w-5" />
+                            </span>
+                            <div>
+                              <h3 className="text-base font-semibold text-gray-900">{action.title}</h3>
+                              <p className="text-sm text-gray-600">{action.description}</p>
+                            </div>
+                          </div>
+                        </Card>
                       </Link>
-                    )}
-
-                    {(hasRole('admin') || hasRole('developer')) && (
-                      <Link
-                        href="/companies"
-                        className="bg-purple-50 border border-purple-200 rounded-lg p-4 hover:bg-purple-100 transition-colors"
-                      >
-                        <h4 className="font-medium text-purple-900">Manage Companies</h4>
-                        <p className="text-sm text-purple-700 mt-1">
-                          Create and manage client and PeakFlow companies
-                        </p>
-                      </Link>
-                    )}
-                    
-                    {isAdmin() && (
-                      <Link
-                        href="/admin/users"
-                        className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 hover:bg-indigo-100 transition-colors"
-                      >
-                        <h4 className="font-medium text-indigo-900">Manage Users</h4>
-                        <p className="text-sm text-indigo-700 mt-1">
-                          Add, edit, and manage user roles and permissions
-                        </p>
-                      </Link>
-                    )}
-                    
-                    {hasRole('developer') && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="font-medium text-blue-900">Developer Tools</h4>
-                        <p className="text-sm text-blue-700 mt-1">
-                          Access development resources and APIs
-                        </p>
+                    </FadeIn>
+                  );
+                })}
+                {showDeveloperCard && (
+                  <FadeIn delay={0.1 + quickActions.length * 0.05}>
+                    <Card className="bg-white border-dashed border-indigo-200">
+                      <div className="p-6 space-y-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                          <Sparkles className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <h3 className="text-base font-semibold text-gray-900">Developer resources</h3>
+                          <p className="text-sm text-gray-600">
+                            API docs and sandbox tooling are coming soon. Reach out to the PeakFlow team if you&apos;d like early access.
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    
-                    <Link
-                      href="/profile"
-                      className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 transition-colors"
-                    >
-                      <h4 className="font-medium text-gray-900">Edit Profile</h4>
-                      <p className="text-sm text-gray-700 mt-1">
-                        Update your personal information and preferences
-                      </p>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Company-specific content */}
-                {company && (
-                  <div className="border-t border-gray-200 pt-6 mt-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">
-                      {company.name} Dashboard
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Company-specific content and features will appear here based on your role and permissions.
-                    </p>
-                  </div>
+                    </Card>
+                  </FadeIn>
                 )}
+              </StaggerList>
+            </section>
+          )}
 
-                {!company && (
-                  <div className="border-t border-gray-200 pt-6 mt-6">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <h4 className="font-medium text-yellow-900">No Company Assigned</h4>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Please contact an administrator to be assigned to a company.
-                      </p>
+          <section className="grid gap-6 lg:grid-cols-3">
+            <FadeIn className="lg:col-span-2">
+              <Card className="bg-white">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
+                    <Key className="h-4 w-4" />
+                    Access &amp; permissions
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500">Roles</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {(user?.roles || []).map((role) => (
+                          <span
+                            key={role}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${roleBadge(role)}`}
+                          >
+                            {role}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-lg border border-gray-100 p-3">
+                        <p className="text-xs uppercase tracking-wider text-gray-500">Email verification</p>
+                        <p className="mt-1 text-sm font-medium text-gray-900">
+                          {user?.emailVerified ? 'Verified' : 'Pending verification'}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-gray-100 p-3">
+                        <p className="text-xs uppercase tracking-wider text-gray-500">Account status</p>
+                        <p className="mt-1 text-sm font-medium text-gray-900">
+                          {user?.isActive ? 'Active' : 'Inactive'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
+                </div>
+              </Card>
+            </FadeIn>
+
+            <FadeIn>
+              <Card className="bg-white">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
+                    <Sparkles className="h-4 w-4" />
+                    Company insight
+                  </div>
+                  {company ? (
+                    <div className="space-y-3 text-sm text-gray-700">
+                      {company.domain && (
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-gray-500">Domain</p>
+                          <p className="font-medium text-gray-900">{company.domain}</p>
+                        </div>
+                      )}
+                      {company.email && (
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-gray-500">Email</p>
+                          <p className="font-medium text-gray-900">{company.email}</p>
+                        </div>
+                      )}
+                      {company.phone && (
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-gray-500">Phone</p>
+                          <p className="font-medium text-gray-900">{company.phone}</p>
+                        </div>
+                      )}
+                      <Link href={`/companies/${company.id}`}>
+                        <Button variant="outline" size="sm" className="mt-2 w-full">
+                          View company profile
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-600">
+                        You haven&apos;t been assigned to a company yet. Request access from your administrator.
+                      </p>
+                      <Link href="/no-company">
+                        <Button variant="outline" size="sm" className="w-full">
+                          Learn about tenant access
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </FadeIn>
+          </section>
         </main>
       </div>
     </ProtectedRoute>

@@ -115,9 +115,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
         toast.success('Logged in successfully!');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
-      toast.error(error.message || 'Failed to login');
+      const message = error instanceof Error ? error.message : 'Failed to login';
+      toast.error(message);
       throw error;
     } finally {
       setLoading(false);
@@ -155,9 +156,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(newUser);
       toast.success('Account created successfully! Please wait for admin approval.');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Signup error:', error);
-      toast.error(error.message || 'Failed to create account');
+      const message = error instanceof Error ? error.message : 'Failed to create account';
+      toast.error(message);
       throw error;
     } finally {
       setLoading(false);
@@ -181,9 +183,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
         toast.success('Logged in with Google successfully!');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Google login error:', error);
-      toast.error(error.message || 'Failed to login with Google');
+      const message = error instanceof Error ? error.message : 'Failed to login with Google';
+      toast.error(message);
       throw error;
     } finally {
       setLoading(false);
@@ -197,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setCompany(null);
       toast.success('Logged out successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Logout error:', error);
       toast.error('Failed to logout');
       throw error;
@@ -209,9 +212,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await sendPasswordResetEmail(auth, email);
       toast.success('Password reset email sent!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Password reset error:', error);
-      toast.error(error.message || 'Failed to send reset email');
+      const message = error instanceof Error ? error.message : 'Failed to send reset email';
+      toast.error(message);
       throw error;
     }
   };
@@ -228,7 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser({ ...user, ...data });
       toast.success('Profile updated successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Profile update error:', error);
       toast.error('Failed to update profile');
       throw error;

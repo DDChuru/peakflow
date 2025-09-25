@@ -1,10 +1,25 @@
 'use client';
 
 import React from 'react';
+import {
+  Banknote,
+  Receipt,
+  PiggyBank,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  BadgePercent,
+  BarChart3,
+  CalendarDays,
+} from 'lucide-react';
+
 import { BankStatementSummary } from '@/types/bank-statement';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FadeIn, StaggerList } from '@/components/ui/motion';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface SummaryCardsProps {
-  summary: BankStatementSummary;
+  summary?: BankStatementSummary | null;
   additionalStats?: {
     totalIncome: number;
     totalExpenses: number;
@@ -13,163 +28,212 @@ interface SummaryCardsProps {
   };
 }
 
+const metricTone = {
+  positive: 'from-emerald-50 to-emerald-100 text-emerald-700 border-emerald-200',
+  negative: 'from-rose-50 to-rose-100 text-rose-700 border-rose-200',
+  neutral: 'from-indigo-50 to-indigo-100 text-indigo-700 border-indigo-200',
+  muted: 'from-gray-50 to-gray-100 text-gray-700 border-gray-200',
+} as const;
+
+type MetricTone = keyof typeof metricTone;
+
+type Metric = {
+  title: string;
+  value: number | null | undefined;
+  icon: React.ReactNode;
+  tone: MetricTone;
+  helper?: string;
+};
+
 export default function SummaryCards({ summary, additionalStats }: SummaryCardsProps) {
-  const formatCurrency = (amount: number | undefined | null) => {
-    // Handle NaN, undefined, null, or invalid numbers
-    if (amount === undefined || amount === null || isNaN(amount)) {
-      return '$0.00';
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+  if (!summary) {
+    return (
+      <FadeIn>
+        <Card className="border-dashed border-gray-200 bg-white/80">
+          <CardHeader>
+            <CardTitle className="text-lg">Summary unavailable</CardTitle>
+            <CardDescription>
+              This statement does not include balance information. You can still review the transaction list below.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </FadeIn>
+    );
+  }
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  const balanceDelta = safeNumber(summary.closingBalance) - safeNumber(summary.openingBalance);
+  const deltaPercent = safeNumber(summary.openingBalance) !== 0
+    ? (balanceDelta / Math.abs(safeNumber(summary.openingBalance))) * 100
+    : null;
 
-  const cards = [
+  const metrics: Metric[] = [
     {
-      title: 'Opening Balance',
-      value: formatCurrency(summary.openingBalance),
-      icon: '💰',
-      color: 'bg-blue-50 text-blue-700',
-      borderColor: 'border-blue-200'
+      title: 'Opening balance',
+      value: summary.openingBalance,
+      icon: <PiggyBank className="h-5 w-5" />,
+      tone: 'neutral',
+      helper: 'Balance at the beginning of the statement period',
     },
     {
-      title: 'Closing Balance',
-      value: formatCurrency(summary.closingBalance),
-      icon: '💵',
-      color: 'bg-indigo-50 text-indigo-700',
-      borderColor: 'border-indigo-200'
+      title: 'Closing balance',
+      value: summary.closingBalance,
+      icon: <Banknote className="h-5 w-5" />,
+      tone: 'positive',
+      helper: 'Balance after all movements',
     },
     {
-      title: 'Total Deposits',
-      value: formatCurrency(summary.totalDeposits),
-      icon: '📈',
-      color: 'bg-green-50 text-green-700',
-      borderColor: 'border-green-200',
-      subtitle: `${summary.transactionCount} transactions`
+      title: 'Total deposits',
+      value: summary.totalDeposits,
+      icon: <ArrowUpCircle className="h-5 w-5" />,
+      tone: 'positive',
+      helper: `${summary.transactionCount} transactions recorded`,
     },
     {
-      title: 'Total Withdrawals',
-      value: formatCurrency(summary.totalWithdrawals),
-      icon: '📉',
-      color: 'bg-red-50 text-red-700',
-      borderColor: 'border-red-200'
+      title: 'Total withdrawals',
+      value: summary.totalWithdrawals,
+      icon: <ArrowDownCircle className="h-5 w-5" />,
+      tone: 'negative',
     },
     {
-      title: 'Bank Fees',
-      value: formatCurrency(summary.totalFees),
-      icon: '🏦',
-      color: 'bg-yellow-50 text-yellow-700',
-      borderColor: 'border-yellow-200'
+      title: 'Bank fees',
+      value: summary.totalFees,
+      icon: <BadgePercent className="h-5 w-5" />,
+      tone: 'negative',
     },
     {
-      title: 'Interest Earned',
-      value: formatCurrency(summary.interestEarned),
-      icon: '💹',
-      color: 'bg-purple-50 text-purple-700',
-      borderColor: 'border-purple-200'
-    }
+      title: 'Interest earned',
+      value: summary.interestEarned,
+      icon: <Receipt className="h-5 w-5" />,
+      tone: 'muted',
+    },
   ];
 
-  // Add additional stats if provided
-  const additionalCards = additionalStats ? [
-    {
-      title: 'Net Cash Flow',
-      value: formatCurrency(additionalStats.netCashFlow),
-      icon: '💸',
-      color: additionalStats.netCashFlow >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
-      borderColor: additionalStats.netCashFlow >= 0 ? 'border-green-200' : 'border-red-200',
-      subtitle: additionalStats.netCashFlow >= 0 ? 'Positive' : 'Negative'
-    },
-    {
-      title: 'Average Balance',
-      value: formatCurrency(additionalStats.averageBalance),
-      icon: '📊',
-      color: 'bg-gray-50 text-gray-700',
-      borderColor: 'border-gray-200'
-    }
-  ] : [];
-
-  const allCards = [...cards, ...additionalCards];
+  if (additionalStats) {
+    metrics.push(
+      {
+        title: 'Net cash flow',
+        value: additionalStats.netCashFlow,
+        icon: <BarChart3 className="h-5 w-5" />,
+        tone: additionalStats.netCashFlow >= 0 ? 'positive' : 'negative',
+        helper: additionalStats.netCashFlow >= 0 ? 'More cash in than out' : 'Cash outflow exceeds deposits',
+      },
+      {
+        title: 'Average balance',
+        value: additionalStats.averageBalance,
+        icon: <PiggyBank className="h-5 w-5" />,
+        tone: 'muted',
+      }
+    );
+  }
 
   return (
-    <div>
-      {/* Statement Period */}
-      {summary.statementPeriod && (
-        <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Statement Period</h3>
-          <p className="text-lg font-semibold text-gray-900">
-            {formatDate(summary.statementPeriod.from)} - {formatDate(summary.statementPeriod.to)}
-          </p>
-        </div>
-      )}
-
-      {/* Summary Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {allCards.map((card, index) => (
-          <div
-            key={index}
-            className={`${card.color} p-4 rounded-lg border ${card.borderColor} hover:shadow-md transition-shadow`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium opacity-80">
-                  {card.title}
-                </p>
-                <p className="text-2xl font-bold mt-1">
-                  {card.value}
-                </p>
-                {card.subtitle && (
-                  <p className="text-xs opacity-70 mt-1">
-                    {card.subtitle}
-                  </p>
-                )}
-              </div>
-              <span className="text-2xl opacity-50">{card.icon}</span>
+    <section className="space-y-6">
+      <FadeIn>
+        <Card className="border-gray-100 bg-white/80">
+          <CardHeader className="pb-0">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+              <Badge variant="secondary" className="flex items-center gap-2 text-gray-700">
+                <CalendarDays className="h-4 w-4" />
+                Statement period
+              </Badge>
+              <span className="font-medium text-gray-900">
+                {formatDate(summary.statementPeriod?.from)}
+              </span>
+              <span className="text-gray-400">→</span>
+              <span className="font-medium text-gray-900">
+                {formatDate(summary.statementPeriod?.to)}
+              </span>
             </div>
-          </div>
-        ))}
-      </div>
+            <CardDescription className="pt-2">
+              Track balances, fees, and earnings at a glance. All amounts are summarised from the processed statement.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <StaggerList className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {metrics.map((metric, index) => (
+                <FadeIn key={metric.title} delay={index * 0.04}>
+                  <MetricCard metric={metric} />
+                </FadeIn>
+              ))}
+            </StaggerList>
+          </CardContent>
+        </Card>
+      </FadeIn>
 
-      {/* Balance Change Indicator */}
-      <div className="mt-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Balance Change</h3>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatCurrency((summary.closingBalance || 0) - (summary.openingBalance || 0))}
-            </p>
-          </div>
-          <div className={`flex items-center ${
-            (summary.closingBalance || 0) >= (summary.openingBalance || 0) ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {(summary.closingBalance || 0) >= (summary.openingBalance || 0) ? (
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            ) : (
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-              </svg>
-            )}
-            <span className="ml-2 text-lg font-semibold">
-              {summary.openingBalance && summary.openingBalance !== 0
-                ? `${((Math.abs((summary.closingBalance || 0) - (summary.openingBalance || 0)) / Math.abs(summary.openingBalance)) * 100).toFixed(1)}%`
-                : 'N/A'}
-            </span>
-          </div>
+      <FadeIn>
+        <Card className="overflow-hidden border-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-wider text-white/70">Balance change</p>
+                <p className="text-3xl font-semibold">
+                  {formatCurrency(balanceDelta)}
+                </p>
+                <p className="text-white/80 text-sm">
+                  {deltaPercent !== null
+                    ? `${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}% vs opening balance`
+                    : 'Not enough data to calculate percentage change'}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-medium">
+                <span className="block text-xs uppercase tracking-wider text-white/70">Opening → Closing</span>
+                <span>{formatCurrency(summary.openingBalance)} → {formatCurrency(summary.closingBalance)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </FadeIn>
+    </section>
+  );
+}
+
+function MetricCard({ metric }: { metric: Metric }) {
+  return (
+    <div
+      className={cn(
+        'group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-sm transition-all hover:shadow-lg',
+        metricTone[metric.tone]
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{metric.title}</p>
+          <p className="text-xl font-semibold">{formatCurrency(metric.value)}</p>
+          {metric.helper && <p className="text-xs opacity-70">{metric.helper}</p>}
+        </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 text-gray-700">
+          {metric.icon}
         </div>
       </div>
     </div>
   );
 }
+
+function safeNumber(amount?: number | null) {
+  if (amount === undefined || amount === null || Number.isNaN(amount)) {
+    return 0;
+  }
+  return amount;
+}
+
+function formatCurrency(amount?: number | null) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(safeNumber(amount));
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+

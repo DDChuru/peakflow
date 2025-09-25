@@ -1,5 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+type ExtractionTemplate = {
+  name: string;
+  prompt: string;
+};
+
 // Extraction templates for different document types
 export const EXTRACTION_TEMPLATES = {
   audit: {
@@ -136,14 +141,14 @@ EXTRACTION REQUIREMENTS:
 
 Output as comprehensive structured JSON capturing all information.`
   }
-} as const;
+} satisfies Record<string, ExtractionTemplate>;
 
 export type DocumentType = keyof typeof EXTRACTION_TEMPLATES;
 
 export interface ExtractionResult {
   success: boolean;
   documentType: DocumentType;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
   extractedAt: string;
   documentId?: string;
@@ -245,7 +250,6 @@ export function getDocumentTypes() {
 
 // Add a custom extraction template
 export function addCustomTemplate(key: string, name: string, prompt: string) {
-  // @ts-ignore - Allow dynamic template addition
   EXTRACTION_TEMPLATES[key] = { name, prompt };
   return true;
 }

@@ -1,27 +1,27 @@
 import Link from 'next/link';
+import { ShieldAlert } from 'lucide-react';
+import { AuthLayout } from '@/components/auth/AuthLayout';
+import { Button } from '@/components/ui/button';
 
 export default function UnauthorizedPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 text-center">
-        <div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Access Denied
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            You don&apos;t have permission to access this page.
+    <AuthLayout
+      title="Access denied"
+      subtitle="Your current role doesn’t grant access to this page."
+      accentText="PeakFlow uses role-based access control to safeguard sensitive financial workflows. Ask an administrator if you believe you should have access."
+    >
+      <div className="space-y-5 text-sm text-white/70">
+        <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 p-4">
+          <ShieldAlert className="h-5 w-5 text-amber-300" />
+          <p>
+            If you think this is a mistake, contact your PeakFlow administrator to review your permissions.
           </p>
         </div>
-        
-        <div className="mt-8">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Return to Dashboard
-          </Link>
-        </div>
+
+        <Link href="/dashboard" className="block">
+          <Button className="w-full">Return to dashboard</Button>
+        </Link>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

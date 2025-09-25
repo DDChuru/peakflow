@@ -32,7 +32,7 @@ export interface Activity {
   targetName?: string;
   companyId?: string;
   companyName?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   description: string;
   createdAt: Date | Timestamp;
 }
@@ -123,7 +123,7 @@ export class ActivityService {
     performedBy: User,
     companyId: string,
     companyName: string,
-    changes: Record<string, any>
+    changes: Record<string, unknown>
   ): Promise<void> {
     await this.logActivity({
       type: 'company_updated',

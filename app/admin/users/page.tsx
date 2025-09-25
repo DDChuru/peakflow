@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { PageHeader } from '@/components/ui/navigation';
 import { AdminService } from '@/lib/firebase/admin-service';
 import { User, Company, UserRole } from '@/types/auth';
 import toast from 'react-hot-toast';
@@ -155,18 +156,16 @@ export default function AdminUsersPage() {
 
   return (
     <ProtectedRoute requiredRoles={['admin']}>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                User Management
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage user roles and company assignments
-              </p>
-            </div>
+      <div className="min-h-screen bg-gray-50 pb-12">
+        <PageHeader
+          title="User management"
+          subtitle="Manage roles, status, and tenant assignments"
+          breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'User Management' }]}
+          gradient={false}
+        />
 
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white shadow rounded-lg">
             {loading ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

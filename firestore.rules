@@ -159,5 +159,108 @@ service cloud.firestore {
       // Regular users cannot access API keys and sensitive config
       allow read, write: if false;
     }
+
+    // ====================================================================
+    // MULTI-TENANT COMPANY-SCOPED COLLECTIONS (CSC Pattern)
+    // ====================================================================
+
+    // Helper function to check if user belongs to a specific company
+    function belongsToCompany(companyId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+    }
+
+    // Helper function to check if user is admin of a specific company
+    function isCompanyAdmin(companyId) {
+      return belongsToCompany(companyId) && hasRole('admin');
+    }
+
+    // Company-scoped collections
+    match /companies/{companyId} {
+
+      // Debtors collection - scoped to company
+      match /debtors/{debtorId} {
+        // Users can only read debtors from their own company
+        allow read: if belongsToCompany(companyId);
+
+        // Users can create debtors for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId &&
+          request.resource.data.createdBy == request.auth.uid;
+
+        // Users can update debtors in their company (but not change companyId)
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy']));
+
+        // Only company admins can delete debtors
+        allow delete: if isCompanyAdmin(companyId);
+      }
+
+      // Creditors collection - scoped to company
+      match /creditors/{creditorId} {
+        // Users can only read creditors from their own company
+        allow read: if belongsToCompany(companyId);
+
+        // Users can create creditors for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId &&
+          request.resource.data.createdBy == request.auth.uid;
+
+        // Users can update creditors in their company (but not change companyId)
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy']));
+
+        // Only company admins can delete creditors
+        allow delete: if isCompanyAdmin(companyId);
+      }
+
+      // Transactions collection - scoped to company
+      match /transactions/{transactionId} {
+        // Users can only read transactions from their own company
+        allow read: if belongsToCompany(companyId);
+
+        // Users can create transactions for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId &&
+          request.resource.data.createdBy == request.auth.uid;
+
+        // Users can update transactions (status, dates) but not core fields
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy', 'amount', 'entityId', 'entityType']));
+
+        // Only company admins can delete transactions
+        allow delete: if isCompanyAdmin(companyId);
+      }
+
+      // Payment reconciliations collection - scoped to company
+      match /reconciliations/{reconciliationId} {
+        // Users can read reconciliations from their own company
+        allow read: if belongsToCompany(companyId);
+
+        // Users can create reconciliations for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId &&
+          request.resource.data.reconciledBy == request.auth.uid;
+
+        // Reconciliations should be immutable once created
+        allow update: if false;
+
+        // Only company admins can delete reconciliations
+        allow delete: if isCompanyAdmin(companyId);
+      }
+
+      // Company audit logs - read-only for users
+      match /auditLogs/{logId} {
+        // Only company admins can read audit logs
+        allow read: if isCompanyAdmin(companyId);
+
+        // System-only writes (through Cloud Functions)
+        allow write: if false;
+      }
+    }
   }
 }

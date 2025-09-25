@@ -1,13 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Plus, Building2, ShieldCheck, Users, ToggleLeft, ToggleRight } from 'lucide-react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { PageHeader } from '@/components/ui/navigation';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { FadeIn, StaggerList } from '@/components/ui/motion';
+import { SkeletonList } from '@/components/ui/skeleton';
 import { CompaniesService } from '@/lib/firebase/companies-service';
 import { Company, CompanyType } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { cn } from '@/lib/utils';
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -68,248 +76,232 @@ export default function CompaniesPage() {
     }
   };
 
-  const filteredCompanies = companies.filter(company => {
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      return (
-        company.name.toLowerCase().includes(search) ||
-        company.domain?.toLowerCase().includes(search) ||
-        company.email?.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
+  const filteredCompanies = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+    return companies.filter((company) => {
+      const matchesSearch = search
+        ? company.name.toLowerCase().includes(search) ||
+          company.domain?.toLowerCase().includes(search) ||
+          company.email?.toLowerCase().includes(search)
+        : true;
+
+      const matchesType = filterType === 'all' ? true : company.type === filterType;
+      return matchesSearch && matchesType;
+    });
+  }, [companies, filterType, searchTerm]);
+
+  const stats = useMemo(() => {
+    const total = companies.length;
+    const active = companies.filter((c) => c.isActive).length;
+    const peakflow = companies.filter((c) => c.type === 'peakflow').length;
+    return [
+      {
+        label: 'Total companies',
+        value: total,
+        icon: Building2,
+        helper: `${peakflow} PeakFlow · ${total - peakflow} Client`,
+      },
+      {
+        label: 'Active tenants',
+        value: active,
+        icon: ShieldCheck,
+        helper: `${total - active} inactive`,
+      },
+      {
+        label: 'Users managed',
+        value: companies.reduce((sum, company) => sum + (company.userCount || 0), 0),
+        icon: Users,
+        helper: 'Across all companies',
+      },
+    ];
+  }, [companies]);
 
   const canManageCompanies = hasRole('admin') || hasRole('developer');
 
+  const headerActions = canManageCompanies ? (
+    <Link href="/companies/new">
+      <Button size="sm">
+        <Plus className="h-4 w-4" />
+        <span className="hidden sm:inline">Add Company</span>
+      </Button>
+    </Link>
+  ) : null;
+
   return (
     <ProtectedRoute requiredRoles={['admin', 'developer']}>
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="bg-white shadow rounded-lg mb-6">
-            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Companies Management
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Manage client and PeakFlow companies
-                  </p>
-                </div>
-                {canManageCompanies && (
-                  <Link
-                    href="/companies/new"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    + Add Company
-                  </Link>
-                )}
-              </div>
-            </div>
+      <div className="min-h-screen bg-gray-50 pb-12">
+        <PageHeader
+          title="Companies"
+          subtitle="Manage client and PeakFlow organizations"
+          breadcrumbs={[{ label: 'Companies' }]}
+          actions={headerActions}
+        />
 
-            {/* Filters */}
-            <div className="px-4 py-4 sm:px-6">
-              <div className="flex flex-col sm:flex-row gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+          <FadeIn>
+            <Card className="bg-white border border-gray-100">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end">
                 <div className="flex-1">
-                  <input
-                    type="text"
-                    placeholder="Search companies..."
+                  <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Search companies by name, domain, or email"
+                    label="Search"
                   />
                 </div>
-                <div className="flex gap-2">
-                  <button
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={filterType === 'all' ? 'outline' : 'ghost'}
+                    size="sm"
                     onClick={() => setFilterType('all')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      filterType === 'all'
-                        ? 'bg-indigo-100 text-indigo-700'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    } border border-gray-300`}
                   >
                     All
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant={filterType === 'client' ? 'outline' : 'ghost'}
+                    size="sm"
                     onClick={() => setFilterType('client')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      filterType === 'client'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    } border border-gray-300`}
                   >
                     Client
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant={filterType === 'peakflow' ? 'outline' : 'ghost'}
+                    size="sm"
                     onClick={() => setFilterType('peakflow')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      filterType === 'peakflow'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                    } border border-gray-300`}
                   >
                     PeakFlow
-                  </button>
+                  </Button>
                 </div>
               </div>
-            </div>
-          </div>
+            </Card>
+          </FadeIn>
 
-          {/* Companies List */}
-          <div className="bg-white shadow rounded-lg">
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-              </div>
-            ) : filteredCompanies.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">No companies found</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Company
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Domain
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contact
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredCompanies.map((company) => (
-                      <tr key={company.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {company.logoUrl ? (
-                              <img
-                                className="h-10 w-10 rounded-full"
-                                src={company.logoUrl}
-                                alt={company.name}
-                              />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                <span className="text-gray-600 font-medium">
-                                  {company.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                            )}
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {company.name}
-                              </div>
-                              {company.description && (
-                                <div className="text-sm text-gray-500">
-                                  {company.description.substring(0, 50)}...
-                                </div>
-                              )}
+          <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <FadeIn key={stat.label} delay={index * 0.05}>
+                  <Card className="bg-white border border-gray-100">
+                    <div className="p-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            {stat.label}
+                          </p>
+                          <p className="mt-1 text-2xl font-semibold text-gray-900">{stat.value}</p>
+                          <p className="text-sm text-gray-500">{stat.helper}</p>
+                        </div>
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                      </div>
+                    </div>
+                  </Card>
+                </FadeIn>
+              );
+            })}
+          </StaggerList>
+
+          {loading ? (
+            <Card className="bg-white border border-gray-100 p-6">
+              <SkeletonList items={4} />
+            </Card>
+          ) : filteredCompanies.length === 0 ? (
+            <Card className="bg-white border border-dashed border-gray-200 p-12 text-center text-sm text-gray-600">
+              No companies match the current filters.
+            </Card>
+          ) : (
+            <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredCompanies.map((company, index) => (
+                <FadeIn key={company.id} delay={0.05 * index}>
+                  <Card hover className="bg-white border border-gray-100">
+                    <div className="p-6 space-y-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          {company.logoUrl ? (
+                            <img
+                              src={company.logoUrl}
+                              alt={company.name}
+                              className="h-12 w-12 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
+                              {company.name.charAt(0).toUpperCase()}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              company.type === 'peakflow'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-green-100 text-green-800'
-                            }`}
-                          >
-                            {company.type === 'peakflow' ? 'PeakFlow' : 'Client'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {company.domain || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          )}
                           <div>
-                            {company.email && (
-                              <div>{company.email}</div>
-                            )}
-                            {company.phone && (
-                              <div>{company.phone}</div>
-                            )}
-                            {!company.email && !company.phone && '-'}
+                            <h3 className="text-base font-semibold text-gray-900">{company.name}</h3>
+                            <p className="text-sm text-gray-500">
+                              {company.type === 'peakflow' ? 'PeakFlow' : 'Client'} ·{' '}
+                              {company.domain || 'No domain'}
+                            </p>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              company.isActive
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
+                        </div>
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold',
+                            company.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                          )}
+                        >
+                          {company.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-sm text-gray-600">
+                        {company.email && <p>{company.email}</p>}
+                        {company.phone && <p>{company.phone}</p>}
+                        {!company.email && !company.phone && (
+                          <p className="text-xs text-gray-400">No contact details captured yet.</p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/companies/${company.id}`}>
+                          <Button variant="outline" size="sm">
+                            View details
+                          </Button>
+                        </Link>
+                        <Link href={`/companies/${company.id}/financial-dashboard`}>
+                          <Button variant="outline" size="sm">
+                            Financial dashboard
+                          </Button>
+                        </Link>
+                        <Link href={`/dashboard/bank-statements/${company.id}`}>
+                          <Button variant="outline" size="sm">
+                            Bank statements
+                          </Button>
+                        </Link>
+                      </div>
+
+                      {canManageCompanies && (
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleStatus(company)}
+                            className={company.isActive ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'}
                           >
-                            {company.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <Link
-                              href={`/companies/${company.id}`}
-                              className="text-indigo-600 hover:text-indigo-900"
-                            >
-                              View
-                            </Link>
-                            <Link
-                              href={`/dashboard/bank-statements/${company.id}`}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              Bank Statements
-                            </Link>
-                            {canManageCompanies && (
-                              <>
-                                <Link
-                                  href={`/companies/${company.id}/edit`}
-                                  className="text-indigo-600 hover:text-indigo-900"
-                                >
-                                  Edit
-                                </Link>
-                                <button
-                                  onClick={() => handleToggleStatus(company)}
-                                  className={`${
-                                    company.isActive
-                                      ? 'text-yellow-600 hover:text-yellow-900'
-                                      : 'text-green-600 hover:text-green-900'
-                                  }`}
-                                >
-                                  {company.isActive ? 'Deactivate' : 'Activate'}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setCompanyToDelete(company);
-                                    setShowDeleteModal(true);
-                                  }}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  Delete
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                            {company.isActive ? <ToggleLeft className="h-4 w-4" /> : <ToggleRight className="h-4 w-4" />}
+                            {company.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setCompanyToDelete(company);
+                              setShowDeleteModal(true);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </FadeIn>
+              ))}
+            </StaggerList>
+          )}
         </div>
       </div>
 
@@ -319,7 +311,7 @@ export default function CompaniesPage() {
           <div className="bg-white rounded-lg p-6 w-96">
             <h3 className="text-lg font-semibold mb-4">Delete Company</h3>
             <p className="text-gray-600 mb-4">
-              Are you sure you want to delete "{companyToDelete.name}"? This action cannot be undone.
+              Are you sure you want to delete &ldquo;{companyToDelete.name}&rdquo;? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-2">
               <button
