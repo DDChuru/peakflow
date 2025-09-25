@@ -40,7 +40,7 @@
 - [x] Document posting rules + validation scenarios (initial balancing + period checks).
 - [x] Prototype API/service layer for journal posting.
 - [x] Design COA admin UI wireframes leveraging stat cards + tables (initial implementation in app/admin/chart-of-accounts/page.tsx).
-- [ ] Outline currency conversion utilities and revaluation workflow.
+- [x] Outline currency conversion utilities and revaluation workflow (see src/lib/accounting/currency-service.ts).
 
 ## Risks / Mitigations
 - **Data integrity**: enforce balanced journal entries with validation + tests.
