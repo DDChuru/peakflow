@@ -39,7 +39,7 @@
 - [x] Draft ERD / schema diagrams for COA, JournalEntry, GLEntry, FiscalPeriod, CurrencyRate.
 - [x] Document posting rules + validation scenarios (initial balancing + period checks).
 - [x] Prototype API/service layer for journal posting.
-- [ ] Design COA admin UI wireframes leveraging stat cards + tables.
+- [x] Design COA admin UI wireframes leveraging stat cards + tables (initial implementation in app/admin/chart-of-accounts/page.tsx).
 - [ ] Outline currency conversion utilities and revaluation workflow.
 
 ## Risks / Mitigations
