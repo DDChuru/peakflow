@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/ui/navigation';
 import {
   Search,
   Plus,
@@ -26,7 +27,6 @@ import {
   AlertCircle,
   User,
   Calendar,
-  ChevronLeft,
   Edit2,
   Trash2,
   Eye
@@ -167,40 +167,30 @@ export default function CompanyDebtorsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
-        {/* Modern Header */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => router.push(`/companies/${companyId}/financial-dashboard`)}
-                >
-                  <ChevronLeft className="h-5 w-5" />
+        <PageHeader
+          title="Debtors"
+          subtitle={`${filteredDebtors.length} account${filteredDebtors.length !== 1 ? 's' : ''}`}
+          breadcrumbs={[
+            { label: 'Companies', href: '/companies' },
+            { label: company?.name || '', href: `/companies/${companyId}` },
+            { label: 'Debtors' }
+          ]}
+          backHref={`/companies/${companyId}/financial-dashboard`}
+          actions={
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={exportDebtors}>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <Link href={`/companies/${companyId}/debtors/new`}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Add Debtor</span>
                 </Button>
-                <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                    Debtors Management
-                  </h1>
-                  <p className="text-sm text-gray-500">{company?.name}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Button variant="outline" size="sm" onClick={exportDebtors}>
-                  <Download className="h-4 w-4" />
-                  Export
-                </Button>
-                <Link href={`/companies/${companyId}/debtors/new`}>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4" />
-                    Add Debtor
-                  </Button>
-                </Link>
-              </div>
+              </Link>
             </div>
-          </div>
-        </div>
+          }
+        />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Stats Cards */}
@@ -292,21 +282,20 @@ export default function CompanyDebtorsPage() {
 
           {/* Filters */}
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <Input
-                    icon={<Search className="h-4 w-4" />}
-                    placeholder="Search by name, email, or phone..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div className="flex gap-2">
+            <CardContent className="space-y-4 p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                <Input
+                  icon={<Search className="h-4 w-4" />}
+                  placeholder="Search by name, email, or phone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="lg:flex-1"
+                />
+                <div className="flex flex-wrap gap-2">
                   {(['all', 'active', 'inactive', 'blocked'] as const).map((status) => (
                     <Button
                       key={status}
-                      variant={statusFilter === status ? "default" : "outline"}
+                      variant={statusFilter === status ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setStatusFilter(status)}
                       className="capitalize"
@@ -315,7 +304,7 @@ export default function CompanyDebtorsPage() {
                     </Button>
                   ))}
                   <Button
-                    variant={overdueFilter ? "destructive" : "outline"}
+                    variant={overdueFilter ? 'destructive' : 'outline'}
                     size="sm"
                     onClick={() => setOverdueFilter(!overdueFilter)}
                   >
@@ -324,6 +313,24 @@ export default function CompanyDebtorsPage() {
                   </Button>
                 </div>
               </div>
+              {(searchTerm || statusFilter !== 'all' || overdueFilter) && (
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <p>
+                    Showing {filteredDebtors.length} of {debtors.length} debtors
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('all');
+                      setOverdueFilter(false);
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

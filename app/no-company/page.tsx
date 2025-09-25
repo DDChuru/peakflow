@@ -14,6 +14,7 @@ export default function NoCompanyPage() {
       title="You don’t have a company yet"
       subtitle="Ask your administrator to assign you to a PeakFlow company so you can access tenant-specific data."
       accentText="PeakFlow keeps every company’s data isolated and secure. Once you’re added to a tenant, dashboards and workflows will unlock automatically."
+      supportLink={{ label: 'Need help?', href: 'mailto:support@peakflow.io' }}
     >
       <div className="space-y-5 text-sm text-white/70">
         <p>

@@ -1,397 +1,723 @@
-# Enhanced Prompt
+# Enhanced Prompt for Financial Management System Implementation
 
 ## Original Request
-Walk through my application and modernize all components from a UI perspective, ensuring logical back navigation for all components and keeping functionality the same while improving look and feel to be more modern and engaging.
+Develop a comprehensive financial management system with financial dashboard, debtors/creditors management, age analysis, ledgers, journal entries, payables/receivables, bank statement imports, quote/PO/invoice workflows, multi-tenant architecture for managed accounts, and PDF extraction capabilities.
 
 ## Enhancement Date
-2025-09-24
+2025-09-25
 
 ## Assumptions Made
-- The application is a financial/accounting system built with Next.js 15, React 19, and Tailwind CSS 4
-- Current tech stack includes Framer Motion, Radix UI, Lucide icons, and shadcn/ui components
-- The application has multi-tenant architecture with role-based access control
-- Navigation should follow standard breadcrumb patterns with back navigation support
-- Modern UI should leverage existing animation libraries and component systems
-- The application should maintain all Firebase integration and authentication
+- GAAP-compliant accounting principles with flexibility for regional variations
+- Calendar-based fiscal year with monthly periods
+- Role-based approval workflows with configurable limits
+- Double-entry bookkeeping system
+- Accrual-based accounting method
+- Support for multiple currencies with base currency conversion
+- Audit trail requirements for all financial transactions
 
 ## Enhanced Prompt
 
 ```xml
 <task>
-  <objective>Systematically modernize the UI/UX of a Next.js financial application while preserving all existing functionality and implementing consistent navigation patterns</objective>
-  <scope>
-    - Modernize all React components across the application
-    - Implement comprehensive navigation with back buttons and breadcrumbs
-    - Enhance visual design using existing libraries (Framer Motion, Radix UI, shadcn/ui)
-    - Maintain all current business logic and Firebase integrations
-    - Ensure responsive design for all screen sizes
-  </scope>
+  <objective>Design and implement a comprehensive multi-tenant financial management system with full accounting capabilities, automated document processing, and hierarchical company management</objective>
+  <scope>Complete financial ecosystem covering AP/AR, GL, document management, reporting, and multi-tenant operations with managed account capabilities</scope>
   <success_criteria>
-    - All components have modern, engaging visual design
-    - Every page has logical back navigation
-    - Consistent design system across all modules
-    - No functionality is broken or removed
-    - Improved user engagement through micro-interactions
-    - Accessible and responsive across devices
-    - Performance is maintained or improved
+    <criterion priority="1">Functional double-entry accounting system with GL, journals, and trial balance</criterion>
+    <criterion priority="2">Complete debtors/creditors lifecycle management with aging analysis</criterion>
+    <criterion priority="3">Automated PDF extraction for all financial documents</criterion>
+    <criterion priority="4">Multi-tenant architecture supporting company-within-company structure</criterion>
+    <criterion priority="5">Real-time financial dashboard with key metrics and insights</criterion>
   </success_criteria>
 </task>
 
 <context>
-  <domain>Financial technology / Accounting software</domain>
-  <application_type>Multi-tenant B2B SaaS platform</application_type>
-  <tech_stack>
-    - Framework: Next.js 15.5.3 with App Router
-    - UI Library: React 19.1.0
-    - Styling: Tailwind CSS 4
-    - Components: shadcn/ui, Radix UI
-    - Icons: Lucide React, Heroicons
-    - Animation: Framer Motion 12
-    - Backend: Firebase (Auth, Firestore)
-    - Forms: React Hook Form with Zod validation
-  </tech_stack>
-  <current_modules>
-    - Authentication (login, signup, password reset)
-    - Dashboard (role-based content)
-    - Company management
-    - Bank statements upload and analysis
-    - Creditors management
-    - Debtors management
-    - Financial dashboard
-    - User management (admin)
-  </current_modules>
-  <user_roles>admin, developer, user, company_user</user_roles>
+  <domain>Financial Management and Accounting Software</domain>
+  <background>Building a comprehensive financial platform for businesses requiring both internal accounting and client financial management services</background>
+  <current_state>
+    - Next.js 15 + React 19 + Tailwind CSS frontend
+    - Firebase backend infrastructure
+    - Existing PDF extraction capabilities
+    - Multi-tenant architecture in progress
+    - Basic company and bank statement structures
+  </current_state>
+  <user_role>Technical implementer with financial domain knowledge</user_role>
 </context>
 
-<modernization_strategy>
-  <design_principles>
-    - Clean and minimal with purposeful use of whitespace
-    - Subtle gradients and glassmorphism effects where appropriate
-    - Consistent color palette with semantic color usage
-    - Micro-animations for user interactions
-    - Card-based layouts with soft shadows
-    - Modern typography with clear hierarchy
-    - Dark mode support preparation (structure for future implementation)
-  </design_principles>
+<architectural_foundation>
+  <core_principles>
+    <principle>Double-entry bookkeeping for all transactions</principle>
+    <principle>Immutable audit trail for compliance</principle>
+    <principle>Separation of concerns between tenants</principle>
+    <principle>Real-time balance calculations</principle>
+    <principle>Document-driven workflows</principle>
+  </core_principles>
 
-  <component_patterns>
-    <navigation>
-      - Sticky headers with backdrop blur
-      - Breadcrumb trails on all inner pages
-      - Back buttons using router.back() or specific paths
-      - Animated transitions between navigation states
-      - Mobile-responsive hamburger menus
-      - Tab navigation for related sections
-    </navigation>
+  <data_model>
+    <chart_of_accounts>
+      <!-- Standard 5-category COA structure -->
+      <assets range="1000-1999"/>
+      <liabilities range="2000-2999"/>
+      <equity range="3000-3999"/>
+      <revenue range="4000-4999"/>
+      <expenses range="5000-5999"/>
+    </chart_of_accounts>
 
-    <cards>
-      - Hover effects with subtle elevation changes
-      - Gradient borders or accents
-      - Animated entrance with stagger effects
-      - Skeleton loading states
-      - Expandable sections with smooth transitions
-    </cards>
+    <tenant_hierarchy>
+      <level1>Primary Company (root tenant)</level1>
+      <level2>Managed Account Companies (sub-tenants with manageAccounts flag)</level2>
+      <level3>Sub-tenant Users and Departments</level3>
+    </tenant_hierarchy>
+  </data_model>
+</architectural_foundation>
 
-    <forms>
-      - Floating labels or modern input designs
-      - Real-time validation feedback
-      - Loading states for submissions
-      - Success/error animations
-      - Multi-step forms with progress indicators
-    </forms>
+<implementation_phases>
 
-    <tables>
-      - Sticky headers for long lists
-      - Hover states for rows
-      - Inline editing capabilities
-      - Responsive card view for mobile
-      - Pagination or infinite scroll
-      - Sort and filter animations
-    </tables>
+  <phase number="1" name="Core Accounting Foundation">
+    <objectives>Establish fundamental accounting structures and data models</objectives>
+    <duration>2-3 weeks</duration>
 
-    <buttons>
-      - Consistent sizing system (sm, md, lg)
-      - Loading spinner states
-      - Ripple effects on click
-      - Icon integration with proper spacing
-      - Variant system (primary, secondary, ghost, destructive)
-    </buttons>
-  </component_patterns>
-</modernization_strategy>
-
-<workflow>
-  <phase number="1" name="Component Audit">
     <tasks>
-      - Scan all .tsx files in the application
-      - Identify all page components and their navigation relationships
-      - Map component dependencies and shared UI components
-      - Document current navigation patterns
-      - List all form components and data tables
+      <task priority="1">
+        <name>Chart of Accounts Setup</name>
+        <steps>
+          <step>Create COA data structure with account types (Asset, Liability, Equity, Revenue, Expense)</step>
+          <step>Implement account hierarchy (parent-child relationships)</step>
+          <step>Add normal balance indicators (debit/credit)</step>
+          <step>Create default COA templates for different business types</step>
+          <step>Build COA management UI with add/edit/deactivate functions</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>General Ledger Implementation</name>
+        <steps>
+          <step>Design GL transaction table with proper indexing</step>
+          <step>Implement journal entry structure (header + line items)</step>
+          <step>Create posting rules engine for validation</step>
+          <step>Build period management (open/close fiscal periods)</step>
+          <step>Implement transaction reversal capabilities</step>
+          <step>Add batch posting functionality</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Multi-Currency Support</name>
+        <steps>
+          <step>Create currency master table with exchange rates</step>
+          <step>Implement rate type management (spot, average, historical)</step>
+          <step>Build currency conversion engine</step>
+          <step>Add realized/unrealized gain/loss calculations</step>
+          <step>Create currency revaluation process</step>
+        </steps>
+      </task>
     </tasks>
   </phase>
 
-  <phase number="2" name="Design System Enhancement">
+  <phase number="2" name="Multi-Tenant Architecture">
+    <objectives>Implement hierarchical company structure with proper isolation</objectives>
+    <duration>2 weeks</duration>
+
     <tasks>
-      - Update or create base UI components in src/components/ui/
-      - Enhance button.tsx with modern styles and animations
-      - Improve card.tsx with gradient options and hover effects
-      - Create or enhance navigation.tsx with PageHeader and breadcrumbs
-      - Update form input components with modern styling
-      - Add loading and skeleton components
+      <task priority="1">
+        <name>Tenant Management System</name>
+        <steps>
+          <step>Create company/tenant data model with parent-child relationships</step>
+          <step>Implement manageAccounts flag functionality</step>
+          <step>Build tenant isolation middleware for Firebase</step>
+          <step>Create cross-tenant data access controls</step>
+          <step>Implement tenant-specific configuration storage</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>User Management Enhancement</name>
+        <steps>
+          <step>Extend user model for multi-tenant access</step>
+          <step>Create role templates per tenant type</step>
+          <step>Implement permission inheritance system</step>
+          <step>Build user invitation workflow for sub-tenants</step>
+          <step>Add session management for tenant switching</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Data Segregation</name>
+        <steps>
+          <step>Implement composite keys with tenantId</step>
+          <step>Create tenant-aware query builders</step>
+          <step>Add row-level security rules in Firestore</step>
+          <step>Build data migration tools for tenant onboarding</step>
+          <step>Implement tenant-specific backup/restore</step>
+        </steps>
+      </task>
     </tasks>
   </phase>
 
-  <phase number="3" name="Navigation Implementation">
+  <phase number="3" name="Debtors Management">
+    <objectives>Complete accounts receivable system with document generation</objectives>
+    <duration>3 weeks</duration>
+
     <tasks>
-      - Add PageHeader component to all pages
-      - Implement breadcrumb trails with proper hierarchy
-      - Add back navigation buttons where appropriate
-      - Ensure mobile navigation is responsive
-      - Add route transitions with Framer Motion
-      - Implement loading states during navigation
-    </tasks>
-    <navigation_rules>
-      - Dashboard is the root navigation point
-      - Company pages should allow back to companies list
-      - Sub-sections (creditors, debtors) should navigate back to company
-      - Forms should have cancel buttons that go back
-      - Modal dialogs should have clear close actions
-      - Use router.back() for dynamic back navigation
-      - Provide explicit paths for breadcrumb navigation
-    </navigation_rules>
-  </phase>
+      <task priority="1">
+        <name>Customer Master Data</name>
+        <steps>
+          <step>Create customer entity with credit management fields</step>
+          <step>Implement credit limit and payment terms</step>
+          <step>Add customer categorization and tags</step>
+          <step>Build customer statement preferences</step>
+          <step>Create customer contact management</step>
+          <step>Add tax registration details</step>
+        </steps>
+      </task>
 
-  <phase number="4" name="Page-by-Page Modernization">
-    <pages_to_modernize>
-      <!-- Public/Auth Pages -->
-      <page path="/login" priority="high">
-        - Modern card-based login form
-        - Animated background or gradient
-        - Social login buttons if applicable
-        - Remember me with modern checkbox
-        - Smooth transitions to signup/reset
-      </page>
+      <task priority="2">
+        <name>Quote Management</name>
+        <steps>
+          <step>Design quote header and line item structure</step>
+          <step>Implement product/service catalog integration</step>
+          <step>Create quote versioning system</step>
+          <step>Build quote approval workflow</step>
+          <step>Add quote-to-order conversion</step>
+          <step>Implement quote expiry management</step>
+          <step>Create quote PDF generation templates</step>
+        </steps>
+      </task>
 
-      <page path="/signup" priority="high">
-        - Multi-step form with progress indicator
-        - Real-time validation feedback
-        - Terms acceptance with modern styling
-        - Company selection or creation flow
-      </page>
+      <task priority="3">
+        <name>Sales Order Processing</name>
+        <steps>
+          <step>Create SO from approved quotes</step>
+          <step>Implement order fulfillment tracking</step>
+          <step>Add partial shipment handling</step>
+          <step>Build backorder management</step>
+          <step>Create order modification workflow</step>
+        </steps>
+      </task>
 
-      <page path="/dashboard" priority="critical">
-        - Modern stat cards with gradients
-        - Quick action cards with hover effects
-        - Role-based content with smooth transitions
-        - Activity feed or recent items
-        - Welcome message with user avatar
-      </page>
+      <task priority="4">
+        <name>Invoice Generation</name>
+        <steps>
+          <step>Design invoice data model with tax calculations</step>
+          <step>Implement invoice numbering sequences</step>
+          <step>Create invoice-from-order automation</step>
+          <step>Build tax calculation engine</step>
+          <step>Add credit note functionality</step>
+          <step>Implement recurring invoice templates</step>
+          <step>Create customizable invoice PDF templates</step>
+        </steps>
+      </task>
 
-      <page path="/companies" priority="high">
-        - Grid or list view toggle
-        - Company cards with logos/avatars
-        - Search with real-time filtering
-        - Smooth transitions to company details
-        - Add company with modal or slide-over
-      </page>
+      <task priority="5">
+        <name>Accounts Receivable Ledger</name>
+        <steps>
+          <step>Create AR subsidiary ledger structure</step>
+          <step>Implement invoice posting to GL</step>
+          <step>Build payment application system</step>
+          <step>Add cash receipt processing</step>
+          <step>Create payment matching algorithms</step>
+          <step>Implement write-off procedures</step>
+        </steps>
+      </task>
 
-      <page path="/companies/[id]" priority="high">
-        - Tab navigation for sub-sections
-        - Company header with stats
-        - Action buttons with dropdowns
-        - Related entities as cards
-      </page>
-
-      <page path="/companies/[id]/creditors" priority="medium">
-        - Enhanced filter bar with tags
-        - Creditor cards with expand/collapse details
-        - Batch actions toolbar
-        - Export with format selection
-        - Visual indicators for overdue payments
-      </page>
-
-      <page path="/companies/[id]/debtors" priority="medium">
-        - Similar to creditors with unique styling
-        - Payment status indicators
-        - Communication history snippets
-        - Quick action buttons
-      </page>
-
-      <page path="/bank-statements" priority="high">
-        - Drag-and-drop file upload with preview
-        - Processing status with progress bars
-        - Transaction categorization UI
-        - Summary dashboard with charts
-        - Filter sidebar with date ranges
-      </page>
-
-      <page path="/companies/[id]/financial-dashboard" priority="medium">
-        - Interactive charts with tooltips
-        - KPI cards with trend indicators
-        - Period comparison selectors
-        - Export reports with templates
-        - Drill-down capabilities
-      </page>
-    </pages_to_modernize>
-  </phase>
-
-  <phase number="5" name="Polish and Optimization">
-    <tasks>
-      - Add loading skeletons for all async content
-      - Implement error boundaries with friendly messages
-      - Add empty states with illustrations or icons
-      - Optimize animations for performance
-      - Ensure consistent spacing and alignment
-      - Add tooltips for complex actions
-      - Implement keyboard navigation support
+      <task priority="6">
+        <name>Collections Management</name>
+        <steps>
+          <step>Build aging analysis engine (30/60/90/120+ days)</step>
+          <step>Create dunning letter templates</step>
+          <step>Implement collection workflow automation</step>
+          <step>Add promise-to-pay tracking</step>
+          <step>Build customer statement generation</step>
+          <step>Create collection performance metrics</step>
+        </steps>
+      </task>
     </tasks>
   </phase>
-</workflow>
 
-<implementation_guidelines>
-  <dos>
-    - DO use existing component libraries (shadcn/ui, Radix UI)
-    - DO maintain existing Firebase services and logic
-    - DO preserve all authentication and authorization checks
-    - DO use TypeScript interfaces for type safety
-    - DO implement progressive enhancement
-    - DO test on multiple screen sizes
-    - DO use semantic HTML elements
-    - DO preserve all existing routes and URLs
-    - DO use existing utility functions from lib/utils
-    - DO follow existing project structure
-  </dos>
+  <phase number="4" name="Creditors Management">
+    <objectives>Complete accounts payable system with approval workflows</objectives>
+    <duration>3 weeks</duration>
 
-  <donts>
-    - DON'T remove any existing functionality
-    - DON'T change API endpoints or Firebase queries
-    - DON'T modify authentication flow logic
-    - DON'T break existing integrations
-    - DON'T over-animate to the point of distraction
-    - DON'T sacrifice performance for aesthetics
-    - DON'T ignore accessibility standards
-    - DON'T change database schema or rules
-  </donts>
-</implementation_guidelines>
+    <tasks>
+      <task priority="1">
+        <name>Vendor Master Data</name>
+        <steps>
+          <step>Create vendor entity with payment preferences</step>
+          <step>Implement vendor categorization</step>
+          <step>Add bank account management for payments</step>
+          <step>Build vendor document repository</step>
+          <step>Create vendor performance tracking</step>
+          <step>Add tax withholding configuration</step>
+        </steps>
+      </task>
 
-<quality_checks>
-  <visual>
-    - Consistent spacing using Tailwind's spacing scale
-    - Proper color contrast for accessibility
-    - Responsive breakpoints working correctly
-    - Animations smooth at 60fps
-    - No layout shift during loading
-  </visual>
+      <task priority="2">
+        <name>Requisition System</name>
+        <steps>
+          <step>Design requisition form with line items</step>
+          <step>Implement department/cost center allocation</step>
+          <step>Create requisition approval matrix</step>
+          <step>Build budget checking integration</step>
+          <step>Add requisition-to-PO conversion</step>
+          <step>Implement urgent request handling</step>
+        </steps>
+      </task>
 
-  <functional>
-    - All forms submit correctly
-    - Navigation works without errors
-    - Data fetching maintains functionality
-    - Role-based access still enforced
-    - Error handling remains robust
-  </functional>
+      <task priority="3">
+        <name>Quotation Management</name>
+        <steps>
+          <step>Create vendor quote upload interface</step>
+          <step>Implement quote comparison tools</step>
+          <step>Build quote evaluation workflow</step>
+          <step>Add quote validity tracking</step>
+          <step>Create vendor quote history</step>
+        </steps>
+      </task>
 
-  <performance>
-    - Lighthouse scores maintained or improved
-    - Bundle size not significantly increased
-    - Images optimized and lazy loaded
-    - Code splitting implemented properly
-  </performance>
-</quality_checks>
+      <task priority="4">
+        <name>Purchase Order System</name>
+        <steps>
+          <step>Design PO structure with approval limits</step>
+          <step>Implement multi-level approval routing</step>
+          <step>Create PO amendment workflow</step>
+          <step>Build PO-to-receipt matching</step>
+          <step>Add blanket PO functionality</step>
+          <step>Implement PO closeout procedures</step>
+        </steps>
+      </task>
 
-<examples>
-  <modern_component_example type="PageHeader">
-    <!-- Example structure for consistent page headers -->
-    <PageHeader
-      title="Creditors Management"
-      subtitle="15 active creditors"
-      backHref="/companies/[id]"
-      breadcrumbs={[
-        { label: 'Companies', href: '/companies' },
-        { label: company.name, href: `/companies/${id}` },
-        { label: 'Creditors' }
-      ]}
-      actions={
-        <>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Creditor
-          </Button>
-        </>
-      }
-    />
-  </modern_component_example>
+      <task priority="5">
+        <name>Invoice Processing</name>
+        <steps>
+          <step>Create vendor invoice capture interface</step>
+          <step>Implement 3-way matching (PO-Receipt-Invoice)</step>
+          <step>Build invoice approval workflow</step>
+          <step>Add invoice exception handling</step>
+          <step>Create duplicate invoice detection</step>
+          <step>Implement accrual processes</step>
+        </steps>
+      </task>
 
-  <modern_component_example type="StatCard">
-    <!-- Example modern stat card with gradient -->
-    <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600">
-      <div className="absolute inset-0 bg-grid-white/10" />
-      <CardContent className="p-6 relative">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-blue-100 text-sm font-medium">Total Revenue</p>
-            <p className="text-3xl font-bold text-white mt-1">$45,231</p>
-            <p className="text-blue-100 text-sm mt-1">+12% from last month</p>
-          </div>
-          <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-            <TrendingUp className="h-6 w-6 text-white" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  </modern_component_example>
-</examples>
+      <task priority="6">
+        <name>Accounts Payable Ledger</name>
+        <steps>
+          <step>Create AP subsidiary ledger</step>
+          <step>Implement invoice posting to GL</step>
+          <step>Build payment scheduling system</step>
+          <step>Add payment batch processing</step>
+          <step>Create payment confirmation workflow</step>
+          <step>Implement vendor statement reconciliation</step>
+        </steps>
+      </task>
 
-<deliverables>
-  - All pages modernized with consistent design language
-  - Navigation implemented on every page with back buttons and breadcrumbs
-  - Loading states and skeletons for all async operations
-  - Enhanced micro-interactions and animations
-  - Responsive design working across all breakpoints
-  - Component library in src/components/ui/ fully updated
-  - Consistent use of design tokens and spacing
-  - No broken functionality or removed features
-</deliverables>
+      <task priority="7">
+        <name>Payment Processing</name>
+        <steps>
+          <step>Design payment run selection criteria</step>
+          <step>Implement payment method management</step>
+          <step>Create check/EFT generation</step>
+          <step>Build payment approval workflow</step>
+          <step>Add positive pay file generation</step>
+          <step>Implement payment void/reissue</step>
+        </steps>
+      </task>
+    </tasks>
+  </phase>
 
-<testing_checklist>
-  - [ ] All routes accessible and working
-  - [ ] Forms submit successfully
-  - [ ] Authentication flow intact
-  - [ ] Role-based access control functioning
-  - [ ] Data fetching and display working
-  - [ ] Navigation buttons and breadcrumbs functional
-  - [ ] Responsive design on mobile/tablet/desktop
-  - [ ] Animations performant and smooth
-  - [ ] Accessibility standards met
-  - [ ] No console errors or warnings
-</testing_checklist>
+  <phase number="5" name="Bank and Cash Management">
+    <objectives>Comprehensive bank integration and cash flow management</objectives>
+    <duration>2 weeks</duration>
 
-<meta>
-  <instructions_for_llm>
-    - Work systematically through each phase
-    - Preserve all business logic while updating UI
-    - Test each component after modification
-    - Maintain TypeScript type safety
-    - Use existing project patterns and utilities
-    - Focus on user experience improvements
-    - Ensure backward compatibility
-    - Document any significant changes
-  </instructions_for_llm>
-</meta>
+    <tasks>
+      <task priority="1">
+        <name>Bank Account Management</name>
+        <steps>
+          <step>Create bank account master with GL mapping</step>
+          <step>Implement account type classification</step>
+          <step>Add signatory management</step>
+          <step>Build account balance tracking</step>
+          <step>Create inter-account transfer functionality</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>Enhanced Bank Statement Import</name>
+        <steps>
+          <step>Extend PDF extraction for all bank formats</step>
+          <step>Implement statement parsing rules engine</step>
+          <step>Create transaction categorization ML model</step>
+          <step>Build duplicate transaction detection</step>
+          <step>Add multi-format support (OFX, QIF, CSV)</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Bank Reconciliation</name>
+        <steps>
+          <step>Design reconciliation workspace UI</step>
+          <step>Implement auto-matching algorithms</step>
+          <step>Create manual matching interface</step>
+          <step>Build reconciliation adjustment entries</step>
+          <step>Add reconciliation reporting</step>
+          <step>Implement period lock after reconciliation</step>
+        </steps>
+      </task>
+
+      <task priority="4">
+        <name>Cash Flow Management</name>
+        <steps>
+          <step>Create cash position dashboard</step>
+          <step>Implement cash forecast engine</step>
+          <step>Build payment priority algorithms</step>
+          <step>Add cash requirement planning</step>
+          <step>Create liquidity analysis tools</step>
+        </steps>
+      </task>
+    </tasks>
+  </phase>
+
+  <phase number="6" name="Managed Accounts Features">
+    <objectives>Extended capabilities for clients with manageAccounts flag</objectives>
+    <duration>2 weeks</duration>
+
+    <tasks>
+      <task priority="1">
+        <name>Full GL Capabilities</name>
+        <steps>
+          <step>Enable complete COA access for managed accounts</step>
+          <step>Implement journal entry permissions</step>
+          <step>Create inter-company transaction handling</step>
+          <step>Build consolidation elimination entries</step>
+          <step>Add segment reporting capabilities</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>Trading Accounts</name>
+        <steps>
+          <step>Create trading account structure</step>
+          <step>Implement cost of goods sold calculations</step>
+          <step>Build gross profit analysis</step>
+          <step>Add inventory integration points</step>
+          <step>Create trading statement generation</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Balance Sheet Management</name>
+        <steps>
+          <step>Design balance sheet structure with groupings</step>
+          <step>Implement working capital calculations</step>
+          <step>Create ratio analysis tools</step>
+          <step>Build comparative balance sheets</step>
+          <step>Add balance sheet reconciliation</step>
+        </steps>
+      </task>
+
+      <task priority="4">
+        <name>Profit & Loss Statements</name>
+        <steps>
+          <step>Create P&L structure with subtotals</step>
+          <step>Implement multi-period comparisons</step>
+          <step>Build variance analysis</step>
+          <step>Add departmental P&L capabilities</step>
+          <step>Create P&L drill-down functionality</step>
+        </steps>
+      </task>
+    </tasks>
+  </phase>
+
+  <phase number="7" name="Document Management System">
+    <objectives>Comprehensive document handling with PDF extraction</objectives>
+    <duration>2 weeks</duration>
+
+    <tasks>
+      <task priority="1">
+        <name>Document Repository</name>
+        <steps>
+          <step>Create document storage structure in Firebase</step>
+          <step>Implement document categorization</step>
+          <step>Build version control system</step>
+          <step>Add document tagging and metadata</step>
+          <step>Create document access controls</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>PDF Extraction Enhancement</name>
+        <steps>
+          <step>Extend extraction for invoices and quotes</step>
+          <step>Implement field mapping configurations</step>
+          <step>Create extraction confidence scoring</step>
+          <step>Build manual correction interface</step>
+          <step>Add extraction template learning</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Legacy Document Import</name>
+        <steps>
+          <step>Design bulk import interface</step>
+          <step>Implement document classification AI</step>
+          <step>Create historical data mapping</step>
+          <step>Build import validation rules</step>
+          <step>Add import progress tracking</step>
+        </steps>
+      </task>
+
+      <task priority="4">
+        <name>Multi-layered Document Views</name>
+        <steps>
+          <step>Create document viewer component</step>
+          <step>Implement annotation layers</step>
+          <step>Build approval stamp overlays</step>
+          <step>Add comment threading</step>
+          <step>Create audit trail visualization</step>
+        </steps>
+      </task>
+    </tasks>
+  </phase>
+
+  <phase number="8" name="Financial Dashboard">
+    <objectives>Comprehensive real-time financial insights and KPIs</objectives>
+    <duration>2 weeks</duration>
+
+    <tasks>
+      <task priority="1">
+        <name>Dashboard Framework</name>
+        <steps>
+          <step>Design responsive dashboard layout</step>
+          <step>Implement widget-based architecture</step>
+          <step>Create user customization capabilities</step>
+          <step>Build real-time data refresh</step>
+          <step>Add dashboard templates by role</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>Financial KPIs</name>
+        <steps>
+          <step>Implement working capital metrics</step>
+          <step>Create liquidity ratios (current, quick, cash)</step>
+          <step>Build profitability indicators</step>
+          <step>Add efficiency ratios (DSO, DPO, DIO)</step>
+          <step>Create trend analysis visualizations</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Operational Metrics</name>
+        <steps>
+          <step>Build AR/AP aging summaries</step>
+          <step>Create cash flow projections</step>
+          <step>Implement budget vs actual analysis</step>
+          <step>Add outstanding items tracking</step>
+          <step>Create exception alerts system</step>
+        </steps>
+      </task>
+
+      <task priority="4">
+        <name>Interactive Visualizations</name>
+        <steps>
+          <step>Implement chart.js or D3.js integrations</step>
+          <step>Create drill-down capabilities</step>
+          <step>Build comparative period analysis</step>
+          <step>Add data export functionality</step>
+          <step>Implement chart customization options</step>
+        </steps>
+      </task>
+    </tasks>
+  </phase>
+
+  <phase number="9" name="Reporting and Analytics">
+    <objectives>Comprehensive reporting suite with analytics</objectives>
+    <duration>2 weeks</duration>
+
+    <tasks>
+      <task priority="1">
+        <name>Report Engine</name>
+        <steps>
+          <step>Create report definition framework</step>
+          <step>Implement report scheduling system</step>
+          <step>Build report distribution management</step>
+          <step>Add report caching for performance</step>
+          <step>Create report version control</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>Financial Reports</name>
+        <steps>
+          <step>Build trial balance with drill-down</step>
+          <step>Create general ledger reports</step>
+          <step>Implement cash flow statements</step>
+          <step>Add financial ratio reports</step>
+          <step>Create management report pack</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Operational Reports</name>
+        <steps>
+          <step>Create aging analysis reports</step>
+          <step>Build customer/vendor statements</step>
+          <step>Implement payment due reports</step>
+          <step>Add collection effectiveness reports</step>
+          <step>Create purchase analysis reports</step>
+        </steps>
+      </task>
+
+      <task priority="4">
+        <name>Custom Report Builder</name>
+        <steps>
+          <step>Design drag-drop report builder UI</step>
+          <step>Implement field selection interface</step>
+          <step>Create formula builder</step>
+          <step>Add filtering and grouping options</step>
+          <step>Build report sharing capabilities</step>
+        </steps>
+      </task>
+    </tasks>
+  </phase>
+
+  <phase number="10" name="Integration and Automation">
+    <objectives>System integration and process automation</objectives>
+    <duration>1 week</duration>
+
+    <tasks>
+      <task priority="1">
+        <name>API Development</name>
+        <steps>
+          <step>Create RESTful API endpoints</step>
+          <step>Implement GraphQL schema</step>
+          <step>Build webhook system for events</step>
+          <step>Add API rate limiting</step>
+          <step>Create API documentation</step>
+        </steps>
+      </task>
+
+      <task priority="2">
+        <name>Workflow Automation</name>
+        <steps>
+          <step>Implement approval chain automation</step>
+          <step>Create notification engine</step>
+          <step>Build scheduled task system</step>
+          <step>Add business rule engine</step>
+          <step>Create workflow monitoring dashboard</step>
+        </steps>
+      </task>
+
+      <task priority="3">
+        <name>Data Import/Export</name>
+        <steps>
+          <step>Create data mapping templates</step>
+          <step>Implement batch import processing</step>
+          <step>Build export scheduling system</step>
+          <step>Add data transformation rules</step>
+          <step>Create import/export audit logs</step>
+        </steps>
+      </task>
+    </tasks>
+  </phase>
+</implementation_phases>
+
+<technical_specifications>
+  <firebase_structure>
+    <collections>
+      <collection name="companies">
+        <fields>
+          <field>id, name, type, parentCompanyId, manageAccounts, settings</field>
+        </fields>
+      </collection>
+      <collection name="chartOfAccounts">
+        <fields>
+          <field>id, companyId, code, name, type, parentId, normalBalance, active</field>
+        </fields>
+      </collection>
+      <collection name="generalLedger">
+        <fields>
+          <field>id, companyId, date, journalId, accountId, debit, credit, reference</field>
+        </fields>
+      </collection>
+      <collection name="customers">
+        <fields>
+          <field>id, companyId, code, name, creditLimit, paymentTerms, balance</field>
+        </fields>
+      </collection>
+      <collection name="vendors">
+        <fields>
+          <field>id, companyId, code, name, paymentTerms, bankDetails, balance</field>
+        </fields>
+      </collection>
+      <collection name="invoices">
+        <fields>
+          <field>id, companyId, type, number, date, dueDate, amount, status</field>
+        </fields>
+      </collection>
+    </collections>
+  </firebase_structure>
+
+  <security_rules>
+    <rule>Implement row-level security with companyId checks</rule>
+    <rule>Add role-based access control per module</rule>
+    <rule>Create audit trail for all modifications</rule>
+    <rule>Implement field-level encryption for sensitive data</rule>
+  </security_rules>
+</technical_specifications>
+
+<constraints>
+  <constraint priority="1">Maintain ACID compliance for all financial transactions</constraint>
+  <constraint priority="2">Ensure complete audit trail with no data deletion, only soft deletes</constraint>
+  <constraint priority="3">Implement proper decimal precision for currency (minimum 4 decimal places)</constraint>
+  <constraint priority="4">Enforce double-entry balance validation on every transaction</constraint>
+  <constraint priority="5">Maintain tenant data isolation with zero cross-contamination</constraint>
+  <constraint priority="6">Ensure PDF extraction accuracy with manual override capabilities</constraint>
+  <constraint priority="7">Implement idempotent operations for all critical processes</constraint>
+</constraints>
+
+<rules>
+  <rule type="must">Every debit must have corresponding credit(s) of equal value</rule>
+  <rule type="must">All financial periods must be closed in sequence</rule>
+  <rule type="must">Posted transactions must be immutable (reversals only)</rule>
+  <rule type="must">Every transaction must have a unique reference number</rule>
+  <rule type="should">Implement real-time balance calculations where possible</rule>
+  <rule type="should">Provide drill-down capability from summary to detail</rule>
+  <rule type="may">Cache frequently accessed data for performance</rule>
+</rules>
+
+<validation_requirements>
+  <validation area="transactions">
+    <check>Debits equal credits for every journal entry</check>
+    <check>Account exists and is active</check>
+    <check>Posting period is open</check>
+    <check>User has permission for account/amount</check>
+  </validation>
+
+  <validation area="documents">
+    <check>Invoice numbers are unique per vendor/customer</check>
+    <check>Dates are within acceptable ranges</check>
+    <check>Tax calculations are accurate</check>
+    <check>Approval limits are respected</check>
+  </validation>
+</validation_requirements>
+
+<performance_targets>
+  <target>Dashboard load time under 2 seconds</target>
+  <target>Transaction posting under 500ms</target>
+  <target>Report generation under 5 seconds for standard reports</target>
+  <target>PDF extraction under 3 seconds per page</target>
+  <target>Support 100+ concurrent users per tenant</target>
+</performance_targets>
+
+<thinking>
+  The implementation should follow accounting best practices while maintaining flexibility for different business types. Start with the core accounting foundation as it's the backbone of the entire system. The multi-tenant architecture must be implemented early to avoid costly refactoring. Each phase builds upon the previous, ensuring dependencies are met. The system should be designed for extensibility, allowing additional modules to be added without disrupting existing functionality. Focus on data integrity and audit trails from the beginning, as these are critical for financial systems and difficult to retrofit.
+</thinking>
 ```
 
 ## Usage Notes
-This enhanced prompt provides a comprehensive guide for modernizing the PeakFlow application's UI while maintaining all existing functionality. The prompt includes specific implementation details, component patterns, and a phase-by-phase approach to ensure systematic and thorough modernization.
-
-Key aspects covered:
-1. Complete navigation system with breadcrumbs and back buttons
-2. Modern component patterns using existing libraries
-3. Page-by-page modernization priorities
-4. Specific design guidelines and patterns
-5. Quality checks and testing requirements
-
-The implementing agent should follow the phases sequentially and ensure each component is tested before moving to the next.
+- Begin with Phase 1 (Core Accounting Foundation) as all other modules depend on it
+- Implement multi-tenant architecture (Phase 2) before adding tenant-specific features
+- Test each phase thoroughly before proceeding to the next
+- Consider implementing a subset of features for MVP and expanding based on user feedback
+- Ensure proper error handling and validation at every step
+- Document all accounting rules and calculations for future maintenance
+- Plan for data migration from existing systems early in the project

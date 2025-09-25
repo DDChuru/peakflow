@@ -118,6 +118,8 @@ export default function ResetPasswordPage() {
       <AuthLayout
         title="Verify code"
         subtitle={`Enter the 6-digit code sent to ${phoneNumber}`}
+        accentText="Verification codes expire in 10 minutes for your security."
+        supportLink={{ label: 'Still need help?', href: 'mailto:support@peakflow.io' }}
         footer={
           <button
             type="button"
@@ -174,6 +176,8 @@ export default function ResetPasswordPage() {
           Enter your email or phone number and we&apos;ll send reset instructions.
         </span>
       }
+      accentText="Choose email for inbox guidance or SMS for on-the-go recovery."
+      supportLink={{ label: 'Need extra help?', href: 'mailto:support@peakflow.io' }}
       footer={
         <div className="flex items-center justify-between text-xs text-white/60">
           <Link href="/login" className="text-white underline-offset-4 hover:underline">

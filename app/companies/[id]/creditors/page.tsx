@@ -11,6 +11,7 @@ import { Company, Creditor } from '@/lib/firebase';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/navigation';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
@@ -203,6 +204,7 @@ export default function CompanyCreditorsPage() {
             { label: company?.name || '', href: `/companies/${companyId}` },
             { label: 'Creditors' }
           ]}
+          backHref={`/companies/${companyId}/financial-dashboard`}
           actions={
             <div className="flex items-center space-x-2">
               <Button variant="outline" size="sm" onClick={exportCreditors}>
@@ -290,40 +292,60 @@ export default function CompanyCreditorsPage() {
 
           {/* Filters */}
           <Card className="mb-6">
-            <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search creditors..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                  />
+            <CardContent className="p-4 space-y-4">
+              <div className="flex flex-col gap-4 md:flex-row">
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search creditors by name, email, or account"
+                  icon={<Search className="h-4 w-4" />}
+                  className="md:flex-1"
+                />
+                <div className="flex flex-col gap-4 md:flex-row">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) =>
+                      setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
+                    }
+                    className="min-w-[160px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  >
+                    <option value="all">All status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="min-w-[160px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                  >
+                    <option value="all">All categories</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) =>
-                    setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')
-                  }
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                >
-                  <option value="all">All Categories</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
               </div>
+              {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all') && (
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <p>
+                    Showing {filteredCreditors.length} of {creditors.length} creditors
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('all');
+                      setCategoryFilter('all');
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

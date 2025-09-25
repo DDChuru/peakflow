@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -186,138 +187,39 @@ export default function CompanyFinancialDashboard() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-6"
               >
-                {/* Financial Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-green-500 to-emerald-600">
-                      <div className="absolute inset-0 bg-grid-white/10" />
-                      <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-green-100 text-sm font-medium">Total Receivable</p>
-                            <p className="text-3xl font-bold text-white mt-1">
-                              {formatCurrency(debtorSummary?.totalOutstanding || 0)}
-                            </p>
-                            <div className="flex items-center mt-2">
-                              <ArrowUpRight className="h-4 w-4 text-green-200 mr-1" />
-                              <span className="text-green-100 text-sm">
-                                {debtorSummary?.activeDebtors || 0} active
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                            <TrendingUp className="h-7 w-7 text-white" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600">
-                      <div className="absolute inset-0 bg-grid-white/10" />
-                      <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-blue-100 text-sm font-medium">Total Payable</p>
-                            <p className="text-3xl font-bold text-white mt-1">
-                              {formatCurrency(creditorSummary?.totalPayable || 0)}
-                            </p>
-                            <div className="flex items-center mt-2">
-                              <ArrowDownRight className="h-4 w-4 text-blue-200 mr-1" />
-                              <span className="text-blue-100 text-sm">
-                                {creditorSummary?.activeCreditors || 0} active
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                            <TrendingDown className="h-7 w-7 text-white" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <Card className="relative overflow-hidden border-0 shadow-lg bg-gradient-to-br from-amber-500 to-orange-600">
-                      <div className="absolute inset-0 bg-grid-white/10" />
-                      <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-amber-100 text-sm font-medium">Total Overdue</p>
-                            <p className="text-3xl font-bold text-white mt-1">
-                              {formatCurrency(
-                                (debtorSummary?.overdueAmount || 0) +
-                                (creditorSummary?.overduePayments || 0)
-                              )}
-                            </p>
-                            <div className="flex items-center mt-2">
-                              <AlertTriangle className="h-4 w-4 text-amber-200 mr-1" />
-                              <span className="text-amber-100 text-sm">
-                                Needs attention
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                            <AlertTriangle className="h-7 w-7 text-white" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    <Card className={cn(
-                      "relative overflow-hidden border-0 shadow-lg",
-                      isPositive
-                        ? "bg-gradient-to-br from-purple-500 to-indigo-600"
-                        : "bg-gradient-to-br from-red-500 to-rose-600"
-                    )}>
-                      <div className="absolute inset-0 bg-grid-white/10" />
-                      <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-white/90 text-sm font-medium">Net Position</p>
-                            <p className="text-3xl font-bold text-white mt-1">
-                              {formatCurrency(Math.abs(netPosition))}
-                            </p>
-                            <div className="flex items-center mt-2">
-                              {isPositive ? (
-                                <>
-                                  <TrendingUp className="h-4 w-4 text-white/80 mr-1" />
-                                  <span className="text-white/80 text-sm">Positive</span>
-                                </>
-                              ) : (
-                                <>
-                                  <TrendingDown className="h-4 w-4 text-white/80 mr-1" />
-                                  <span className="text-white/80 text-sm">Negative</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                            <Activity className="h-7 w-7 text-white" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <OverviewStat
+                    title="Total receivable"
+                    value={formatCurrency(debtorSummary?.totalOutstanding || 0)}
+                    hint={`${debtorSummary?.activeDebtors || 0} active debtors`}
+                    icon={<TrendingUp className="h-5 w-5" />}
+                    gradient="from-emerald-500 to-green-600"
+                    delay={0.1}
+                  />
+                  <OverviewStat
+                    title="Total payable"
+                    value={formatCurrency(creditorSummary?.totalPayable || 0)}
+                    hint={`${creditorSummary?.activeCreditors || 0} active suppliers`}
+                    icon={<TrendingDown className="h-5 w-5" />}
+                    gradient="from-blue-500 to-indigo-600"
+                    delay={0.2}
+                  />
+                  <OverviewStat
+                    title="Total overdue"
+                    value={formatCurrency((debtorSummary?.overdueAmount || 0) + (creditorSummary?.overduePayments || 0))}
+                    hint="Needs attention"
+                    icon={<AlertTriangle className="h-5 w-5" />}
+                    gradient="from-amber-500 to-orange-600"
+                    delay={0.3}
+                  />
+                  <OverviewStat
+                    title="Net position"
+                    value={formatCurrency(Math.abs(netPosition))}
+                    hint={isPositive ? 'Positive cash position' : 'Negative cash position'}
+                    icon={<Activity className="h-5 w-5" />}
+                    gradient={isPositive ? 'from-purple-500 to-indigo-600' : 'from-rose-500 to-red-600'}
+                    delay={0.4}
+                  />
                 </div>
 
                 {/* Recent Activity */}
@@ -596,5 +498,42 @@ export default function CompanyFinancialDashboard() {
         </div>
       </div>
     </ProtectedRoute>
+  );
+}
+
+interface OverviewStatProps {
+  title: string;
+  value: string | number;
+  hint?: string;
+  icon: ReactNode;
+  gradient: string;
+  delay?: number;
+}
+
+function OverviewStat({ title, value, hint, icon, gradient, delay = 0 }: OverviewStatProps) {
+  const displayValue = typeof value === 'number' ? value.toLocaleString() : value;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay }}
+    >
+      <Card className={cn('relative overflow-hidden border-0 shadow-lg bg-gradient-to-br', gradient)}>
+        <div className="absolute inset-0 bg-grid-white/10" />
+        <CardContent className="relative p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-white/80">{title}</p>
+              <p className="mt-1 text-3xl font-bold text-white">{displayValue}</p>
+              {hint && <p className="mt-1 text-xs text-white/70">{hint}</p>}
+            </div>
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white">
+              {icon}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

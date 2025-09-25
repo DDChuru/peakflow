@@ -84,6 +84,7 @@ export default function SignupPage() {
       }
       accentText="Bring clarity to every ledger with intelligent automation and collaborative financial workflows."
       accentLink={{ label: 'See how PeakFlow powers finance teams →', href: '/dashboard' }}
+      supportLink={{ label: 'Need a hand?', href: 'mailto:support@peakflow.io' }}
       footer={
         <p className="text-xs text-white/60">
           By continuing you agree to the PeakFlow Terms of Service and Privacy Policy.

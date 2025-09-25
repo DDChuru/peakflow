@@ -1,60 +1,72 @@
-'use client';
-
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types/auth';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   requiredRoles?: UserRole[];
   requireCompany?: boolean;
   redirectTo?: string;
+  fallback?: ReactNode;
 }
 
-export default function ProtectedRoute({ 
-  children, 
-  requiredRoles = [], 
+export default function ProtectedRoute({
+  children,
+  requiredRoles = [],
   requireCompany = false,
-  redirectTo = '/login' 
+  redirectTo = '/login',
+  fallback,
 }: ProtectedRouteProps) {
   const { user, company, loading, hasAnyRole } = useAuth();
   const router = useRouter();
+  const hasNotified = useRef(false);
+
+  const hasRequiredRole = useMemo(() => {
+    if (requiredRoles.length === 0) return true;
+    return hasAnyRole(requiredRoles);
+  }, [hasAnyRole, requiredRoles]);
+
+  const defaultFallback = (
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900">
+      <div className="h-12 w-12 animate-spin rounded-full border-2 border-indigo-300 border-b-transparent" />
+    </div>
+  );
 
   useEffect(() => {
-    if (!loading) {
-      // Check if user is authenticated
-      if (!user) {
-        router.push(redirectTo);
-        return;
-      }
+    if (loading) return;
 
-      // Check if user has required roles
-      if (requiredRoles.length > 0 && !hasAnyRole(requiredRoles)) {
-        router.push('/unauthorized');
-        return;
+    if (!user) {
+      if (!hasNotified.current) {
+        toast.error('Please sign in to continue');
+        hasNotified.current = true;
       }
-
-      // Check if company is required
-      if (requireCompany && !company) {
-        router.push('/no-company');
-        return;
-      }
+      router.replace(redirectTo);
+      return;
     }
-  }, [user, company, loading, requiredRoles, requireCompany, redirectTo, router, hasAnyRole]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+    if (!hasRequiredRole) {
+      if (!hasNotified.current) {
+        toast.error('You do not have permission to view that area');
+        hasNotified.current = true;
+      }
+      router.replace('/unauthorized');
+      return;
+    }
+
+    if (requireCompany && !company) {
+      if (!hasNotified.current) {
+        toast('Select or request access to a company to continue', { icon: '🏢' });
+        hasNotified.current = true;
+      }
+      router.replace('/no-company');
+    }
+  }, [company, hasRequiredRole, loading, redirectTo, requireCompany, router, user]);
+
+  if (loading || !user || !hasRequiredRole || (requireCompany && !company)) {
+    return <>{fallback ?? defaultFallback}</>;
   }
-
-  // Don't render children until checks pass
-  if (!user) return null;
-  if (requiredRoles.length > 0 && !hasAnyRole(requiredRoles)) return null;
-  if (requireCompany && !company) return null;
 
   return <>{children}</>;
 }

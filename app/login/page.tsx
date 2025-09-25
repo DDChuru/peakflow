@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,12 +30,30 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       rememberMe: true,
     },
   });
+
+  const REMEMBER_ME_KEY = 'peakflow:rememberMe';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(REMEMBER_ME_KEY);
+    if (stored !== null) {
+      setValue('rememberMe', stored === 'true');
+    }
+  }, [setValue]);
+
+  const rememberMeValue = watch('rememberMe');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(REMEMBER_ME_KEY, String(Boolean(rememberMeValue)));
+  }, [rememberMeValue]);
 
   const onSubmit = async (data: LoginFormData) => {
     try {
@@ -50,8 +68,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
-      const rememberMe = watch('rememberMe');
-      await loginWithGoogle(rememberMe);
+      await loginWithGoogle(Boolean(rememberMeValue));
       router.push('/dashboard');
     } finally {
       setIsLoading(false);
@@ -69,13 +86,16 @@ export default function LoginPage() {
           </Link>
         </span>
       }
+      accentText="Securely reconcile statements, manage receivables, and surface real-time insights for every tenant."
+      accentLink={{ label: 'Explore the product tour →', href: '/dashboard' }}
+      supportLink={{ label: 'Contact support', href: 'mailto:support@peakflow.io' }}
       footer={
-        <div className="flex items-center justify-between gap-4 text-white/60">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 text-white/60 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm">
             <ShieldCheck className="h-4 w-4" />
-            <span>Multi-factor authentication available</span>
+            <span>Multi-factor authentication supported</span>
           </div>
-          <Link href="/reset-password" className="text-white underline-offset-4 hover:underline">
+          <Link href="/reset-password" className="text-sm text-white underline-offset-4 hover:underline">
             Forgot password?
           </Link>
         </div>

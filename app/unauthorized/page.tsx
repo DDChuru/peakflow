@@ -9,6 +9,7 @@ export default function UnauthorizedPage() {
       title="Access denied"
       subtitle="Your current role doesn’t grant access to this page."
       accentText="PeakFlow uses role-based access control to safeguard sensitive financial workflows. Ask an administrator if you believe you should have access."
+      supportLink={{ label: 'Contact support', href: 'mailto:support@peakflow.io' }}
     >
       <div className="space-y-5 text-sm text-white/70">
         <div className="flex items-center gap-3 rounded-xl border border-white/15 bg-white/10 p-4">
