@@ -17,6 +17,8 @@ This roadmap mirrors the enhanced prompt in `current-prompt.md` and tracks activ
    - Plan session handling & remember-me improvements.
 
 3. **Phase 1 – Core Accounting Foundation**
+   - Draft COA/Journal/GL schemas, posting rules, multi-currency plan.
+   - See `project-management/phase-1-core-accounting.md` for detailed objectives.
    - Chart of Accounts model & UI.
    - Journal/GL data structures, posting rules, fiscal period management.
    - Currency engine with revaluation and gain/loss calculations.
