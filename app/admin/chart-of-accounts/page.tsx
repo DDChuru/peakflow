@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ChartOfAccountsService } from '@/lib/accounting/chart-of-accounts-service';
+import { AVAILABLE_CHART_TEMPLATES } from '@/types/accounting/templates';
 import { CompaniesService } from '@/lib/firebase/companies-service';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -61,6 +62,8 @@ export default function ChartOfAccountsAdminPage() {
   const [showNewAccount, setShowNewAccount] = useState(false);
   const [formState, setFormState] = useState<AccountFormState>(defaultFormState);
   const [submitting, setSubmitting] = useState(false);
+  const [applyTemplateLoading, setApplyTemplateLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(AVAILABLE_CHART_TEMPLATES[0]?.id ?? null);
 
   useEffect(() => {
     if (!hasRole('admin') && !hasRole('developer')) return;
@@ -150,6 +153,28 @@ export default function ChartOfAccountsAdminPage() {
     setShowNewAccount(true);
   };
 
+  const handleApplyTemplate = async () => {
+    if (!selectedTenantId || !selectedChartId || !selectedTemplateId) return;
+    const template = AVAILABLE_CHART_TEMPLATES.find((item) => item.id === selectedTemplateId);
+    if (!template) return;
+
+    if (!window.confirm(`Apply template "${template.name}"? Existing accounts will remain.`)) {
+      return;
+    }
+
+    try {
+      setApplyTemplateLoading(true);
+      await chartService.applyTemplateById(selectedTenantId, selectedChartId, selectedTemplateId);
+      const refreshed = await chartService.getAccounts(selectedTenantId, selectedChartId);
+      setAccounts(refreshed);
+      toast.success('Template applied');
+    } catch (error) {
+      console.error('Failed to apply template', error);
+      toast.error('Could not apply template');
+    } finally {
+      setApplyTemplateLoading(false);
+    }
+  };
   const handleCreateAccount = async () => {
     if (!selectedTenantId || !selectedChartId) return;
 
@@ -212,7 +237,27 @@ export default function ChartOfAccountsAdminPage() {
             { label: 'Chart of accounts' },
           ]}
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-600"
+                value={selectedTemplateId ?? ''}
+                onChange={(event) => setSelectedTemplateId(event.target.value || null)}
+              >
+                {AVAILABLE_CHART_TEMPLATES.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleApplyTemplate}
+                disabled={applyTemplateLoading || !selectedTemplateId}
+              >
+                <BookOpenCheck className={cn('h-4 w-4', applyTemplateLoading && 'animate-spin')} />
+                Apply template
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

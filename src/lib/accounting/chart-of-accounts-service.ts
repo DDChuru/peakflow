@@ -16,6 +16,7 @@ import {
   ChartOfAccounts,
   AccountTemplate,
 } from '@/types/accounting/chart-of-accounts';
+import { AVAILABLE_CHART_TEMPLATES, ChartTemplate } from '@/types/accounting/templates';
 
 const CHARTS_COLLECTION = 'accounting_charts';
 const ACCOUNTS_COLLECTION = 'accounting_accounts';
@@ -29,6 +30,13 @@ function timestampToDate(value: unknown): Date {
 }
 
 export class ChartOfAccountsService {
+  getTemplates(baseCurrency?: string): ChartTemplate[] {
+    if (!baseCurrency) {
+      return AVAILABLE_CHART_TEMPLATES;
+    }
+    return AVAILABLE_CHART_TEMPLATES.filter((template) => template.currency === baseCurrency);
+  }
+
   async getCharts(tenantId: string): Promise<ChartOfAccounts[]> {
     const chartsQuery = query(
       collection(db, CHARTS_COLLECTION),
@@ -85,6 +93,14 @@ export class ChartOfAccountsService {
         updatedAt: timestampToDate(data.updatedAt),
       } as AccountRecord;
     });
+  }
+
+  async applyTemplateById(tenantId: string, chartId: string, templateId: string): Promise<void> {
+    const template = AVAILABLE_CHART_TEMPLATES.find((item) => item.id === templateId);
+    if (!template) {
+      throw new Error(`Template ${templateId} not found`);
+    }
+    await this.applyTemplate(tenantId, chartId, template.accounts);
   }
 
   async createAccount(
