@@ -110,24 +110,22 @@ Ready to begin Phase 6 with these priorities:
 - **Auth & Financial Overview Polish** — unified `AuthLayout`, protected-route UX, and refreshed dashboard/companies surfaces (`67216b9`).
 - **Phase 1 – Core Accounting Foundation** — data models, posting service, COA admin, and currency scaffolding delivered (`12aac81`, `632bc6c`, `6db7ecb`, `ad1e261`, `9a7b5a9`).
 
-## Critical Next Steps (Before Continuing Phase 5)
-1. **Bank Transaction to Ledger Import** 🔥 **HIGH PRIORITY FOR SMEs**
-   - Create "Import from Bank" feature for unmatched transactions
-   - Allow manual GL account selection for bank transactions
-   - Auto-create simple journal entries from bank data
-   - Essential for SMEs without formal invoicing processes
+## Critical Next Steps - Phase 6 Priorities
+1. **Managed Accounts Infrastructure**
+   - Extend GL access for manageAccounts tenants
+   - Multi-company consolidation views
+   - Inter-company transaction handling
 
-2. **Ledger Entry Posting System**
-   - Create posting workflow for creditors (bills/payments)
-   - Implement "Import from Bank" feature to create ledger entries from bank transactions
-   - This is essential for SME/financial service providers who may not have formal accounting
+2. **Advanced Financial Features**
+   - Trading accounts management
+   - Advanced reporting capabilities
+   - Bulk operations across companies
 
-3. **Complete Phase 5 Remaining Items**
-   - Adjustment entries integration with PostingService
-   - Cash flow forecasting UI integration
-   - Transfer workflows
-   - Reconciliation reports
-   - Period locks
+3. **Items Deferred from Phase 5**
+   - Transfer workflows between accounts
+   - Reconciliation reports and export
+   - Period locks after reconciliation
+   - Cash flow forecasting UI
 
 ## Upcoming Phases
 1. **Phase 6 – Managed Accounts Features**

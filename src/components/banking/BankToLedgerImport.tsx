@@ -59,7 +59,7 @@ import { AccountRecord } from '@/types/accounting/chart-of-accounts';
 import { BankToLedgerService } from '@/lib/accounting/bank-to-ledger-service';
 import { ChartOfAccountsService } from '@/lib/accounting/chart-of-accounts-service';
 import { bankStatementService } from '@/lib/firebase';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BankToLedgerImportProps {
   companyId: string;
