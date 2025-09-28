@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed:bank-accounts": "node scripts/seed-bank-accounts.js",
     "seed:charts": "node scripts/seed-chart-of-accounts.js",
-    "seed:ledger": "node scripts/seed-ledger-entries.js"
+    "seed:ledger": "node scripts/seed-ledger-entries.js",
+    "seed:industry-templates": "tsx scripts/seed-industry-templates.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
