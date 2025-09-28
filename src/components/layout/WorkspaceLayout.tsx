@@ -26,7 +26,8 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  FileUp
 } from 'lucide-react';
 
 interface WorkspaceLayoutProps {
@@ -80,6 +81,12 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
           name: 'Cash Flow',
           href: `/workspace/${companyId || user?.companyId}/cash-flow`,
           icon: TrendingUp,
+        },
+        {
+          name: 'Bank Import',
+          href: `/workspace/${companyId || user?.companyId}/bank-import`,
+          icon: FileUp,
+          badge: 'NEW'
         },
       ] : [],
     },

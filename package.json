@@ -10,7 +10,8 @@
     "seed:bank-accounts": "node scripts/seed-bank-accounts.js",
     "seed:charts": "node scripts/seed-chart-of-accounts.js",
     "seed:ledger": "node scripts/seed-ledger-entries.js",
-    "seed:industry-templates": "tsx scripts/seed-industry-templates.ts"
+    "seed:industry-templates": "tsx scripts/seed-industry-templates-client.ts",
+    "seed:industry-templates-admin": "tsx scripts/seed-industry-templates.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -47,10 +48,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "playwright": "^1.56.0-alpha-1758750661000",
     "tailwindcss": "^4",
+    "tsx": "^4.20.6",
     "typescript": "^5"
   }
 }
