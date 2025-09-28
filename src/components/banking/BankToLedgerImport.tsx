@@ -1,204 +1,919 @@
 'use client';
 
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  FileUp,
-  ArrowRight,
-  Calculator,
-  CheckCircle,
-  AlertCircle,
-  DollarSign,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Upload,
   FileText,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Search,
+  Filter,
+  Download,
+  RefreshCw,
+  ArrowRight,
+  ArrowLeft,
+  DollarSign,
   TrendingUp,
-  Target,
-  Zap,
+  TrendingDown,
+  ChevronDown,
   ChevronRight,
-  Sparkles,
-  BarChart3
+  Settings,
+  Sparkles
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { BankTransaction } from '@/types/bank-statement';
+import { ImportedTransaction, GLMapping, ImportStatistics } from '@/types/accounting/bank-import';
+import { AccountRecord } from '@/types/accounting/chart-of-accounts';
+import { BankToLedgerService } from '@/lib/accounting/bank-to-ledger-service';
+import { ChartOfAccountsService } from '@/lib/accounting/chart-of-accounts-service';
+import { bankStatementService } from '@/lib/firebase';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 interface BankToLedgerImportProps {
   companyId: string;
+  bankAccountId?: string;
+  onComplete?: () => void;
 }
 
-export function BankToLedgerImport({ companyId }: BankToLedgerImportProps) {
-  const [hasUnmatchedTransactions, setHasUnmatchedTransactions] = useState(true); // Mock state
+type WorkflowStep = 'select' | 'mapping' | 'preview' | 'posting' | 'complete';
 
-  return (
-    <Card className="relative overflow-hidden border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/30 via-teal-50/20 to-green-50/30" />
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-400/5 to-transparent rounded-full -translate-y-16 translate-x-16" />
+export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: BankToLedgerImportProps) {
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-      <div className="relative p-6">
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-start gap-3">
-            <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <DollarSign className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-xl font-bold text-slate-900">
-                  Direct Bank to Ledger Import
-                </h3>
-                <span className="px-2 py-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-                  <Sparkles className="h-3 w-3 inline mr-1" />
-                  NEW
-                </span>
-              </div>
-              <p className="text-sm text-slate-600 font-medium">
-                Convert bank transactions directly to journal entries - no invoicing required
-              </p>
-            </div>
-          </div>
+  // State
+  const [currentStep, setCurrentStep] = useState<WorkflowStep>('select');
+  const [loading, setLoading] = useState(false);
+  const [statements, setStatements] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<ImportedTransaction[]>([]);
+  const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
+  const [glAccounts, setGlAccounts] = useState<AccountRecord[]>([]);
+  const [mappings, setMappings] = useState<Map<string, GLMapping>>(new Map());
+  const [statistics, setStatistics] = useState<ImportStatistics | null>(null);
+  const [showMappingDialog, setShowMappingDialog] = useState(false);
+  const [currentMappingTransaction, setCurrentMappingTransaction] = useState<ImportedTransaction | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Services
+  const [bankToLedgerService, setBankToLedgerService] = useState<BankToLedgerService | null>(null);
+  const [coaService, setCoaService] = useState<ChartOfAccountsService | null>(null);
+
+  // Initialize services
+  useEffect(() => {
+    if (companyId) {
+      setBankToLedgerService(new BankToLedgerService(companyId));
+      setCoaService(new ChartOfAccountsService(companyId));
+    }
+  }, [companyId]);
+
+  // Load bank statements
+  useEffect(() => {
+    loadBankStatements();
+    loadGLAccounts();
+  }, [companyId]);
+
+  const loadBankStatements = async () => {
+    try {
+      setLoading(true);
+      const stmts = await bankStatementService.getCompanyBankStatements(companyId, 10);
+      setStatements(stmts);
+    } catch (error) {
+      console.error('Failed to load bank statements:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load bank statements',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadGLAccounts = async () => {
+    if (!coaService) return;
+    try {
+      const accounts = await coaService.listAccounts();
+      setGlAccounts(accounts);
+    } catch (error) {
+      console.error('Failed to load GL accounts:', error);
+    }
+  };
+
+  // Load transactions from selected statement
+  const loadTransactionsFromStatement = async (statementId: string) => {
+    try {
+      setLoading(true);
+      const statement = await bankStatementService.getBankStatement(statementId);
+
+      if (statement && statement.transactions) {
+        const importedTransactions: ImportedTransaction[] = statement.transactions.map((tx, index) => ({
+          ...tx,
+          id: tx.id || `${statementId}_tx_${index}`,
+          importSessionId: '',
+          mappingStatus: 'unmapped' as const,
+          selected: false
+        }));
+
+        setTransactions(importedTransactions);
+
+        // Auto-suggest mappings
+        if (bankToLedgerService) {
+          await suggestMappings(importedTransactions);
+        }
+
+        calculateStatistics(importedTransactions);
+        setCurrentStep('mapping');
+      }
+    } catch (error) {
+      console.error('Failed to load transactions:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load transactions from statement',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Suggest GL mappings for transactions
+  const suggestMappings = async (txs: ImportedTransaction[]) => {
+    if (!bankToLedgerService) return;
+
+    const newMappings = new Map<string, GLMapping>();
+
+    for (const tx of txs) {
+      try {
+        const suggestions = await bankToLedgerService.suggestGLAccounts(tx);
+
+        if (suggestions.confidence > 0.5) {
+          newMappings.set(tx.id, {
+            debitAccount: suggestions.debitAccount ? {
+              id: suggestions.debitAccount.id,
+              code: suggestions.debitAccount.code,
+              name: suggestions.debitAccount.name
+            } : undefined,
+            creditAccount: suggestions.creditAccount ? {
+              id: suggestions.creditAccount.id,
+              code: suggestions.creditAccount.code,
+              name: suggestions.creditAccount.name
+            } : undefined,
+            confidence: suggestions.confidence
+          });
+
+          // Update transaction status
+          tx.mappingStatus = 'suggested';
+          tx.glMapping = newMappings.get(tx.id);
+        }
+      } catch (error) {
+        console.error(`Failed to suggest mapping for transaction ${tx.id}:`, error);
+      }
+    }
+
+    setMappings(newMappings);
+    calculateStatistics(txs);
+  };
+
+  // Calculate import statistics
+  const calculateStatistics = (txs: ImportedTransaction[]) => {
+    const stats: ImportStatistics = {
+      totalTransactions: txs.length,
+      mappedTransactions: txs.filter(tx => tx.mappingStatus === 'mapped').length,
+      unmappedTransactions: txs.filter(tx => tx.mappingStatus === 'unmapped').length,
+      suggestedMappings: txs.filter(tx => tx.mappingStatus === 'suggested').length,
+      postedTransactions: txs.filter(tx => tx.mappingStatus === 'posted').length,
+      totalDebits: txs.reduce((sum, tx) => sum + (tx.debit || 0), 0),
+      totalCredits: txs.reduce((sum, tx) => sum + (tx.credit || 0), 0),
+      netAmount: 0,
+      categorySummary: {}
+    };
+
+    stats.netAmount = stats.totalCredits - stats.totalDebits;
+
+    // Group by category
+    txs.forEach(tx => {
+      const category = tx.category || 'Other';
+      if (!stats.categorySummary[category]) {
+        stats.categorySummary[category] = {
+          count: 0,
+          totalAmount: 0,
+          mapped: 0
+        };
+      }
+      stats.categorySummary[category].count++;
+      stats.categorySummary[category].totalAmount += (tx.credit || 0) - (tx.debit || 0);
+      if (tx.mappingStatus === 'mapped' || tx.mappingStatus === 'suggested') {
+        stats.categorySummary[category].mapped++;
+      }
+    });
+
+    setStatistics(stats);
+  };
+
+  // Toggle transaction selection
+  const toggleTransactionSelection = (txId: string) => {
+    const newSelection = new Set(selectedTransactions);
+    if (newSelection.has(txId)) {
+      newSelection.delete(txId);
+    } else {
+      newSelection.add(txId);
+    }
+    setSelectedTransactions(newSelection);
+  };
+
+  // Select all/none
+  const selectAllTransactions = (select: boolean) => {
+    if (select) {
+      setSelectedTransactions(new Set(filteredTransactions.map(tx => tx.id)));
+    } else {
+      setSelectedTransactions(new Set());
+    }
+  };
+
+  // Open mapping dialog for a transaction
+  const openMappingDialog = (transaction: ImportedTransaction) => {
+    setCurrentMappingTransaction(transaction);
+    setShowMappingDialog(true);
+  };
+
+  // Save mapping for a transaction
+  const saveMapping = (txId: string, mapping: GLMapping) => {
+    const newMappings = new Map(mappings);
+    newMappings.set(txId, mapping);
+    setMappings(newMappings);
+
+    // Update transaction status
+    const updatedTransactions = transactions.map(tx => {
+      if (tx.id === txId) {
+        return {
+          ...tx,
+          mappingStatus: 'mapped' as const,
+          glMapping: mapping
+        };
+      }
+      return tx;
+    });
+
+    setTransactions(updatedTransactions);
+    calculateStatistics(updatedTransactions);
+    setShowMappingDialog(false);
+  };
+
+  // Apply bulk mapping to selected transactions
+  const applyBulkMapping = async () => {
+    if (selectedTransactions.size === 0) {
+      toast({
+        title: 'No Selection',
+        description: 'Please select transactions to map',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // For now, open dialog for first selected transaction
+    // In a full implementation, you'd have a bulk mapping dialog
+    const firstTxId = Array.from(selectedTransactions)[0];
+    const firstTx = transactions.find(tx => tx.id === firstTxId);
+    if (firstTx) {
+      openMappingDialog(firstTx);
+    }
+  };
+
+  // Post transactions to ledger
+  const postToLedger = async () => {
+    if (!bankToLedgerService || !user) return;
+
+    const selectedTxs = transactions.filter(tx => selectedTransactions.has(tx.id));
+
+    // Validate all selected transactions have mappings
+    const unmappedTxs = selectedTxs.filter(tx => !mappings.has(tx.id));
+    if (unmappedTxs.length > 0) {
+      toast({
+        title: 'Unmapped Transactions',
+        description: `${unmappedTxs.length} selected transactions are not mapped to GL accounts`,
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Create import session
+      const session = await bankToLedgerService.createImportSession(
+        bankAccountId || '',
+        selectedTxs,
+        user.uid,
+        {
+          totalTransactions: selectedTxs.length
+        }
+      );
+
+      // Prepare mappings for posting
+      const transactionMappings = selectedTxs.map(tx => {
+        const mapping = mappings.get(tx.id)!;
+        return {
+          bankTransaction: tx,
+          debitAccountId: mapping.debitAccount?.id || '',
+          debitAccountCode: mapping.debitAccount?.code || '',
+          creditAccountId: mapping.creditAccount?.id || '',
+          creditAccountCode: mapping.creditAccount?.code || '',
+          description: tx.description,
+          reference: tx.reference
+        };
+      });
+
+      // Post to ledger
+      const result = await bankToLedgerService.postToLedger({
+        sessionId: session.id,
+        transactions: transactionMappings,
+        fiscalPeriodId: 'current', // You'd get this from context
+        postImmediately: true,
+        createdBy: user.uid
+      });
+
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: `Posted ${result.processedCount} transactions to the general ledger`
+        });
+
+        setCurrentStep('complete');
+
+        if (onComplete) {
+          onComplete();
+        }
+      } else {
+        toast({
+          title: 'Partial Success',
+          description: `Posted ${result.processedCount} transactions, ${result.failedCount} failed`,
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to post transactions:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to post transactions to ledger',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filtered transactions based on search and filters
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(tx => {
+      const matchesSearch = searchTerm === '' ||
+        tx.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tx.reference?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesCategory = filterCategory === 'all' || tx.category === filterCategory;
+      const matchesStatus = filterStatus === 'all' || tx.mappingStatus === filterStatus;
+
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [transactions, searchTerm, filterCategory, filterStatus]);
+
+  // Render different steps
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 'select':
+        return renderSelectStep();
+      case 'mapping':
+        return renderMappingStep();
+      case 'preview':
+        return renderPreviewStep();
+      case 'complete':
+        return renderCompleteStep();
+      default:
+        return null;
+    }
+  };
+
+  const renderSelectStep = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-lg font-semibold">Select Bank Statement</h3>
+          <p className="text-sm text-muted-foreground">Choose a bank statement to import transactions from</p>
         </div>
+        <Button variant="outline" onClick={loadBankStatements}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
 
-        {hasUnmatchedTransactions ? (
-          <div className="space-y-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="bg-white/70 backdrop-blur-sm rounded-2xl p-5 border border-white/30 shadow-lg"
+      {statements.length === 0 ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No bank statements found. Please upload a bank statement first.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <div className="grid gap-4">
+          {statements.map((statement) => (
+            <Card
+              key={statement.id}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => loadTransactionsFromStatement(statement.id)}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-slate-700" />
-                  <span className="text-sm font-bold text-slate-700">Unmatched Transactions</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-                  <span className="text-2xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">23</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                <div className="bg-emerald-50/80 rounded-xl p-3 border border-emerald-200/50">
-                  <div className="flex items-center gap-2 mb-1">
-                    <CheckCircle className="h-4 w-4 text-emerald-600" />
-                    <span className="text-xs font-medium text-emerald-700">Ready for import</span>
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-semibold">{statement.accountInfo?.bankName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Account: {statement.accountInfo?.accountNumber}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Period: {statement.summary?.statementPeriod?.from} - {statement.summary?.statementPeriod?.to}
+                    </p>
                   </div>
-                  <span className="text-lg font-bold text-emerald-800">15</span>
-                  <p className="text-xs text-emerald-600">transactions</p>
-                </div>
-
-                <div className="bg-amber-50/80 rounded-xl p-3 border border-amber-200/50">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Target className="h-4 w-4 text-amber-600" />
-                    <span className="text-xs font-medium text-amber-700">Need GL mapping</span>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">
+                      {statement.summary?.transactionCount} transactions
+                    </p>
+                    <p className="font-semibold">
+                      Balance: ${statement.summary?.closingBalance?.toFixed(2)}
+                    </p>
                   </div>
-                  <span className="text-lg font-bold text-amber-800">8</span>
-                  <p className="text-xs text-amber-600">transactions</p>
                 </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-                <div className="bg-blue-50/80 rounded-xl p-3 border border-blue-200/50">
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
-                    <span className="text-xs font-medium text-blue-700">Total value</span>
-                  </div>
-                  <span className="text-lg font-bold text-blue-800">{formatCurrency(45280)}</span>
-                  <p className="text-xs text-blue-600">amount</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link href={`/workspace/${companyId}/bank-import`} className="flex-1">
-                  <Button className="w-full h-12 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group">
-                    <div className="flex items-center justify-center">
-                      <FileUp className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="font-semibold">Import to Ledger</span>
-                      <ChevronRight className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-                  </Button>
-                </Link>
-                <Link href={`/workspace/${companyId}/reconciliation`}>
-                  <Button className="h-12 bg-white/60 hover:bg-white/80 border-white/30 hover:border-white/50 transition-all duration-300 hover:scale-105 group px-6">
-                    <span className="font-semibold">Review</span>
-                    <ChevronRight className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="bg-gradient-to-br from-amber-50/80 to-orange-50/60 border border-amber-200/50 rounded-2xl p-4 backdrop-blur-sm shadow-lg"
-            >
-              <div className="flex items-start gap-3">
-                <div className="h-10 w-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
-                  <Zap className="h-5 w-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="text-sm font-bold text-amber-900">Smart Suggestion</p>
-                    <span className="px-2 py-0.5 bg-amber-200/50 text-amber-800 text-xs font-medium rounded-full">
-                      AI
-                    </span>
-                  </div>
-                  <p className="text-sm text-amber-800 mb-3 leading-relaxed">
-                    8 transactions appear to be recurring expenses. Would you like to set up automatic GL mapping rules?
-                  </p>
-                  <Button
-                    size="sm"
-                    className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group"
-                  >
-                    Set up rules
-                    <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform duration-300" />
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className="bg-white/70 backdrop-blur-sm rounded-2xl p-8 border border-white/30 shadow-lg text-center"
+  const renderMappingStep = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-lg font-semibold">Map Transactions to GL Accounts</h3>
+          <p className="text-sm text-muted-foreground">
+            Review and map bank transactions to general ledger accounts
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCurrentStep('select')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <Button
+            onClick={() => setCurrentStep('preview')}
+            disabled={selectedTransactions.size === 0}
           >
-            <div className="h-16 w-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <CheckCircle className="h-8 w-8 text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">All Caught Up!</h3>
-            <p className="text-sm text-slate-600 mb-6 max-w-sm mx-auto">
-              All bank transactions have been processed and imported to your ledger
-            </p>
-            <Link href={`/workspace/${companyId}/bank-statements`}>
-              <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group">
-                <FileText className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                Upload New Statement
-                <ChevronRight className="h-4 w-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </Button>
-            </Link>
-          </motion.div>
-        )}
-
-        <div className="mt-6 pt-5 border-t border-white/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-slate-600" />
-              <span className="text-sm font-medium text-slate-600">This month imported</span>
-            </div>
-            <div className="text-right">
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-slate-900">127</span>
-                <span className="text-sm text-slate-600">entries</span>
-                <span className="text-slate-400">•</span>
-                <span className="text-lg font-bold text-emerald-700">{formatCurrency(285000)}</span>
-              </div>
-              <p className="text-xs text-slate-500">Successfully processed</p>
-            </div>
-          </div>
+            Preview
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
         </div>
       </div>
-    </Card>
+
+      {statistics && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Total</p>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">{statistics.totalTransactions}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Mapped</p>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </div>
+              <p className="text-2xl font-bold">{statistics.mappedTransactions}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Suggested</p>
+                <Sparkles className="h-4 w-4 text-blue-500" />
+              </div>
+              <p className="text-2xl font-bold">{statistics.suggestedMappings}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Selected</p>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold">{selectedTransactions.size}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <div className="flex gap-4 items-center">
+        <div className="flex-1">
+          <Input
+            placeholder="Search transactions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {Object.keys(statistics?.categorySummary || {}).map(cat => (
+              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="unmapped">Unmapped</SelectItem>
+            <SelectItem value="suggested">Suggested</SelectItem>
+            <SelectItem value="mapped">Mapped</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={applyBulkMapping} disabled={selectedTransactions.size === 0}>
+          Bulk Map
+        </Button>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={selectedTransactions.size === filteredTransactions.length && filteredTransactions.length > 0}
+                  onCheckedChange={(checked) => selectAllTransactions(!!checked)}
+                />
+              </TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead className="text-right">Debit</TableHead>
+              <TableHead className="text-right">Credit</TableHead>
+              <TableHead>GL Mapping</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredTransactions.map((tx) => (
+              <TableRow key={tx.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedTransactions.has(tx.id)}
+                    onCheckedChange={() => toggleTransactionSelection(tx.id)}
+                  />
+                </TableCell>
+                <TableCell>{tx.date}</TableCell>
+                <TableCell className="max-w-xs truncate">{tx.description}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{tx.category}</Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  {tx.debit ? `$${tx.debit.toFixed(2)}` : '-'}
+                </TableCell>
+                <TableCell className="text-right">
+                  {tx.credit ? `$${tx.credit.toFixed(2)}` : '-'}
+                </TableCell>
+                <TableCell>
+                  {mappings.has(tx.id) ? (
+                    <div className="text-sm">
+                      {mappings.get(tx.id)?.debitAccount && (
+                        <p>Dr: {mappings.get(tx.id)?.debitAccount?.code}</p>
+                      )}
+                      {mappings.get(tx.id)?.creditAccount && (
+                        <p>Cr: {mappings.get(tx.id)?.creditAccount?.code}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {tx.mappingStatus === 'suggested' && (
+                    <Badge variant="secondary">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Suggested
+                    </Badge>
+                  )}
+                  {tx.mappingStatus === 'mapped' && (
+                    <Badge variant="default">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Mapped
+                    </Badge>
+                  )}
+                  {tx.mappingStatus === 'unmapped' && (
+                    <Badge variant="outline">Unmapped</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => openMappingDialog(tx)}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+
+  const renderPreviewStep = () => {
+    const selectedTxs = transactions.filter(tx => selectedTransactions.has(tx.id));
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-semibold">Preview Journal Entries</h3>
+            <p className="text-sm text-muted-foreground">
+              Review the journal entries that will be created
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setCurrentStep('mapping')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <Button onClick={postToLedger} disabled={loading}>
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                <>
+                  Post to Ledger
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            You are about to post {selectedTxs.length} transactions to the general ledger.
+            This action cannot be undone.
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-4">
+          {selectedTxs.slice(0, 10).map((tx) => {
+            const mapping = mappings.get(tx.id);
+            const amount = tx.credit || tx.debit || 0;
+
+            return (
+              <Card key={tx.id}>
+                <CardContent className="pt-6">
+                  <div className="grid gap-4">
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="font-semibold">{tx.description}</p>
+                        <p className="text-sm text-muted-foreground">{tx.date}</p>
+                      </div>
+                      <p className="text-lg font-semibold">
+                        ${amount.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      {tx.credit ? (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Dr: Bank Account</span>
+                            <span>${amount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Cr: {mapping?.creditAccount?.name || 'Unknown'}</span>
+                            <span>${amount.toFixed(2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Dr: {mapping?.debitAccount?.name || 'Unknown'}</span>
+                            <span>${amount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Cr: Bank Account</span>
+                            <span>${amount.toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {selectedTxs.length > 10 && (
+          <p className="text-sm text-muted-foreground text-center">
+            And {selectedTxs.length - 10} more transactions...
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const renderCompleteStep = () => (
+    <div className="space-y-6">
+      <div className="text-center py-12">
+        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+        <h3 className="text-2xl font-semibold mb-2">Import Complete!</h3>
+        <p className="text-muted-foreground mb-6">
+          Successfully posted {selectedTransactions.size} transactions to the general ledger
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Button variant="outline" onClick={() => {
+            setCurrentStep('select');
+            setTransactions([]);
+            setSelectedTransactions(new Set());
+            setMappings(new Map());
+          }}>
+            Import More
+          </Button>
+          {onComplete && (
+            <Button onClick={onComplete}>
+              Done
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="container mx-auto p-6 max-w-7xl">
+      <Card>
+        <CardHeader>
+          <CardTitle>Bank to Ledger Import</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderStepContent()}
+        </CardContent>
+      </Card>
+
+      {/* GL Mapping Dialog */}
+      <Dialog open={showMappingDialog} onOpenChange={setShowMappingDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Map Transaction to GL Accounts</DialogTitle>
+            <DialogDescription>
+              Select the appropriate GL accounts for this transaction
+            </DialogDescription>
+          </DialogHeader>
+
+          {currentMappingTransaction && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg">
+                <p className="font-semibold">{currentMappingTransaction.description}</p>
+                <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                  <span>{currentMappingTransaction.date}</span>
+                  <span>
+                    {currentMappingTransaction.credit ?
+                      `Credit: $${currentMappingTransaction.credit.toFixed(2)}` :
+                      `Debit: $${currentMappingTransaction.debit?.toFixed(2)}`
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label>Debit Account</Label>
+                  <Select
+                    value={mappings.get(currentMappingTransaction.id)?.debitAccount?.id || ''}
+                    onValueChange={(value) => {
+                      const account = glAccounts.find(a => a.id === value);
+                      if (account) {
+                        const currentMapping = mappings.get(currentMappingTransaction.id) || {};
+                        saveMapping(currentMappingTransaction.id, {
+                          ...currentMapping,
+                          debitAccount: {
+                            id: account.id,
+                            code: account.code,
+                            name: account.name
+                          },
+                          manuallyMapped: true
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select debit account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {glAccounts.filter(a => a.type === 'asset' || a.type === 'expense').map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.code} - {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Credit Account</Label>
+                  <Select
+                    value={mappings.get(currentMappingTransaction.id)?.creditAccount?.id || ''}
+                    onValueChange={(value) => {
+                      const account = glAccounts.find(a => a.id === value);
+                      if (account) {
+                        const currentMapping = mappings.get(currentMappingTransaction.id) || {};
+                        saveMapping(currentMappingTransaction.id, {
+                          ...currentMapping,
+                          creditAccount: {
+                            id: account.id,
+                            code: account.code,
+                            name: account.name
+                          },
+                          manuallyMapped: true
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select credit account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {glAccounts.filter(a => a.type === 'liability' || a.type === 'revenue' || a.type === 'equity').map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.code} - {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMappingDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setShowMappingDialog(false)}>
+              Save Mapping
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
