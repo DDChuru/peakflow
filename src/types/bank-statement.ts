@@ -1,4 +1,5 @@
 export interface BankTransaction {
+  id?: string;
   date: string;
   description: string;
   reference?: string;

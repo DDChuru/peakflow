@@ -11,6 +11,13 @@ export interface AccountMetadata {
   isPostingAllowed: boolean;
   isTaxRelevant?: boolean;
   tags?: string[];
+  banking?: AccountBankingMetadata;
+}
+
+export interface AccountBankingMetadata {
+  enabled: boolean;
+  bankAccountId?: string | null;
+  preferredCurrency?: string;
 }
 
 export interface AccountTemplate {

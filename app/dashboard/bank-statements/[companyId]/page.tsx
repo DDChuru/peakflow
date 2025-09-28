@@ -1,19 +1,14 @@
-'use client';
-
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import BankStatementsView from '@/components/bank-statement/BankStatementsView';
+import BankStatementsPageClient from './BankStatementsPageClient';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     companyId: string;
-  };
+  }>;
 }
 
-export default function CompanyBankStatementsPage({ params }: PageProps) {
-  return (
-    <ProtectedRoute>
-      <BankStatementsView companyIdOverride={params.companyId} />
-    </ProtectedRoute>
-  );
+export default async function CompanyBankStatementsPage({ params }: PageProps) {
+  const { companyId } = await params;
+
+  return <BankStatementsPageClient companyId={companyId} />;
 }
 

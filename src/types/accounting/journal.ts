@@ -2,6 +2,7 @@ export type JournalEntryStatus = 'draft' | 'posted' | 'voided';
 export type JournalSource =
   | 'manual'
   | 'bank_import'
+  | 'bank_transfer'
   | 'accounts_receivable'
   | 'accounts_payable'
   | 'accrual'

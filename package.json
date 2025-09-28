@@ -6,10 +6,14 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:bank-accounts": "node scripts/seed-bank-accounts.js",
+    "seed:charts": "node scripts/seed-chart-of-accounts.js",
+    "seed:ledger": "node scripts/seed-ledger-entries.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@hello-pangea/dnd": "^18.0.1",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -24,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.2.1",
+    "firebase-admin": "^12.7.0",
     "framer-motion": "^12.23.18",
     "lucide-react": "^0.544.0",
     "next": "15.5.3",
@@ -36,12 +41,14 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/mcp": "^0.0.40",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
+    "playwright": "^1.56.0-alpha-1758750661000",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

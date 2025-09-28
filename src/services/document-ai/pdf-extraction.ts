@@ -159,6 +159,74 @@ export interface ExtractionOptions {
   customPrompt?: string;
 }
 
+
+function parseGeminiJson(responseText: string): Record<string, unknown> {
+  if (!responseText || responseText.trim() === '') {
+    throw new Error('Gemini returned an empty response');
+  }
+
+  const cleaned = responseText.replace(/```json\s*|```/gi, '').trim();
+
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let startIndex = 0;
+
+  if (firstBrace === -1 && firstBracket === -1) {
+    startIndex = 0;
+  } else if (firstBrace === -1) {
+    startIndex = firstBracket;
+  } else if (firstBracket === -1) {
+    startIndex = firstBrace;
+  } else {
+    startIndex = Math.min(firstBrace, firstBracket);
+  }
+
+  const candidate = cleaned.slice(Math.max(startIndex, 0));
+
+  const tryParse = (value: string) => {
+    try {
+      return JSON.parse(value) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  };
+
+  let parsed = tryParse(candidate);
+  if (parsed) {
+    return parsed;
+  }
+
+  const lastBrace = candidate.lastIndexOf('}');
+  const lastBracket = candidate.lastIndexOf(']');
+  const endIndex = Math.max(lastBrace, lastBracket);
+
+  if (endIndex !== -1) {
+    parsed = tryParse(candidate.slice(0, endIndex + 1));
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  let balanced = candidate;
+  const braceDelta = (balanced.match(/{/g) || []).length - (balanced.match(/}/g) || []).length;
+  const bracketDelta = (balanced.match(/\[/g) || []).length - (balanced.match(/\]/g) || []).length;
+
+  if (braceDelta > 0) {
+    balanced += '}'.repeat(braceDelta);
+  }
+
+  if (bracketDelta > 0) {
+    balanced += ']'.repeat(bracketDelta);
+  }
+
+  parsed = tryParse(balanced);
+  if (parsed) {
+    return parsed;
+  }
+
+  throw new Error('Failed to parse Gemini response as JSON');
+}
+
 export async function extractFromPDF(
   pdfBase64: string,
   documentType: DocumentType = 'generic',
@@ -168,12 +236,13 @@ export async function extractFromPDF(
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         temperature: 0.1,
         topK: 32,
         topP: 0.8,
         maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
       }
     });
 
@@ -205,12 +274,10 @@ export async function extractFromPDF(
       throw new Error('No response from Gemini API');
     }
 
-    const responseText = result.response.text()
-      .replace(/```json\n?|\n?```/g, '')
-      .trim();
+    const responseText = result.response.text();
 
     // Parse the extracted data
-    const extractedData = JSON.parse(responseText);
+    const extractedData = parseGeminiJson(responseText);
 
     console.log('PDF extraction completed successfully', {
       documentType,

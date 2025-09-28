@@ -1,4 +1,4 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 import { functions, auth, db } from '@/lib/firebase/config';
 import {
   collection,
@@ -10,7 +10,6 @@ import {
   getDocs,
   doc,
   getDoc,
-  updateDoc,
   Timestamp
 } from 'firebase/firestore';
 import {
@@ -55,6 +54,85 @@ function parseCount(value: unknown): number {
   }
 
   return 0;
+}
+
+
+function normalizeStatementPeriod(raw: unknown): BankStatementSummary['statementPeriod'] {
+  if (!raw) {
+    return { from: '', to: '' };
+  }
+
+  if (typeof raw === 'string') {
+    const delimiter = raw.includes(' to ') ? ' to ' : raw.includes('-') ? '-' : null;
+    if (delimiter) {
+      const [from, to] = raw.split(delimiter).map(part => part.trim());
+      return {
+        from: from ?? '',
+        to: to ?? '',
+      };
+    }
+    return { from: raw.trim(), to: '' };
+  }
+
+  if (typeof raw === 'object') {
+    const maybeObject = raw as Record<string, unknown>;
+    const from = typeof maybeObject.from === 'string' ? maybeObject.from : '';
+    const to = typeof maybeObject.to === 'string' ? maybeObject.to : '';
+    return { from, to };
+  }
+
+  return { from: '', to: '' };
+}
+
+function sanitizeAccountInfo(input: Partial<BankAccountInfo> | null | undefined): BankAccountInfo {
+  const accountNumber = input?.accountNumber ?? '';
+  const accountName = input?.accountName ?? '';
+  const bankName = input?.bankName ?? '';
+
+  const info: BankAccountInfo = {
+    accountNumber,
+    accountName,
+    bankName,
+  };
+
+  if (input?.accountType) {
+    info.accountType = input.accountType;
+  }
+  if (input?.branch) {
+    info.branch = input.branch;
+  }
+  if (input?.currency) {
+    info.currency = input.currency;
+  }
+
+  return info;
+}
+
+function removeUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    const cleanedArray = (value as unknown[])
+      .map(item => removeUndefinedDeep(item))
+      .filter(item => item !== undefined);
+    return cleanedArray as unknown as T;
+  }
+
+  if (value instanceof Date || value instanceof Timestamp) {
+    return value;
+  }
+
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+      if (entry === undefined) continue;
+      const cleaned = removeUndefinedDeep(entry);
+      if (cleaned !== undefined) {
+        result[key] = cleaned;
+      }
+    }
+    return result as unknown as T;
+  }
+
+  return value;
 }
 
 // Helper function to ensure user is authenticated and ready
@@ -140,7 +218,7 @@ export async function processBankStatement(
       totalFees: parseSafeNumber(summary.totalFees),
       interestEarned: parseSafeNumber(summary.interestEarned),
       transactionCount: parseCount(summary.transactionCount),
-      statementPeriod: summary.statementPeriod || { from: '', to: '' }
+      statementPeriod: normalizeStatementPeriod(summary.statementPeriod)
     };
 
     const bankStatement: BankStatement = {
@@ -151,24 +229,21 @@ export async function processBankStatement(
       fileName: pdfFile.name,
       fileSize: pdfFile.size,
       status: 'completed',
-      accountInfo: result.data.accountInfo || {
-        accountNumber: '',
-        accountName: '',
-        bankName: '',
-        accountType: ''
-      },
+      accountInfo: sanitizeAccountInfo(result.data.accountInfo),
       summary: parsedSummary,
       transactions: processTransactions(result.data.transactions || []),
-      extractedData: result.data,
+      extractedData: removeUndefinedDeep(result.data),
       userId: user.uid
     };
 
     // Save to Firestore
-    const docRef = await addDoc(collection(db, 'bank_statements'), {
+    const firestorePayload = removeUndefinedDeep({
       ...bankStatement,
       uploadedAt: Timestamp.fromDate(bankStatement.uploadedAt),
-      processedAt: Timestamp.fromDate(bankStatement.processedAt!)
+      processedAt: bankStatement.processedAt ? Timestamp.fromDate(bankStatement.processedAt) : undefined
     });
+
+    const docRef = await addDoc(collection(db, 'bank_statements'), firestorePayload);
 
     bankStatement.id = docRef.id;
 
@@ -215,10 +290,10 @@ export async function processBankStatement(
       userId: auth.currentUser?.uid || ''
     };
 
-    await addDoc(collection(db, 'bank_statements'), {
+    await addDoc(collection(db, 'bank_statements'), removeUndefinedDeep({
       ...failedStatement,
       uploadedAt: Timestamp.fromDate(failedStatement.uploadedAt)
-    });
+    }));
 
     throw error;
   }
@@ -230,11 +305,15 @@ function processTransactions(rawTransactions: RawTransaction[]): BankTransaction
     const transaction: BankTransaction = {
       date: rawTransaction.date ?? '',
       description: rawTransaction.description ?? '',
-      reference: rawTransaction.reference,
       debit: parseSafeNumber(rawTransaction.debit),
       credit: parseSafeNumber(rawTransaction.credit),
       balance: parseSafeNumber(rawTransaction.balance)
     };
+
+    const reference = rawTransaction.reference;
+    if (typeof reference === 'string' && reference.trim().length > 0) {
+      transaction.reference = reference.trim();
+    }
 
     transaction.type = categorizeTransaction(transaction);
     transaction.category = getTransactionCategory(transaction.description);
@@ -311,11 +390,33 @@ export async function getCompanyBankStatements(
       const data = docSnapshot.data();
       const summary = data.summary || {};
 
+      const transactionsRaw: RawTransaction[] = Array.isArray(data.transactions) ? data.transactions : [];
+      const transactions = transactionsRaw.map((rawTx, index) => {
+        const parsedTx: BankTransaction = {
+          id: rawTx.id ?? `${docSnapshot.id}-tx-${index}`,
+          date: rawTx.date ?? '',
+          description: rawTx.description ?? '',
+          debit: parseSafeNumber(rawTx.debit),
+          credit: parseSafeNumber(rawTx.credit),
+          balance: parseSafeNumber(rawTx.balance)
+        };
+
+        if (typeof rawTx.reference === 'string' && rawTx.reference.trim().length > 0) {
+          parsedTx.reference = rawTx.reference.trim();
+        }
+
+        parsedTx.type = rawTx.type ?? categorizeTransaction(parsedTx);
+        parsedTx.category = rawTx.category ?? getTransactionCategory(parsedTx.description);
+
+        return parsedTx;
+      });
+
       const safeStatement: BankStatement = {
         id: docSnapshot.id,
         ...data,
         uploadedAt: data.uploadedAt?.toDate() || new Date(),
         processedAt: data.processedAt?.toDate(),
+        transactions,
         summary: {
           openingBalance: parseSafeNumber(summary.openingBalance),
           closingBalance: parseSafeNumber(summary.closingBalance),
@@ -324,7 +425,7 @@ export async function getCompanyBankStatements(
           totalFees: parseSafeNumber(summary.totalFees),
           interestEarned: parseSafeNumber(summary.interestEarned),
           transactionCount: parseCount(summary.transactionCount),
-          statementPeriod: summary.statementPeriod || { from: '', to: '' }
+          statementPeriod: normalizeStatementPeriod(summary.statementPeriod)
         }
       };
 
@@ -350,11 +451,33 @@ export async function getBankStatement(statementId: string): Promise<BankStateme
     const data = docSnap.data();
 
     const summary = data.summary || {};
+    const transactionsRaw: RawTransaction[] = Array.isArray(data.transactions) ? data.transactions : [];
+    const transactions = transactionsRaw.map((rawTx, index) => {
+      const parsedTx: BankTransaction = {
+        id: rawTx.id ?? `${docSnap.id}-tx-${index}`,
+        date: rawTx.date ?? '',
+        description: rawTx.description ?? '',
+        debit: parseSafeNumber(rawTx.debit),
+        credit: parseSafeNumber(rawTx.credit),
+        balance: parseSafeNumber(rawTx.balance)
+      };
+
+      if (typeof rawTx.reference === 'string' && rawTx.reference.trim().length > 0) {
+        parsedTx.reference = rawTx.reference.trim();
+      }
+
+      parsedTx.type = rawTx.type ?? categorizeTransaction(parsedTx);
+      parsedTx.category = rawTx.category ?? getTransactionCategory(parsedTx.description);
+
+      return parsedTx;
+    });
+
     const safeStatement: BankStatement = {
       id: docSnap.id,
       ...data,
       uploadedAt: data.uploadedAt?.toDate() || new Date(),
       processedAt: data.processedAt?.toDate(),
+      transactions,
       summary: {
         openingBalance: parseSafeNumber(summary.openingBalance),
         closingBalance: parseSafeNumber(summary.closingBalance),
@@ -363,7 +486,7 @@ export async function getBankStatement(statementId: string): Promise<BankStateme
         totalFees: parseSafeNumber(summary.totalFees),
         interestEarned: parseSafeNumber(summary.interestEarned),
         transactionCount: parseCount(summary.transactionCount),
-        statementPeriod: summary.statementPeriod || { from: '', to: '' }
+        statementPeriod: normalizeStatementPeriod(summary.statementPeriod)
       }
     };
 

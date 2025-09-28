@@ -16,7 +16,11 @@ import { Card } from '@/components/ui/card';
 import { FadeIn, StaggerList } from '@/components/ui/motion';
 import { Input } from '@/components/ui/input';
 import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton';
-import { Building2, Mail, Phone, MapPin, Info, Users, type LucideIcon } from 'lucide-react';
+import {
+  Building2, Mail, Phone, MapPin, Info, Users,
+  FileText, Receipt, FileCheck, Calculator,
+  TrendingUp, DollarSign, type LucideIcon
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function CompanyDetailsPage() {
@@ -48,7 +52,14 @@ export default function CompanyDetailsPage() {
   const fetchCompanyData = async () => {
     try {
       setLoading(true);
-      
+
+      // Validate companyId before fetching
+      if (!companyId) {
+        console.error('No company ID provided');
+        router.push('/companies');
+        return;
+      }
+
       // Fetch company details
       const companyData = await companiesService.getCompanyById(companyId);
       if (!companyData) {
@@ -266,6 +277,158 @@ export default function CompanyDetailsPage() {
                         <p className="mt-1 text-sm text-gray-700">{company.description}</p>
                       </div>
                     )}
+                  </div>
+                </Card>
+              </FadeIn>
+
+              {/* Quick Actions for Financial Workflows */}
+              <FadeIn>
+                <Card className="bg-white border border-gray-100 p-6">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Financial Workflows</h2>
+                    <p className="text-sm text-gray-500">Quick access to financial management tools</p>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {/* Quote to Invoice Workflow */}
+                    <div className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                          <FileText className="h-5 w-5" />
+                        </span>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">Quote to Invoice</h3>
+                          <p className="mt-1 text-xs text-gray-500">Create quotes and convert to invoices</p>
+                          <div className="mt-3 flex gap-2">
+                            <Link href={`/companies/${companyId}/quotes`}>
+                              <Button size="sm" variant="outline">
+                                Quotes
+                              </Button>
+                            </Link>
+                            <Link href={`/companies/${companyId}/invoices`}>
+                              <Button size="sm" variant="outline">
+                                Invoices
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SLA/Contract Billing */}
+                    <div className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-green-50 text-green-600">
+                          <FileCheck className="h-5 w-5" />
+                        </span>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">Contract Billing</h3>
+                          <p className="mt-1 text-xs text-gray-500">Manage SLAs and recurring invoices</p>
+                          <div className="mt-3 flex gap-2">
+                            <Link href={`/companies/${companyId}/contracts`}>
+                              <Button size="sm" variant="outline">
+                                Contracts
+                              </Button>
+                            </Link>
+                            <Link href={`/companies/${companyId}/contracts/new`}>
+                              <Button size="sm" variant="outline">
+                                New SLA
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Chart of Accounts */}
+                    <div className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
+                          <Calculator className="h-5 w-5" />
+                        </span>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">Accounting</h3>
+                          <p className="mt-1 text-xs text-gray-500">Manage chart of accounts</p>
+                          <div className="mt-3 flex gap-2">
+                            <Link href="/admin/chart-of-accounts">
+                              <Button size="sm" variant="outline">
+                                COA Admin
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Financial Dashboard */}
+                    <div className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                          <TrendingUp className="h-5 w-5" />
+                        </span>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">Financial Dashboard</h3>
+                          <p className="mt-1 text-xs text-gray-500">View financial overview and analytics</p>
+                          <div className="mt-3 flex gap-2">
+                            <Link href={`/companies/${companyId}/financial-dashboard`}>
+                              <Button size="sm" variant="outline">
+                                Dashboard
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bank Reconciliation */}
+                    <div className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                          <DollarSign className="h-5 w-5" />
+                        </span>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">Bank Reconciliation</h3>
+                          <p className="mt-1 text-xs text-gray-500">Reconcile bank statements</p>
+                          <div className="mt-3 flex gap-2">
+                            <Link href={`/dashboard/bank-statements/${companyId}`}>
+                              <Button size="sm" variant="outline">
+                                Statements
+                              </Button>
+                            </Link>
+                            <Link href={`/companies/${companyId}/reconciliations`}>
+                              <Button size="sm" variant="outline">
+                                Reconcile
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Direct Invoice Creation */}
+                    <div className="rounded-lg border border-gray-200 p-4 hover:border-indigo-300 hover:shadow-sm transition-all">
+                      <div className="flex items-start gap-3">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-red-50 text-red-600">
+                          <Receipt className="h-5 w-5" />
+                        </span>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900">Quick Invoice</h3>
+                          <p className="mt-1 text-xs text-gray-500">Create invoices directly</p>
+                          <div className="mt-3 flex gap-2">
+                            <Link href={`/companies/${companyId}/invoices/new`}>
+                              <Button size="sm" variant="outline">
+                                New Invoice
+                              </Button>
+                            </Link>
+                            <Link href={`/companies/${companyId}/quotes/new`}>
+                              <Button size="sm" variant="outline">
+                                New Quote
+                              </Button>
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </Card>
               </FadeIn>

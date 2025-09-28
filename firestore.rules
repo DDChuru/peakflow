@@ -160,7 +160,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // ====================================================================
+        // Accounting charts (tenant-level metadata)
+    match /accounting_charts/{chartId} {
+      allow read: if canManageCompanies();
+      allow create, update, delete: if canManageCompanies();
+    }
+
+    // Chart of accounts entries (global collection with tenant field)
+    match /accounting_accounts/{accountId} {
+      allow read: if canManageCompanies();
+      allow create, update, delete: if canManageCompanies();
+    }
+
+// ====================================================================
     // MULTI-TENANT COMPANY-SCOPED COLLECTIONS (CSC Pattern)
     // ====================================================================
 
@@ -178,6 +190,62 @@ service cloud.firestore {
 
     // Company-scoped collections
     match /companies/{companyId} {
+
+      // Bank accounts collection
+      match /bankAccounts/{bankAccountId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update, delete: if canManageCompanies();
+      }
+
+      // Bank transfers collection
+      match /bankTransfers/{transferId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update, delete: if canManageCompanies();
+      }
+
+      // Bank statements collection (company-scoped)
+      match /bankStatements/{statementId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create: if belongsToCompany(companyId);
+        allow update: if belongsToCompany(companyId) || canManageCompanies();
+        allow delete: if canManageCompanies();
+      }
+
+      // Ledger entries collection
+      match /ledgerEntries/{ledgerEntryId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update: if canManageCompanies();
+        allow delete: if false; // Ledger entries should never be deleted
+      }
+
+      // Journal entries collection
+      match /journalEntries/{journalId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update: if canManageCompanies();
+        allow delete: if false; // Journal entries should never be deleted
+      }
+
+      // Reconciliations collection with proper subcollections
+      match /reconciliations/{sessionId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create: if belongsToCompany(companyId);
+        allow update: if belongsToCompany(companyId) || canManageCompanies();
+        allow delete: if canManageCompanies();
+
+        // Reconciliation matches subcollection
+        match /matches/{matchId} {
+          allow read: if belongsToCompany(companyId) || canManageCompanies();
+          allow create, update: if belongsToCompany(companyId) || canManageCompanies();
+          allow delete: if belongsToCompany(companyId) || canManageCompanies();
+        }
+
+        // Reconciliation adjustments subcollection
+        match /adjustments/{adjustmentId} {
+          allow read: if belongsToCompany(companyId) || canManageCompanies();
+          allow create, update: if belongsToCompany(companyId) || canManageCompanies();
+          allow delete: if canManageCompanies();
+        }
+      }
 
       // Debtors collection - scoped to company
       match /debtors/{debtorId} {
@@ -236,21 +304,114 @@ service cloud.firestore {
         allow delete: if isCompanyAdmin(companyId);
       }
 
-      // Payment reconciliations collection - scoped to company
-      match /reconciliations/{reconciliationId} {
-        // Users can read reconciliations from their own company
-        allow read: if belongsToCompany(companyId);
+      // Cash flow forecasts collection
+      match /cashFlowForecasts/{forecastId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update: if belongsToCompany(companyId) || canManageCompanies();
+        allow delete: if canManageCompanies();
+      }
 
-        // Users can create reconciliations for their own company
+      // Chart of accounts for company
+      match /chartOfAccounts/{accountId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update, delete: if canManageCompanies();
+      }
+
+      // Service Level Agreements (SLAs) collection - named serviceAgreements in the code
+      match /serviceAgreements/{slaId} {
+        // Users can read SLAs from their own company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Users can create SLAs for their own company
         allow create: if belongsToCompany(companyId) &&
-          request.resource.data.companyId == companyId &&
-          request.resource.data.reconciledBy == request.auth.uid;
+          request.resource.data.companyId == companyId;
 
-        // Reconciliations should be immutable once created
-        allow update: if false;
+        // Users can update SLAs in their company
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId;
 
-        // Only company admins can delete reconciliations
-        allow delete: if isCompanyAdmin(companyId);
+        // Only company admins can delete SLAs
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+
+        // SLA line items subcollection
+        match /lineItems/{lineItemId} {
+          allow read: if belongsToCompany(companyId) || canManageCompanies();
+          allow create, update: if belongsToCompany(companyId) || canManageCompanies();
+          allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+        }
+
+        // SLA history/audit subcollection
+        match /history/{historyId} {
+          allow read: if belongsToCompany(companyId) || canManageCompanies();
+          allow create: if belongsToCompany(companyId) || canManageCompanies();
+          allow update, delete: if false; // History should be immutable
+        }
+      }
+
+      // Invoices collection (for SLA-generated and ad-hoc invoices)
+      match /invoices/{invoiceId} {
+        // Users can read invoices from their own company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Users can create invoices for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId;
+
+        // Users can update invoices (e.g., status, payment info)
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId;
+
+        // Only company admins can delete invoices
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+
+        // Invoice line items subcollection
+        match /lineItems/{lineItemId} {
+          allow read: if belongsToCompany(companyId) || canManageCompanies();
+          allow create, update: if belongsToCompany(companyId) || canManageCompanies();
+          allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+        }
+
+        // Invoice payments subcollection
+        match /payments/{paymentId} {
+          allow read: if belongsToCompany(companyId) || canManageCompanies();
+          allow create: if belongsToCompany(companyId) || canManageCompanies();
+          allow update: if belongsToCompany(companyId) || canManageCompanies();
+          allow delete: if false; // Payments should not be deleted
+        }
+      }
+
+      // Quotes collection
+      match /quotes/{quoteId} {
+        // Users can read quotes from their own company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Users can create quotes for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId;
+
+        // Users can update quotes
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId;
+
+        // Only company admins can delete quotes
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+      }
+
+      // Sales orders collection
+      match /salesOrders/{salesOrderId} {
+        // Users can read sales orders from their own company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Users can create sales orders for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId;
+
+        // Users can update sales orders
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId;
+
+        // Only company admins can delete sales orders
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
       }
 
       // Company audit logs - read-only for users

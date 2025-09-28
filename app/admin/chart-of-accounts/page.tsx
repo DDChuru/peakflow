@@ -10,12 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { ChartOfAccountsService } from '@/lib/accounting/chart-of-accounts-service';
 import { AVAILABLE_CHART_TEMPLATES } from '@/types/accounting/templates';
 import { CompaniesService } from '@/lib/firebase/companies-service';
+import { bankAccountService } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   AccountRecord,
   AccountType,
   ChartOfAccounts,
 } from '@/types/accounting/chart-of-accounts';
+import { BankAccount, BankAccountType } from '@/types/accounting/bank-account';
 import { Company } from '@/types/auth';
 import toast from 'react-hot-toast';
 import {
@@ -39,6 +41,19 @@ interface AccountFormState {
   description?: string;
 }
 
+interface BankAccountFormState {
+  nickname: string;
+  bankName: string;
+  accountNumber: string;
+  accountType: BankAccountType;
+  currency: string;
+  branch: string;
+  country: string;
+  isPrimary: boolean;
+  openingBalance: string;
+  balanceAsOf: string;
+}
+
 const defaultFormState: AccountFormState = {
   name: '',
   code: '',
@@ -47,8 +62,31 @@ const defaultFormState: AccountFormState = {
   description: '',
 };
 
+const createDefaultBankAccountForm = (currency?: string): BankAccountFormState => ({
+  nickname: '',
+  bankName: '',
+  accountNumber: '',
+  accountType: 'checking',
+  currency: currency ?? '',
+  branch: '',
+  country: '',
+  isPrimary: false,
+  openingBalance: '',
+  balanceAsOf: new Date().toISOString().slice(0, 10),
+});
+
+const BANK_ACCOUNT_TYPES: { value: BankAccountType; label: string }[] = [
+  { value: 'checking', label: 'Checking' },
+  { value: 'savings', label: 'Savings' },
+  { value: 'cash', label: 'Cash' },
+  { value: 'credit-card', label: 'Credit card' },
+  { value: 'loan', label: 'Loan' },
+  { value: 'investment', label: 'Investment' },
+  { value: 'other', label: 'Other' },
+];
+
 export default function ChartOfAccountsAdminPage() {
-  const { company, hasRole } = useAuth();
+  const { user, company, hasRole } = useAuth();
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
@@ -64,6 +102,12 @@ export default function ChartOfAccountsAdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [applyTemplateLoading, setApplyTemplateLoading] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(AVAILABLE_CHART_TEMPLATES[0]?.id ?? null);
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(false);
+  const [linkingAccount, setLinkingAccount] = useState<AccountRecord | null>(null);
+  const [showBankDrawer, setShowBankDrawer] = useState(false);
+  const [bankAccountForm, setBankAccountForm] = useState<BankAccountFormState>(() => createDefaultBankAccountForm());
+  const [bankAccountSubmitting, setBankAccountSubmitting] = useState(false);
 
   useEffect(() => {
     if (!hasRole('admin') && !hasRole('developer')) return;
@@ -122,6 +166,28 @@ export default function ChartOfAccountsAdminPage() {
     loadAccounts();
   }, [selectedChartId, selectedTenantId]);
 
+  useEffect(() => {
+    if (!selectedTenantId) {
+      setBankAccounts([]);
+      return;
+    }
+
+    const loadBankAccounts = async () => {
+      try {
+        setLoadingBankAccounts(true);
+        const list = await bankAccountService.listBankAccounts(selectedTenantId, { includeInactive: true });
+        setBankAccounts(list);
+      } catch (error) {
+        console.error('Failed to load bank accounts', error);
+        toast.error('Could not load bank accounts');
+      } finally {
+        setLoadingBankAccounts(false);
+      }
+    };
+
+    loadBankAccounts();
+  }, [selectedTenantId]);
+
   const filteredAccounts = useMemo(() => {
     const normalized = searchTerm.toLowerCase();
     return accounts.filter((account) => {
@@ -137,6 +203,13 @@ export default function ChartOfAccountsAdminPage() {
     });
   }, [accounts, searchTerm, typeFilter]);
 
+  const bankAccountByGlId = useMemo(() => {
+    return bankAccounts.reduce<Record<string, BankAccount>>((acc, item) => {
+      acc[item.glAccountId] = item;
+      return acc;
+    }, {});
+  }, [bankAccounts]);
+
   const stats = useMemo(() => {
     const total = accounts.length;
     const active = accounts.filter((acc) => acc.isActive).length;
@@ -147,6 +220,9 @@ export default function ChartOfAccountsAdminPage() {
 
     return { total, active, perType };
   }, [accounts]);
+
+  const currentCompany = companies.find((item) => item.id === selectedTenantId);
+  const currentChart = charts.find((item) => item.id === selectedChartId);
 
   const handleOpenNewAccount = () => {
     setFormState(defaultFormState);
@@ -221,8 +297,124 @@ export default function ChartOfAccountsAdminPage() {
     }
   };
 
-  const currentCompany = companies.find((item) => item.id === selectedTenantId);
-  const currentChart = charts.find((item) => item.id === selectedChartId);
+  const handleOpenBankAccountDrawer = (account: AccountRecord) => {
+    const baseCurrency =
+      currentChart?.currency ?? account.metadata?.banking?.preferredCurrency ?? '';
+
+    setLinkingAccount(account);
+    const defaults = createDefaultBankAccountForm(baseCurrency);
+    defaults.nickname = account.name;
+    defaults.currency = baseCurrency;
+    defaults.isPrimary = !bankAccounts.some((item) => item.isPrimary);
+    setBankAccountForm(defaults);
+    setShowBankDrawer(true);
+  };
+
+  const handleSubmitBankAccount = async () => {
+    if (!selectedTenantId || !linkingAccount) return;
+
+    if (!user?.uid) {
+      toast.error('Please sign in again to manage bank accounts.');
+      return;
+    }
+
+    if (!bankAccountForm.bankName.trim() || !bankAccountForm.accountNumber.trim()) {
+      toast.error('Bank name and account number are required');
+      return;
+    }
+
+    const currency =
+      (bankAccountForm.currency || currentChart?.currency || '').trim();
+
+    if (!currency) {
+      toast.error('Currency is required');
+      return;
+    }
+
+    const openingBalance = bankAccountForm.openingBalance
+      ? Number(bankAccountForm.openingBalance)
+      : 0;
+
+    if (Number.isNaN(openingBalance)) {
+      toast.error('Opening balance must be a valid number');
+      return;
+    }
+
+    const balanceAsOfDate = bankAccountForm.balanceAsOf
+      ? new Date(bankAccountForm.balanceAsOf)
+      : undefined;
+
+    if (balanceAsOfDate && Number.isNaN(balanceAsOfDate.getTime())) {
+      toast.error('Balance as of date is invalid');
+      return;
+    }
+
+    try {
+      setBankAccountSubmitting(true);
+
+      const created = await bankAccountService.createBankAccount(
+        selectedTenantId,
+        {
+          name: bankAccountForm.nickname.trim() || linkingAccount.name,
+          accountNumber: bankAccountForm.accountNumber.trim(),
+          accountType: bankAccountForm.accountType,
+          bankName: bankAccountForm.bankName.trim(),
+          branch: bankAccountForm.branch.trim() || undefined,
+          country: bankAccountForm.country.trim() || undefined,
+          currency,
+          glAccountId: linkingAccount.id,
+          isPrimary: bankAccountForm.isPrimary,
+          status: 'active',
+          signatories: [],
+          balance: {
+            ledger: openingBalance,
+            currency,
+            asOf: balanceAsOfDate,
+          },
+          integration: undefined,
+          lastReconciledAt: balanceAsOfDate,
+          lastStatementAt: balanceAsOfDate,
+          metadata: {
+            nickname: bankAccountForm.nickname.trim() || linkingAccount.name,
+          },
+        },
+        user.uid
+      );
+
+      const updatedMetadata = {
+        ...(linkingAccount.metadata ?? {}),
+        banking: {
+          enabled: true,
+          bankAccountId: created.id,
+          preferredCurrency: currency,
+        },
+      };
+
+      await chartService.updateAccount(linkingAccount.id, { metadata: updatedMetadata });
+
+      setAccounts((prev) =>
+        prev.map((account) =>
+          account.id === linkingAccount.id
+            ? { ...account, metadata: updatedMetadata }
+            : account
+        )
+      );
+
+      const refreshedBankAccounts = await bankAccountService.listBankAccounts(selectedTenantId, { includeInactive: true });
+      setBankAccounts(refreshedBankAccounts);
+
+      toast.success('Bank account linked');
+      setShowBankDrawer(false);
+      setLinkingAccount(null);
+      setBankAccountForm(createDefaultBankAccountForm(currency));
+    } catch (error) {
+      console.error('Failed to create bank account', error);
+      toast.error('Could not create bank account');
+    } finally {
+      setBankAccountSubmitting(false);
+    }
+  };
+
 
   return (
     <ProtectedRoute requiredRoles={['admin', 'developer']} requireCompany={false}>
@@ -376,6 +568,9 @@ export default function ChartOfAccountsAdminPage() {
           <AccountsTable
             accounts={filteredAccounts}
             loading={loadingAccounts}
+            bankAccountMap={bankAccountByGlId}
+            linkingDisabled={loadingBankAccounts}
+            onLinkBankAccount={handleOpenBankAccountDrawer}
             onToggleActive={async (id, next) => {
               try {
                 await chartService.toggleAccountStatus(id, next);
@@ -397,6 +592,21 @@ export default function ChartOfAccountsAdminPage() {
           onSubmit={handleCreateAccount}
           submitting={submitting}
           parentOptions={accounts}
+        />
+      )}
+
+      {showBankDrawer && linkingAccount && (
+        <BankAccountDrawer
+          account={linkingAccount}
+          formState={bankAccountForm}
+          onChange={setBankAccountForm}
+          onClose={() => {
+            setShowBankDrawer(false);
+            setLinkingAccount(null);
+            setBankAccountForm(createDefaultBankAccountForm(currentChart?.currency));
+          }}
+          onSubmit={handleSubmitBankAccount}
+          submitting={bankAccountSubmitting}
         />
       )}
     </ProtectedRoute>
@@ -435,10 +645,13 @@ function StatCard({ title, value, hint, icon }: StatCardProps) {
 interface AccountsTableProps {
   accounts: AccountRecord[];
   loading: boolean;
+  bankAccountMap: Record<string, BankAccount>;
+  linkingDisabled?: boolean;
+  onLinkBankAccount: (account: AccountRecord) => void;
   onToggleActive: (id: string, next: boolean) => Promise<void>;
 }
 
-function AccountsTable({ accounts, loading, onToggleActive }: AccountsTableProps) {
+function AccountsTable({ accounts, loading, bankAccountMap, linkingDisabled, onLinkBankAccount, onToggleActive }: AccountsTableProps) {
   if (loading) {
     return (
       <Card>
@@ -475,40 +688,67 @@ function AccountsTable({ accounts, loading, onToggleActive }: AccountsTableProps
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Normal balance</th>
+                <th className="px-4 py-3">Bank linkage</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {accounts.map((account) => (
-                <tr key={account.id} className="hover:bg-gray-50/80">
-                  <td className="px-4 py-3 font-mono text-sm text-gray-700">{account.code}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{account.name}</div>
-                    {account.description && (
-                      <div className="text-xs text-gray-500">{account.description}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700 capitalize">{account.type}</td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {account.metadata?.normalBalance === 'credit' ? 'Credit' : 'Debit'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={account.isActive ? 'success' : 'secondary'} size="sm">
-                      {account.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onToggleActive(account.id, !account.isActive)}
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
-                    >
-                      {account.isActive ? 'Archive' : 'Activate'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {accounts.map((account) => {
+                const linkedBankAccount = bankAccountMap[account.id];
+                const isBankingEnabled = account.metadata?.banking?.enabled;
+                const hasBankLink = Boolean(linkedBankAccount);
+                return (
+                  <tr key={account.id} className="hover:bg-gray-50/80">
+                    <td className="px-4 py-3 font-mono text-sm text-gray-700">{account.code}</td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900">{account.name}</div>
+                      {account.description && (
+                        <div className="text-xs text-gray-500">{account.description}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 capitalize">{account.type}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {account.metadata?.normalBalance === 'credit' ? 'Credit' : 'Debit'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {hasBankLink ? (
+                        <Badge variant="success" size="sm">Linked</Badge>
+                      ) : isBankingEnabled ? (
+                        <Badge variant="warning" size="sm">Needs attention</Badge>
+                      ) : (
+                        <Badge variant="secondary" size="sm">Not linked</Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={account.isActive ? 'success' : 'secondary'} size="sm">
+                        {account.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        {!hasBankLink && account.type === 'asset' && (
+                          <button
+                            type="button"
+                            onClick={() => onLinkBankAccount(account)}
+                            disabled={linkingDisabled}
+                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 disabled:hover:text-gray-400"
+                          >
+                            Link bank account
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onToggleActive(account.id, !account.isActive)}
+                          className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                          {account.isActive ? 'Archive' : 'Activate'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -597,6 +837,124 @@ function NewAccountDrawer({ formState, onChange, onClose, onSubmit, submitting, 
           </Button>
           <Button onClick={onSubmit} loading={submitting} disabled={submitting}>
             Create account
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+interface BankAccountDrawerProps {
+  account: AccountRecord;
+  formState: BankAccountFormState;
+  onChange: (state: BankAccountFormState) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+  submitting: boolean;
+}
+
+function BankAccountDrawer({ account, formState, onChange, onClose, onSubmit, submitting }: BankAccountDrawerProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="hidden flex-1 bg-black/40 backdrop-blur-sm md:block" onClick={onClose} />
+      <div className="w-full max-w-md bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Link bank account</p>
+            <h2 className="text-lg font-semibold text-gray-900">{account.code} · {account.name}</h2>
+          </div>
+          <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-700">
+            Close
+          </button>
+        </div>
+        <div className="space-y-4 px-6 py-6">
+          <div className="grid gap-4">
+            <Input
+              label="Display name"
+              placeholder="e.g. Main operating account"
+              value={formState.nickname}
+              onChange={(event) => onChange({ ...formState, nickname: event.target.value })}
+            />
+            <Input
+              label="Bank name"
+              placeholder="e.g. First National Bank"
+              value={formState.bankName}
+              onChange={(event) => onChange({ ...formState, bankName: event.target.value })}
+            />
+            <Input
+              label="Account number"
+              placeholder="e.g. 1234567890"
+              value={formState.accountNumber}
+              onChange={(event) => onChange({ ...formState, accountNumber: event.target.value })}
+            />
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Account type</label>
+              <select
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                value={formState.accountType}
+                onChange={(event) =>
+                  onChange({ ...formState, accountType: event.target.value as BankAccountType })
+                }
+              >
+                {BANK_ACCOUNT_TYPES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Input
+              label="Currency"
+              placeholder="e.g. USD"
+              value={formState.currency}
+              onChange={(event) => onChange({ ...formState, currency: event.target.value.toUpperCase() })}
+            />
+            <Input
+              label="Branch (optional)"
+              value={formState.branch}
+              onChange={(event) => onChange({ ...formState, branch: event.target.value })}
+            />
+            <Input
+              label="Country (optional)"
+              value={formState.country}
+              onChange={(event) => onChange({ ...formState, country: event.target.value })}
+            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <Input
+                label="Opening balance"
+                type="number"
+                placeholder="0.00"
+                value={formState.openingBalance}
+                onChange={(event) => onChange({ ...formState, openingBalance: event.target.value })}
+              />
+              <div className="space-y-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Balance as of</label>
+                <input
+                  type="date"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                  value={formState.balanceAsOf}
+                  onChange={(event) => onChange({ ...formState, balanceAsOf: event.target.value })}
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={formState.isPrimary}
+                onChange={(event) => onChange({ ...formState, isPrimary: event.target.checked })}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              Set as primary bank account
+            </label>
+          </div>
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={onSubmit} loading={submitting} disabled={submitting}>
+            Link account
           </Button>
         </div>
       </div>

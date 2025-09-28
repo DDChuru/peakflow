@@ -32,6 +32,9 @@ import { PageHeader, TabNavigation } from '@/components/ui/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { bankAccountService } from '@/lib/firebase';
+import { reconciliationService } from '@/lib/accounting/reconciliation-service';
+import { BankAccount } from '@/types/accounting/bank-account';
 import { FadeIn, StaggerList } from '@/components/ui/motion';
 import { SkeletonCard, SkeletonList, SkeletonTable } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -68,6 +71,9 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('upload');
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
 
   const selectedStatement = useMemo(() => {
     if (!selectedStatementId) return null;
@@ -97,7 +103,11 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
   const loadCompanyAndStatements = useCallback(
     async (companyId: string, { silent = false }: LoadOptions = {}) => {
       try {
-        silent ? setRefreshing(true) : setLoading(true);
+        if (silent) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
 
         const companyDoc = await getDoc(doc(db, 'companies', companyId));
         if (!companyDoc.exists()) {
@@ -134,11 +144,37 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
         toast.error('Failed to load bank statements');
         router.push('/companies');
       } finally {
-        silent ? setRefreshing(false) : setLoading(false);
+        if (silent) {
+          setRefreshing(false);
+        } else {
+          setLoading(false);
+        }
       }
     },
     [router]
   );
+
+  useEffect(() => {
+    if (!resolvedCompanyId) {
+      setBankAccounts([]);
+      return;
+    }
+
+    const fetchBankAccounts = async () => {
+      try {
+        setLoadingBankAccounts(true);
+        const accounts = await bankAccountService.listBankAccounts(resolvedCompanyId, { includeInactive: true });
+        setBankAccounts(accounts);
+      } catch (error) {
+        console.error('Failed to load bank accounts', error);
+        toast.error('Unable to load bank accounts for reconciliation');
+      } finally {
+        setLoadingBankAccounts(false);
+      }
+    };
+
+    fetchBankAccounts();
+  }, [resolvedCompanyId]);
 
   useEffect(() => {
     if (!user) {
@@ -169,6 +205,105 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
   const handleSelectStatement = (statement: BankStatement) => {
     setSelectedStatementId(statement.id ?? null);
     setActiveTab('transactions');
+  };
+
+  const findMatchingBankAccount = () => {
+    if (!selectedStatement) return bankAccounts[0] ?? null;
+    if (!bankAccounts.length) return null;
+
+    const statementAccountNumber = selectedStatement.accountInfo?.accountNumber?.replace(/[^0-9]/g, '') ?? '';
+    if (!statementAccountNumber) {
+      return bankAccounts[0];
+    }
+
+    const exact = bankAccounts.find((account) => {
+      const candidate = account.accountNumber.replace(/[^0-9]/g, '');
+      return candidate && statementAccountNumber && candidate.slice(-4) === statementAccountNumber.slice(-4);
+    });
+
+    return exact ?? bankAccounts[0];
+  };
+
+  const handleStartReconciliation = async () => {
+    if (!resolvedCompanyId || !selectedStatement || !user) return;
+
+    const targetBankAccount = findMatchingBankAccount();
+    if (!targetBankAccount) {
+      toast.error('Link a bank account to this company before starting reconciliation.');
+      return;
+    }
+
+    // Helper to format dates properly for storage
+    const formatDateForStorage = (dateStr: string): string => {
+      if (!dateStr) return '';
+
+      // If it's already in a full date format, return as is
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}/) || dateStr.includes(',')) {
+        return dateStr;
+      }
+
+      // If it's "DD MMM" format, add the current year
+      if (dateStr.match(/^\d{1,2}\s+\w{3}$/)) {
+        const currentYear = new Date().getFullYear();
+        // Parse the date with the year to ensure it's valid
+        const parsed = new Date(`${dateStr} ${currentYear}`);
+        if (!isNaN(parsed.getTime())) {
+          // Return in ISO format for consistent storage
+          return parsed.toISOString().split('T')[0];
+        }
+      }
+
+      return dateStr;
+    };
+
+    const fallbackStart = selectedStatement.transactions[0]?.date;
+    const fallbackEnd = selectedStatement.transactions[selectedStatement.transactions.length - 1]?.date;
+
+    const periodFrom = selectedStatement.summary?.statementPeriod?.from || fallbackStart;
+    const periodTo = selectedStatement.summary?.statementPeriod?.to || fallbackEnd;
+
+    if (!periodFrom || !periodTo) {
+      toast.error('Statement period is missing; please update the statement details before reconciling.');
+      return;
+    }
+
+    // Format dates properly before storing
+    const formattedPeriodStart = formatDateForStorage(periodFrom);
+    const formattedPeriodEnd = formatDateForStorage(periodTo);
+
+    try {
+      setCreatingSession(true);
+      const session = await reconciliationService.createSession(resolvedCompanyId, {
+        bankAccountId: targetBankAccount.id,
+        bankAccountName: targetBankAccount.name,
+        currency: targetBankAccount.currency,
+        periodStart: formattedPeriodStart,
+        periodEnd: formattedPeriodEnd,
+        openingBalance:
+          selectedStatement.summary?.openingBalance ??
+          selectedStatement.transactions[0]?.balance ??
+          0,
+        closingBalance:
+          selectedStatement.summary?.closingBalance ??
+          selectedStatement.transactions[selectedStatement.transactions.length - 1]?.balance ??
+          0,
+        notes: `Generated from ${selectedStatement.fileName}`,
+        metadata: {
+          statementId: selectedStatement.id,
+          accountNumber: selectedStatement.accountInfo?.accountNumber,
+        },
+        createdBy: user.uid,
+      });
+
+      toast.success('Reconciliation session created');
+      console.info('Reconciliation session ready:', session);
+      router.push(`/companies/${resolvedCompanyId}/reconciliations/${session.id}`);
+    } catch (error) {
+      console.error('Failed to create reconciliation session', error);
+      toast.error('Could not start reconciliation');
+    } finally {
+      setCreatingSession(false);
+    }
   };
 
   const handleRefresh = () => {
@@ -377,6 +512,19 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
 
             {activeTab === 'transactions' && selectedStatement && (
               <FadeIn className="space-y-8">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-gray-600">Kick off reconciliation once you have reviewed the statement details.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStartReconciliation}
+                    disabled={creatingSession || loadingBankAccounts}
+                  >
+                    {creatingSession ? 'Starting...' : 'Start reconciliation'}
+                  </Button>
+                </div>
                 <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                   <Card>
                     <CardContent className="py-6 space-y-6">
