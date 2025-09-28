@@ -53,13 +53,14 @@ function Badge({
   ...props
 }: BadgeProps) {
   return (
-    <motion.div
+    <motion.span
       className={cn(badgeVariants({ variant, size }), className)}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0, opacity: 0 }}
       whileHover={{ scale: 1.05 }}
       transition={{ type: "spring", stiffness: 500, damping: 25 }}
+      style={{ display: 'inline-flex' }}
       {...props}
     >
       {pulse && (
@@ -82,7 +83,7 @@ function Badge({
           </svg>
         </button>
       )}
-    </motion.div>
+    </motion.span>
   )
 }
 
