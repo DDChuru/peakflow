@@ -34,6 +34,59 @@ export class QuoteService {
     return `companies/${companyId}/quotes`;
   }
 
+  // Helper to remove undefined values for Firestore
+  private cleanForFirestore(quote: Quote): Record<string, any> {
+    const cleanData: Record<string, any> = {
+      id: quote.id,
+      companyId: quote.companyId,
+      quoteNumber: quote.quoteNumber,
+      customerId: quote.customerId,
+      customerName: quote.customerName || '',
+      quoteDate: quote.quoteDate instanceof Date
+        ? Timestamp.fromDate(quote.quoteDate)
+        : Timestamp.fromDate(new Date(quote.quoteDate)),
+      validUntil: quote.validUntil instanceof Date
+        ? Timestamp.fromDate(quote.validUntil)
+        : Timestamp.fromDate(new Date(quote.validUntil)),
+      status: quote.status,
+      subtotal: quote.subtotal,
+      taxAmount: quote.taxAmount,
+      totalAmount: quote.totalAmount,
+      currency: quote.currency,
+      exchangeRate: quote.exchangeRate,
+      lineItems: quote.lineItems,
+      validityPeriod: quote.validityPeriod,
+      requiresApproval: quote.requiresApproval,
+      version: quote.version,
+      isLatestVersion: quote.isLatestVersion,
+      metadata: quote.metadata,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy: quote.createdBy
+    };
+
+    // Add optional fields only if they have values
+    if (quote.customerAddress) cleanData.customerAddress = quote.customerAddress;
+    if (quote.customerEmail) cleanData.customerEmail = quote.customerEmail;
+    if (quote.customerPhone) cleanData.customerPhone = quote.customerPhone;
+    if (quote.customerTaxId) cleanData.customerTaxId = quote.customerTaxId;
+    if (quote.sourceType) cleanData.sourceType = quote.sourceType;
+    if (quote.sourceDocumentId) cleanData.sourceDocumentId = quote.sourceDocumentId;
+    if (quote.taxRate !== undefined) cleanData.taxRate = quote.taxRate;
+    if (quote.notes) cleanData.notes = quote.notes;
+    if (quote.termsAndConditions) cleanData.termsAndConditions = quote.termsAndConditions;
+    if (quote.convertedToInvoiceId) cleanData.convertedToInvoiceId = quote.convertedToInvoiceId;
+    if (quote.convertedToSalesOrderId) cleanData.convertedToSalesOrderId = quote.convertedToSalesOrderId;
+    if (quote.conversionDate) cleanData.conversionDate = Timestamp.fromDate(new Date(quote.conversionDate));
+    if (quote.approvedBy) cleanData.approvedBy = quote.approvedBy;
+    if (quote.approvedDate) cleanData.approvedDate = Timestamp.fromDate(new Date(quote.approvedDate));
+    if (quote.rejectionReason) cleanData.rejectionReason = quote.rejectionReason;
+    if (quote.parentQuoteId) cleanData.parentQuoteId = quote.parentQuoteId;
+    if (quote.modifiedBy) cleanData.modifiedBy = quote.modifiedBy;
+
+    return cleanData;
+  }
+
   // Generate quote number
   private async generateQuoteNumber(companyId: string): Promise<string> {
     const year = new Date().getFullYear();
@@ -58,7 +111,10 @@ export class QuoteService {
   }
 
   // Calculate line item amounts and totals
-  private calculateQuoteAmounts(lineItems: Omit<QuoteLineItem, 'id' | 'amount' | 'taxAmount'>[]): {
+  private calculateQuoteAmounts(
+    lineItems: Omit<QuoteLineItem, 'id' | 'amount' | 'taxAmount'>[],
+    documentTaxRate?: number
+  ): {
     calculatedLineItems: QuoteLineItem[];
     subtotal: number;
     taxAmount: number;
@@ -66,18 +122,30 @@ export class QuoteService {
   } {
     const calculatedLineItems: QuoteLineItem[] = lineItems.map((item, index) => {
       const amount = item.quantity * item.unitPrice;
-      const taxAmount = item.taxRate ? (amount * item.taxRate) / 100 : 0;
+      // Don't calculate tax at line item level anymore
+      const taxAmount = 0;
 
-      return {
-        ...item,
+      // Build clean line item without undefined fields
+      const cleanItem: QuoteLineItem = {
         id: `line-${index + 1}`,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
         amount,
-        taxAmount
+        glAccountId: item.glAccountId,
       };
+
+      // Only add optional fields if they have values
+      if (item.accountCode !== undefined) cleanItem.accountCode = item.accountCode;
+      if (item.itemCode !== undefined) cleanItem.itemCode = item.itemCode;
+      if (item.notes !== undefined) cleanItem.notes = item.notes;
+
+      return cleanItem;
     });
 
     const subtotal = calculatedLineItems.reduce((sum, item) => sum + item.amount, 0);
-    const taxAmount = calculatedLineItems.reduce((sum, item) => sum + (item.taxAmount || 0), 0);
+    // Calculate tax at document level
+    const taxAmount = documentTaxRate ? (subtotal * documentTaxRate) / 100 : 0;
     const totalAmount = subtotal + taxAmount;
 
     return {
@@ -100,7 +168,7 @@ export class QuoteService {
 
       const quoteNumber = await this.generateQuoteNumber(companyId);
       const { calculatedLineItems, subtotal, taxAmount, totalAmount } =
-        this.calculateQuoteAmounts(quoteData.lineItems);
+        this.calculateQuoteAmounts(quoteData.lineItems, quoteData.taxRate);
 
       // Calculate valid until date
       const quoteDate = new Date(quoteData.quoteDate);
@@ -112,15 +180,17 @@ export class QuoteService {
         companyId,
         quoteNumber,
         customerId: quoteData.customerId,
-        customerName: '', // Will be populated from customer service
-        customerAddress: '',
-        customerEmail: '',
+        customerName: quoteData.customerName || '',
+        customerAddress: quoteData.customerAddress || '',
+        customerEmail: quoteData.customerEmail || '',
+        customerPhone: quoteData.customerPhone || '',
         quoteDate: quoteData.quoteDate,
         validUntil: validUntil.toISOString(),
         status: 'draft',
         sourceType: quoteData.sourceType,
         sourceDocumentId: quoteData.sourceDocumentId,
         subtotal,
+        taxRate: quoteData.taxRate,
         taxAmount,
         totalAmount,
         currency: quoteData.currency,
@@ -138,13 +208,7 @@ export class QuoteService {
         createdBy: userId
       };
 
-      await setDoc(quoteRef, {
-        ...newQuote,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        quoteDate: Timestamp.fromDate(new Date(newQuote.quoteDate)),
-        validUntil: Timestamp.fromDate(new Date(newQuote.validUntil))
-      });
+      await setDoc(quoteRef, this.cleanForFirestore(newQuote));
 
       return newQuote;
     } catch (error) {
@@ -242,6 +306,116 @@ export class QuoteService {
     }
   }
 
+  // Update quote
+  async updateQuote(
+    companyId: string,
+    quoteId: string,
+    updates: Partial<Quote>,
+    userId: string
+  ): Promise<void> {
+    console.log('🔄 QuoteService.updateQuote called:', { companyId, quoteId, userId });
+    console.log('Updates received:', updates);
+
+    try {
+      const quoteRef = doc(db, this.getCollectionPath(companyId), quoteId);
+      console.log('Firestore path:', this.getCollectionPath(companyId), quoteId);
+
+      // Recalculate amounts if line items changed
+      if (updates.lineItems) {
+        console.log('📊 Recalculating amounts for line items...');
+
+        // Clean line items before calculation - remove undefined optional fields
+        const cleanedItemsForCalc = updates.lineItems.map(item => {
+          const cleanItem: any = {
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            glAccountId: item.glAccountId,
+          };
+
+          // Only add optional fields if they have values
+          if (item.accountCode !== undefined) cleanItem.accountCode = item.accountCode;
+          if (item.itemCode !== undefined) cleanItem.itemCode = item.itemCode;
+          if (item.notes !== undefined) cleanItem.notes = item.notes;
+
+          return cleanItem;
+        });
+
+        const { calculatedLineItems, subtotal, taxAmount, totalAmount } =
+          this.calculateQuoteAmounts(cleanedItemsForCalc, updates.taxRate);
+
+        updates.lineItems = calculatedLineItems;
+        updates.subtotal = subtotal;
+        updates.taxAmount = taxAmount;
+        updates.totalAmount = totalAmount;
+
+        console.log('✅ Calculated amounts:', { subtotal, taxAmount, totalAmount });
+      }
+
+      // Calculate validUntil if dates changed
+      if (updates.quoteDate && updates.validityPeriod) {
+        const quoteDate = new Date(updates.quoteDate);
+        const validUntil = new Date(quoteDate);
+        validUntil.setDate(validUntil.getDate() + updates.validityPeriod);
+        updates.validUntil = validUntil.toISOString();
+        console.log('📅 Calculated validUntil:', updates.validUntil);
+      }
+
+      // Clean data for Firestore - only add fields that are not undefined
+      const cleanUpdates: Record<string, any> = {
+        modifiedBy: userId,
+        updatedAt: serverTimestamp()
+      };
+
+      // Add fields that have values (not undefined)
+      if (updates.customerId !== undefined) cleanUpdates.customerId = updates.customerId;
+      if (updates.customerName !== undefined) cleanUpdates.customerName = updates.customerName;
+      if (updates.customerEmail !== undefined) cleanUpdates.customerEmail = updates.customerEmail;
+      if (updates.customerAddress !== undefined) cleanUpdates.customerAddress = updates.customerAddress;
+      if (updates.customerPhone !== undefined) cleanUpdates.customerPhone = updates.customerPhone;
+      if (updates.quoteDate !== undefined) cleanUpdates.quoteDate = Timestamp.fromDate(new Date(updates.quoteDate));
+      if (updates.validUntil !== undefined) cleanUpdates.validUntil = Timestamp.fromDate(new Date(updates.validUntil));
+      if (updates.validityPeriod !== undefined) cleanUpdates.validityPeriod = updates.validityPeriod;
+      if (updates.currency !== undefined) cleanUpdates.currency = updates.currency;
+      if (updates.exchangeRate !== undefined) cleanUpdates.exchangeRate = updates.exchangeRate;
+      if (updates.taxRate !== undefined) cleanUpdates.taxRate = updates.taxRate;
+      if (updates.lineItems !== undefined) cleanUpdates.lineItems = updates.lineItems;
+      if (updates.subtotal !== undefined) cleanUpdates.subtotal = updates.subtotal;
+      if (updates.taxAmount !== undefined) cleanUpdates.taxAmount = updates.taxAmount;
+      if (updates.totalAmount !== undefined) cleanUpdates.totalAmount = updates.totalAmount;
+      if (updates.notes !== undefined) cleanUpdates.notes = updates.notes;
+      if (updates.termsAndConditions !== undefined) cleanUpdates.termsAndConditions = updates.termsAndConditions;
+
+      console.log('🧹 Clean updates prepared for Firestore:', cleanUpdates);
+
+      // Final safety check: filter out any undefined values
+      const safeUpdates = Object.entries(cleanUpdates).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+          acc[key] = value;
+        } else {
+          console.warn(`⚠️ Filtered out undefined value for key: ${key}`);
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      console.log('📤 Final safe updates for Firestore:', safeUpdates);
+      console.log('📤 Updating Firestore document...');
+
+      await updateDoc(quoteRef, safeUpdates);
+
+      console.log('✅ Firestore update completed successfully');
+    } catch (error) {
+      console.error('❌ Error updating quote in service:', error);
+      console.error('Error details:', {
+        error,
+        companyId,
+        quoteId,
+        path: this.getCollectionPath(companyId)
+      });
+      throw new Error(`Failed to update quote: ${error}`);
+    }
+  }
+
   // Update quote status
   async updateQuoteStatus(
     companyId: string,
@@ -292,8 +466,10 @@ export class QuoteService {
         const newQuoteRef = doc(quotesRef);
 
         let lineItems = originalQuote.lineItems;
+        const documentTaxRate = revisionRequest.changes.taxRate ?? originalQuote.taxRate;
+
         if (revisionRequest.changes.lineItems) {
-          const { calculatedLineItems } = this.calculateQuoteAmounts(revisionRequest.changes.lineItems);
+          const { calculatedLineItems } = this.calculateQuoteAmounts(revisionRequest.changes.lineItems, documentTaxRate);
           lineItems = calculatedLineItems;
         }
 
@@ -307,7 +483,8 @@ export class QuoteService {
             accountCode: item.accountCode,
             itemCode: item.itemCode,
             notes: item.notes
-          }))
+          })),
+          documentTaxRate
         );
 
         // Update valid until if validity period changed
@@ -325,6 +502,7 @@ export class QuoteService {
           status: 'draft', // Reset to draft for review
           lineItems,
           subtotal,
+          taxRate: documentTaxRate,
           taxAmount,
           totalAmount,
           validUntil,
@@ -338,13 +516,7 @@ export class QuoteService {
           modifiedBy: userId
         };
 
-        transaction.set(newQuoteRef, {
-          ...revisedQuote,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          quoteDate: Timestamp.fromDate(new Date(revisedQuote.quoteDate)),
-          validUntil: Timestamp.fromDate(new Date(revisedQuote.validUntil))
-        });
+        transaction.set(newQuoteRef, this.cleanForFirestore(revisedQuote));
 
         return revisedQuote;
       });
@@ -441,6 +613,7 @@ export class QuoteService {
       sourceType: data.sourceType,
       sourceDocumentId: data.sourceDocumentId,
       subtotal: data.subtotal || 0,
+      taxRate: data.taxRate,
       taxAmount: data.taxAmount || 0,
       totalAmount: data.totalAmount || 0,
       currency: data.currency || 'USD',

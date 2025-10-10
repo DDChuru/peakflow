@@ -445,46 +445,174 @@ export const SAAS_TEMPLATE: IndustryTemplate = {
   ],
 
   transactionPatterns: [
-    {
-      id: 'stripe-deposit',
-      pattern: 'STRIPE.*TRANSFER|STRIPE.*PAYOUT',
-      patternType: 'regex',
-      suggestedAccount: '4100',
-      confidence: 0.95,
-      frequency: 'daily',
-      description: 'Stripe payment settlements',
-      examples: ['STRIPE TRANSFER', 'STRIPE PAYOUT'],
-      averageAmount: { min: 1000, max: 50000 }
-    },
-    {
-      id: 'aws-charges',
-      pattern: 'AWS|AMAZON WEB SERVICES',
-      patternType: 'regex',
-      suggestedAccount: '5100',
-      confidence: 0.98,
-      frequency: 'monthly',
-      description: 'Cloud infrastructure costs',
-      examples: ['AWS CHARGES', 'AMAZON WEB SERVICES'],
-      averageAmount: { min: 500, max: 10000 }
-    },
-    {
-      id: 'payroll-tech',
-      pattern: 'GUSTO|RIPPLING|ADP.*PAYROLL',
-      patternType: 'regex',
-      suggestedAccount: '6100',
-      confidence: 0.96,
-      frequency: 'biweekly',
-      description: 'Payroll processing',
-      examples: ['GUSTO PAYROLL', 'RIPPLING PAYROLL'],
-      averageAmount: { min: 10000, max: 200000 }
-    }
+    // Payment Processing & Revenue
+    { id: 'stripe-deposit', pattern: 'STRIPE.*TRANSFER|STRIPE.*PAYOUT', patternType: 'regex', suggestedAccount: '4100', confidence: 0.95, frequency: 'daily', description: 'Stripe payment settlements', examples: ['STRIPE TRANSFER', 'STRIPE PAYOUT'] },
+    { id: 'stripe-fee', pattern: 'STRIPE.*FEE', patternType: 'regex', suggestedAccount: '5300', confidence: 0.98, frequency: 'daily', description: 'Stripe processing fees', examples: ['STRIPE FEE'] },
+    { id: 'paypal-deposit', pattern: 'PAYPAL.*TRANSFER', patternType: 'regex', suggestedAccount: '4100', confidence: 0.93, frequency: 'weekly', description: 'PayPal settlements', examples: ['PAYPAL TRANSFER'] },
+    { id: 'square-deposit', pattern: 'SQUARE.*INC', patternType: 'contains', suggestedAccount: '4100', confidence: 0.92, frequency: 'daily', description: 'Square payment settlements', examples: ['SQUARE INC'] },
+
+    // Cloud Infrastructure
+    { id: 'aws-charges', pattern: 'AWS|AMAZON WEB SERVICES', patternType: 'regex', suggestedAccount: '5100', confidence: 0.98, frequency: 'monthly', description: 'AWS infrastructure', examples: ['AWS CHARGES', 'AMAZON WEB SERVICES'] },
+    { id: 'google-cloud', pattern: 'GOOGLE.*CLOUD|GCP', patternType: 'regex', suggestedAccount: '5100', confidence: 0.97, frequency: 'monthly', description: 'Google Cloud Platform', examples: ['GOOGLE CLOUD', 'GCP'] },
+    { id: 'azure', pattern: 'MICROSOFT.*AZURE|AZURE', patternType: 'regex', suggestedAccount: '5100', confidence: 0.97, frequency: 'monthly', description: 'Microsoft Azure', examples: ['MICROSOFT AZURE'] },
+    { id: 'heroku', pattern: 'HEROKU', patternType: 'contains', suggestedAccount: '5100', confidence: 0.96, frequency: 'monthly', description: 'Heroku hosting', examples: ['HEROKU'] },
+    { id: 'digitalocean', pattern: 'DIGITALOCEAN|DIGITAL OCEAN', patternType: 'regex', suggestedAccount: '5100', confidence: 0.96, frequency: 'monthly', description: 'DigitalOcean hosting', examples: ['DIGITALOCEAN'] },
+    { id: 'vercel', pattern: 'VERCEL', patternType: 'contains', suggestedAccount: '5100', confidence: 0.95, frequency: 'monthly', description: 'Vercel hosting', examples: ['VERCEL'] },
+    { id: 'netlify', pattern: 'NETLIFY', patternType: 'contains', suggestedAccount: '5100', confidence: 0.95, frequency: 'monthly', description: 'Netlify hosting', examples: ['NETLIFY'] },
+
+    // Payroll
+    { id: 'payroll-gusto', pattern: 'GUSTO', patternType: 'contains', suggestedAccount: '6100', confidence: 0.96, frequency: 'biweekly', description: 'Gusto payroll', examples: ['GUSTO PAYROLL'] },
+    { id: 'payroll-rippling', pattern: 'RIPPLING', patternType: 'contains', suggestedAccount: '6100', confidence: 0.96, frequency: 'biweekly', description: 'Rippling payroll', examples: ['RIPPLING'] },
+    { id: 'payroll-adp', pattern: 'ADP', patternType: 'contains', suggestedAccount: '6100', confidence: 0.95, frequency: 'biweekly', description: 'ADP payroll', examples: ['ADP PAYROLL'] },
+    { id: 'payroll-bamboo', pattern: 'BAMBOOHR', patternType: 'contains', suggestedAccount: '6100', confidence: 0.94, frequency: 'biweekly', description: 'BambooHR payroll', examples: ['BAMBOOHR'] },
+
+    // Software & Tools
+    { id: 'github', pattern: 'GITHUB', patternType: 'contains', suggestedAccount: '6200', confidence: 0.97, frequency: 'monthly', description: 'GitHub subscription', examples: ['GITHUB'] },
+    { id: 'gitlab', pattern: 'GITLAB', patternType: 'contains', suggestedAccount: '6200', confidence: 0.96, frequency: 'monthly', description: 'GitLab subscription', examples: ['GITLAB'] },
+    { id: 'jira', pattern: 'ATLASSIAN|JIRA', patternType: 'regex', suggestedAccount: '6200', confidence: 0.96, frequency: 'monthly', description: 'Atlassian/Jira', examples: ['ATLASSIAN', 'JIRA'] },
+    { id: 'slack', pattern: 'SLACK', patternType: 'contains', suggestedAccount: '6200', confidence: 0.96, frequency: 'monthly', description: 'Slack subscription', examples: ['SLACK'] },
+    { id: 'notion', pattern: 'NOTION', patternType: 'contains', suggestedAccount: '6200', confidence: 0.95, frequency: 'monthly', description: 'Notion subscription', examples: ['NOTION LABS'] },
+    { id: 'figma', pattern: 'FIGMA', patternType: 'contains', suggestedAccount: '6200', confidence: 0.95, frequency: 'monthly', description: 'Figma subscription', examples: ['FIGMA'] },
+    { id: 'linear', pattern: 'LINEAR', patternType: 'contains', suggestedAccount: '6200', confidence: 0.94, frequency: 'monthly', description: 'Linear subscription', examples: ['LINEAR'] },
+
+    // Customer Support
+    { id: 'zendesk', pattern: 'ZENDESK', patternType: 'contains', suggestedAccount: '5400', confidence: 0.97, frequency: 'monthly', description: 'Zendesk support', examples: ['ZENDESK'] },
+    { id: 'intercom', pattern: 'INTERCOM', patternType: 'contains', suggestedAccount: '5400', confidence: 0.96, frequency: 'monthly', description: 'Intercom support', examples: ['INTERCOM'] },
+    { id: 'freshdesk', pattern: 'FRESHDESK|FRESHWORKS', patternType: 'regex', suggestedAccount: '5400', confidence: 0.95, frequency: 'monthly', description: 'Freshdesk support', examples: ['FRESHDESK'] },
+
+    // API Services
+    { id: 'twilio', pattern: 'TWILIO', patternType: 'contains', suggestedAccount: '5200', confidence: 0.97, frequency: 'monthly', description: 'Twilio API', examples: ['TWILIO'] },
+    { id: 'sendgrid', pattern: 'SENDGRID', patternType: 'contains', suggestedAccount: '5200', confidence: 0.96, frequency: 'monthly', description: 'SendGrid email API', examples: ['SENDGRID'] },
+    { id: 'mailgun', pattern: 'MAILGUN', patternType: 'contains', suggestedAccount: '5200', confidence: 0.95, frequency: 'monthly', description: 'Mailgun email API', examples: ['MAILGUN'] },
+    { id: 'auth0', pattern: 'AUTH0', patternType: 'contains', suggestedAccount: '5200', confidence: 0.95, frequency: 'monthly', description: 'Auth0 authentication', examples: ['AUTH0'] },
+    { id: 'algolia', pattern: 'ALGOLIA', patternType: 'contains', suggestedAccount: '5200', confidence: 0.94, frequency: 'monthly', description: 'Algolia search API', examples: ['ALGOLIA'] },
+
+    // Sales & CRM
+    { id: 'salesforce', pattern: 'SALESFORCE', patternType: 'contains', suggestedAccount: '6400', confidence: 0.98, frequency: 'monthly', description: 'Salesforce CRM', examples: ['SALESFORCE'] },
+    { id: 'hubspot', pattern: 'HUBSPOT', patternType: 'contains', suggestedAccount: '6400', confidence: 0.97, frequency: 'monthly', description: 'HubSpot CRM', examples: ['HUBSPOT'] },
+    { id: 'pipedrive', pattern: 'PIPEDRIVE', patternType: 'contains', suggestedAccount: '6400', confidence: 0.95, frequency: 'monthly', description: 'Pipedrive CRM', examples: ['PIPEDRIVE'] },
+    { id: 'zoho', pattern: 'ZOHO', patternType: 'contains', suggestedAccount: '6400', confidence: 0.94, frequency: 'monthly', description: 'Zoho CRM', examples: ['ZOHO'] },
+
+    // Marketing & Advertising
+    { id: 'google-ads', pattern: 'GOOGLE.*ADS|ADWORDS', patternType: 'regex', suggestedAccount: '6300', confidence: 0.97, frequency: 'monthly', description: 'Google Ads', examples: ['GOOGLE ADS'] },
+    { id: 'facebook-ads', pattern: 'FACEBOOK.*ADS|META.*ADS', patternType: 'regex', suggestedAccount: '6300', confidence: 0.96, frequency: 'monthly', description: 'Facebook/Meta Ads', examples: ['FACEBOOK ADS'] },
+    { id: 'linkedin-ads', pattern: 'LINKEDIN.*ADS', patternType: 'regex', suggestedAccount: '6300', confidence: 0.95, frequency: 'monthly', description: 'LinkedIn Ads', examples: ['LINKEDIN ADS'] },
+    { id: 'mailchimp', pattern: 'MAILCHIMP', patternType: 'contains', suggestedAccount: '6300', confidence: 0.94, frequency: 'monthly', description: 'Mailchimp marketing', examples: ['MAILCHIMP'] },
+    { id: 'segment', pattern: 'SEGMENT\.IO|SEGMENT', patternType: 'regex', suggestedAccount: '6200', confidence: 0.93, frequency: 'monthly', description: 'Segment analytics', examples: ['SEGMENT'] },
+
+    // Analytics & Monitoring
+    { id: 'datadog', pattern: 'DATADOG', patternType: 'contains', suggestedAccount: '5100', confidence: 0.96, frequency: 'monthly', description: 'Datadog monitoring', examples: ['DATADOG'] },
+    { id: 'newrelic', pattern: 'NEW RELIC', patternType: 'contains', suggestedAccount: '5100', confidence: 0.95, frequency: 'monthly', description: 'New Relic monitoring', examples: ['NEW RELIC'] },
+    { id: 'sentry', pattern: 'SENTRY', patternType: 'contains', suggestedAccount: '5100', confidence: 0.94, frequency: 'monthly', description: 'Sentry error tracking', examples: ['SENTRY'] },
+    { id: 'mixpanel', pattern: 'MIXPANEL', patternType: 'contains', suggestedAccount: '6200', confidence: 0.93, frequency: 'monthly', description: 'Mixpanel analytics', examples: ['MIXPANEL'] },
+    { id: 'amplitude', pattern: 'AMPLITUDE', patternType: 'contains', suggestedAccount: '6200', confidence: 0.92, frequency: 'monthly', description: 'Amplitude analytics', examples: ['AMPLITUDE'] },
+
+    // Database & Data
+    { id: 'mongodb', pattern: 'MONGODB', patternType: 'contains', suggestedAccount: '5100', confidence: 0.95, frequency: 'monthly', description: 'MongoDB database', examples: ['MONGODB ATLAS'] },
+    { id: 'planetscale', pattern: 'PLANETSCALE', patternType: 'contains', suggestedAccount: '5100', confidence: 0.94, frequency: 'monthly', description: 'PlanetScale database', examples: ['PLANETSCALE'] },
+    { id: 'supabase', pattern: 'SUPABASE', patternType: 'contains', suggestedAccount: '5100', confidence: 0.93, frequency: 'monthly', description: 'Supabase database', examples: ['SUPABASE'] },
+    { id: 'snowflake', pattern: 'SNOWFLAKE', patternType: 'contains', suggestedAccount: '5100', confidence: 0.93, frequency: 'monthly', description: 'Snowflake data warehouse', examples: ['SNOWFLAKE COMPUTING'] },
+
+    // Security & Compliance
+    { id: 'okta', pattern: 'OKTA', patternType: 'contains', suggestedAccount: '6200', confidence: 0.95, frequency: 'monthly', description: 'Okta SSO', examples: ['OKTA'] },
+    { id: 'cloudflare', pattern: 'CLOUDFLARE', patternType: 'contains', suggestedAccount: '5100', confidence: 0.94, frequency: 'monthly', description: 'Cloudflare CDN/security', examples: ['CLOUDFLARE'] },
+    { id: 'vanta', pattern: 'VANTA', patternType: 'contains', suggestedAccount: '6200', confidence: 0.93, frequency: 'monthly', description: 'Vanta compliance', examples: ['VANTA'] },
+
+    // Office & Operations
+    { id: 'google-workspace', pattern: 'GOOGLE.*WORKSPACE|G SUITE', patternType: 'regex', suggestedAccount: '6200', confidence: 0.96, frequency: 'monthly', description: 'Google Workspace', examples: ['GOOGLE WORKSPACE'] },
+    { id: 'microsoft-365', pattern: 'MICROSOFT 365|OFFICE 365', patternType: 'regex', suggestedAccount: '6200', confidence: 0.96, frequency: 'monthly', description: 'Microsoft 365', examples: ['MICROSOFT 365'] },
+    { id: 'zoom', pattern: 'ZOOM\.US|ZOOM', patternType: 'regex', suggestedAccount: '6200', confidence: 0.94, frequency: 'monthly', description: 'Zoom video conferencing', examples: ['ZOOM.US'] },
+    { id: 'docusign', pattern: 'DOCUSIGN', patternType: 'contains', suggestedAccount: '6200', confidence: 0.93, frequency: 'monthly', description: 'DocuSign e-signature', examples: ['DOCUSIGN'] }
   ],
 
   commonVendors: [
-    { vendorName: 'AWS', alternateNames: ['AMAZON WEB SERVICES'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
+    // Cloud Infrastructure
+    { vendorName: 'AWS', alternateNames: ['AMAZON WEB SERVICES', 'AMZN'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
     { vendorName: 'GOOGLE CLOUD', alternateNames: ['GCP', 'GOOGLE CLOUD PLATFORM'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
-    { vendorName: 'STRIPE', alternateNames: ['STRIPE INC'], defaultAccount: '1020', vendorType: 'Payment Processor', isRecurring: true, paymentFrequency: 'daily' },
-    { vendorName: 'SALESFORCE', defaultAccount: '6400', vendorType: 'CRM', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'MICROSOFT AZURE', alternateNames: ['AZURE', 'MSFT AZURE'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'HEROKU', alternateNames: ['HEROKU INC'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'DIGITALOCEAN', alternateNames: ['DIGITAL OCEAN'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'VERCEL', alternateNames: ['VERCEL INC'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'NETLIFY', defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'CLOUDFLARE', alternateNames: ['CLOUDFLARE INC'], defaultAccount: '5100', vendorType: 'Infrastructure', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Payment Processing
+    { vendorName: 'STRIPE', alternateNames: ['STRIPE INC', 'STRIPE PAYMENTS'], defaultAccount: '1020', vendorType: 'Payment Processor', isRecurring: true, paymentFrequency: 'daily' },
+    { vendorName: 'PAYPAL', alternateNames: ['PAYPAL INC'], defaultAccount: '1020', vendorType: 'Payment Processor', isRecurring: true, paymentFrequency: 'weekly' },
+    { vendorName: 'SQUARE', alternateNames: ['SQUARE INC', 'BLOCK INC'], defaultAccount: '1020', vendorType: 'Payment Processor', isRecurring: true, paymentFrequency: 'daily' },
+
+    // Payroll & HR
+    { vendorName: 'GUSTO', alternateNames: ['GUSTO INC', 'ZEN PAYROLL'], defaultAccount: '6100', vendorType: 'Payroll', isRecurring: true, paymentFrequency: 'biweekly' },
+    { vendorName: 'RIPPLING', defaultAccount: '6100', vendorType: 'Payroll', isRecurring: true, paymentFrequency: 'biweekly' },
+    { vendorName: 'ADP', alternateNames: ['AUTOMATIC DATA PROCESSING'], defaultAccount: '6100', vendorType: 'Payroll', isRecurring: true, paymentFrequency: 'biweekly' },
+    { vendorName: 'BAMBOOHR', alternateNames: ['BAMBOO HR'], defaultAccount: '6100', vendorType: 'HR Software', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'WORKDAY', defaultAccount: '6100', vendorType: 'HR Software', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Software Development Tools
+    { vendorName: 'GITHUB', alternateNames: ['GITHUB INC'], defaultAccount: '6200', vendorType: 'Development Tools', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'GITLAB', alternateNames: ['GITLAB INC'], defaultAccount: '6200', vendorType: 'Development Tools', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'ATLASSIAN', alternateNames: ['JIRA', 'CONFLUENCE', 'BITBUCKET'], defaultAccount: '6200', vendorType: 'Development Tools', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'LINEAR', alternateNames: ['LINEAR APP'], defaultAccount: '6200', vendorType: 'Development Tools', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'FIGMA', alternateNames: ['FIGMA INC'], defaultAccount: '6200', vendorType: 'Design Tools', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Communication & Collaboration
+    { vendorName: 'SLACK', alternateNames: ['SLACK TECHNOLOGIES'], defaultAccount: '6200', vendorType: 'Communication', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'NOTION', alternateNames: ['NOTION LABS'], defaultAccount: '6200', vendorType: 'Collaboration', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'ZOOM', alternateNames: ['ZOOM VIDEO', 'ZOOM.US'], defaultAccount: '6200', vendorType: 'Communication', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'GOOGLE WORKSPACE', alternateNames: ['G SUITE', 'GOOGLE APPS'], defaultAccount: '6200', vendorType: 'Productivity', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'MICROSOFT 365', alternateNames: ['OFFICE 365', 'O365'], defaultAccount: '6200', vendorType: 'Productivity', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'DOCUSIGN', alternateNames: ['DOCUSIGN INC'], defaultAccount: '6200', vendorType: 'E-Signature', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Customer Support
+    { vendorName: 'ZENDESK', alternateNames: ['ZENDESK INC'], defaultAccount: '5400', vendorType: 'Support', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'INTERCOM', alternateNames: ['INTERCOM INC'], defaultAccount: '5400', vendorType: 'Support', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'FRESHDESK', alternateNames: ['FRESHWORKS'], defaultAccount: '5400', vendorType: 'Support', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'HELPSCOUT', alternateNames: ['HELP SCOUT'], defaultAccount: '5400', vendorType: 'Support', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // API Services
+    { vendorName: 'TWILIO', alternateNames: ['TWILIO INC'], defaultAccount: '5200', vendorType: 'API Service', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'SENDGRID', alternateNames: ['SEND GRID'], defaultAccount: '5200', vendorType: 'Email API', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'MAILGUN', alternateNames: ['MAILGUN TECHNOLOGIES'], defaultAccount: '5200', vendorType: 'Email API', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'AUTH0', alternateNames: ['AUTH ZERO'], defaultAccount: '5200', vendorType: 'Authentication', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'ALGOLIA', defaultAccount: '5200', vendorType: 'Search API', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'POSTMARK', alternateNames: ['POSTMARK APP'], defaultAccount: '5200', vendorType: 'Email API', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Sales & CRM
+    { vendorName: 'SALESFORCE', alternateNames: ['SALESFORCE.COM'], defaultAccount: '6400', vendorType: 'CRM', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'HUBSPOT', alternateNames: ['HUBSPOT INC'], defaultAccount: '6400', vendorType: 'CRM', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'PIPEDRIVE', defaultAccount: '6400', vendorType: 'CRM', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'ZOHO', alternateNames: ['ZOHO CORPORATION'], defaultAccount: '6400', vendorType: 'CRM', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'CLOSE', alternateNames: ['CLOSE.IO', 'CLOSE CRM'], defaultAccount: '6400', vendorType: 'CRM', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Marketing & Advertising
+    { vendorName: 'GOOGLE ADS', alternateNames: ['GOOGLE ADWORDS', 'GOOGLE ADVERTISING'], defaultAccount: '6300', vendorType: 'Advertising', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'FACEBOOK', alternateNames: ['META', 'FACEBOOK ADS', 'META ADS'], defaultAccount: '6300', vendorType: 'Advertising', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'LINKEDIN', alternateNames: ['LINKEDIN ADS', 'LINKEDIN ADVERTISING'], defaultAccount: '6300', vendorType: 'Advertising', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'MAILCHIMP', alternateNames: ['MAILCHIMP & CO'], defaultAccount: '6300', vendorType: 'Email Marketing', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'ACTIVECAMPAIGN', alternateNames: ['ACTIVE CAMPAIGN'], defaultAccount: '6300', vendorType: 'Marketing Automation', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Analytics & Monitoring
+    { vendorName: 'DATADOG', alternateNames: ['DATADOG INC'], defaultAccount: '5100', vendorType: 'Monitoring', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'NEW RELIC', alternateNames: ['NEWRELIC'], defaultAccount: '5100', vendorType: 'Monitoring', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'SENTRY', alternateNames: ['SENTRY.IO'], defaultAccount: '5100', vendorType: 'Error Tracking', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'MIXPANEL', defaultAccount: '6200', vendorType: 'Analytics', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'AMPLITUDE', alternateNames: ['AMPLITUDE INC'], defaultAccount: '6200', vendorType: 'Analytics', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'SEGMENT', alternateNames: ['SEGMENT.IO', 'SEGMENT.COM'], defaultAccount: '6200', vendorType: 'Analytics', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'LOGROCKET', alternateNames: ['LOG ROCKET'], defaultAccount: '6200', vendorType: 'Session Replay', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Database & Data
+    { vendorName: 'MONGODB', alternateNames: ['MONGODB ATLAS', 'MONGO DB'], defaultAccount: '5100', vendorType: 'Database', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'PLANETSCALE', alternateNames: ['PLANET SCALE'], defaultAccount: '5100', vendorType: 'Database', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'SUPABASE', defaultAccount: '5100', vendorType: 'Database', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'SNOWFLAKE', alternateNames: ['SNOWFLAKE COMPUTING'], defaultAccount: '5100', vendorType: 'Data Warehouse', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'DATABRICKS', defaultAccount: '5100', vendorType: 'Data Platform', isRecurring: true, paymentFrequency: 'monthly' },
+
+    // Security & Compliance
+    { vendorName: 'OKTA', alternateNames: ['OKTA INC'], defaultAccount: '6200', vendorType: 'SSO/Identity', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'VANTA', defaultAccount: '6200', vendorType: 'Compliance', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'DRATA', defaultAccount: '6200', vendorType: 'Compliance', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: '1PASSWORD', alternateNames: ['ONE PASSWORD'], defaultAccount: '6200', vendorType: 'Password Management', isRecurring: true, paymentFrequency: 'monthly' },
+    { vendorName: 'LASTPASS', alternateNames: ['LAST PASS'], defaultAccount: '6200', vendorType: 'Password Management', isRecurring: true, paymentFrequency: 'monthly' }
   ],
 
   kpis: [

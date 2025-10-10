@@ -3,6 +3,7 @@ import {
   doc,
   getDocs,
   setDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -15,7 +16,7 @@ import { db } from '@/lib/firebase/config';
 import { BankTransaction } from '@/types/bank-statement';
 import { JournalEntry, JournalLine, JournalSource } from '@/types/accounting/journal';
 import { PostingService } from './posting-service';
-import { ChartOfAccountsService } from './chart-of-accounts-service';
+import { IndustryTemplateService, CompanyAccountRecord } from './industry-template-service';
 import { AccountRecord } from '@/types/accounting/chart-of-accounts';
 
 export interface GLMappingRule {
@@ -84,11 +85,11 @@ export interface PostingResult {
 
 export class BankToLedgerService {
   private postingService: PostingService;
-  private coaService: ChartOfAccountsService;
+  private coaService: IndustryTemplateService;
 
   constructor(private companyId: string) {
     this.postingService = new PostingService({ tenantId: companyId });
-    this.coaService = new ChartOfAccountsService(companyId);
+    this.coaService = new IndustryTemplateService(companyId);
   }
 
   /**
@@ -136,7 +137,7 @@ export class BankToLedgerService {
    */
   async suggestGLAccounts(
     transaction: BankTransaction
-  ): Promise<{ debitAccount?: AccountRecord; creditAccount?: AccountRecord; confidence: number }> {
+  ): Promise<{ debitAccount?: CompanyAccountRecord; creditAccount?: CompanyAccountRecord; confidence: number }> {
     // Get active mapping rules
     const rules = await this.getMappingRules();
 
@@ -202,7 +203,7 @@ export class BankToLedgerService {
    */
   private async getDefaultSuggestions(
     transaction: BankTransaction
-  ): Promise<{ debitAccount?: AccountRecord; creditAccount?: AccountRecord; confidence: number }> {
+  ): Promise<{ debitAccount?: CompanyAccountRecord; creditAccount?: CompanyAccountRecord; confidence: number }> {
     const accounts = await this.coaService.listAccounts();
 
     // Common account mappings
@@ -275,6 +276,33 @@ export class BankToLedgerService {
     );
 
     return ruleData;
+  }
+
+  /**
+   * Get all mapping rules (including inactive ones)
+   */
+  async getAllMappingRules(): Promise<GLMappingRule[]> {
+    const rulesQuery = query(
+      collection(db, `companies/${this.companyId}/glMappingRules`),
+      orderBy('priority', 'asc')
+    );
+
+    const snapshot = await getDocs(rulesQuery);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      companyId: this.companyId,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+    } as GLMappingRule));
+  }
+
+  /**
+   * Delete a mapping rule by ID
+   */
+  async deleteMappingRule(ruleId: string): Promise<void> {
+    const ruleRef = doc(db, `companies/${this.companyId}/glMappingRules`, ruleId);
+    await deleteDoc(ruleRef);
   }
 
   /**

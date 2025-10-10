@@ -45,10 +45,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/workspace/${companyId}/reconciliation`, request.url));
   }
 
-  // Handle other /companies/[id]/* routes
+  // Handle other /companies/[id]/* routes (but exclude edit route)
   const companyMatch = pathname.match(/^\/companies\/([^\/]+)\/(.+)/);
   if (companyMatch) {
     const [, companyId, feature] = companyMatch;
+
+    // Don't redirect the edit route - it's a valid companies route
+    if (feature === 'edit') {
+      return NextResponse.next();
+    }
+
     // Map old feature names to new ones if needed
     const featureMap: Record<string, string> = {
       'bank-statements': 'bank-statements',

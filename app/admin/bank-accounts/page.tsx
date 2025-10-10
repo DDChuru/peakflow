@@ -61,6 +61,7 @@ interface BankAccountFormState {
   accountType: BankAccountType;
   bankName: string;
   branch: string;
+  branchCode: string;
   country: string;
   currency: string;
   glAccountId: string;
@@ -104,6 +105,7 @@ const defaultBankAccountForm = (currency = ''): BankAccountFormState => ({
   accountType: 'checking',
   bankName: '',
   branch: '',
+  branchCode: '',
   country: '',
   currency: currency,
   glAccountId: '',
@@ -181,6 +183,7 @@ export default function BankAccountsAdminPage() {
 
   // Dialog states
   const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
+  const [showEditAccountDialog, setShowEditAccountDialog] = useState(false);
   const [showSignatoryDialog, setShowSignatoryDialog] = useState(false);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
@@ -190,6 +193,7 @@ export default function BankAccountsAdminPage() {
   const [signatoryForm, setSignatoryForm] = useState<SignatoryFormState>(defaultSignatoryForm);
   const [transferForm, setTransferForm] = useState<TransferFormState>(defaultTransferForm);
   const [submitting, setSubmitting] = useState(false);
+  const [validationAttempted, setValidationAttempted] = useState(false);
 
   // Load data
   useEffect(() => {
@@ -235,13 +239,29 @@ export default function BankAccountsAdminPage() {
 
   const loadGLAccounts = async (companyId: string): Promise<AccountRecord[]> => {
     try {
-      const charts = await chartService.getCharts(companyId);
-      if (charts.length === 0) return [];
+      // Load from company-scoped chart of accounts subcollection
+      const { collection, query: firestoreQuery, where, orderBy: firestoreOrderBy, getDocs } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase/config');
 
-      const accounts = await chartService.getAccounts(companyId, charts[0].id);
-      return accounts.filter(acc => acc.type === 'asset' && acc.isActive);
+      const accountsRef = collection(db, `companies/${companyId}/chartOfAccounts`);
+      const accountsQuery = firestoreQuery(
+        accountsRef,
+        where('type', '==', 'asset'),
+        where('isActive', '==', true),
+        firestoreOrderBy('code')
+      );
+
+      const snapshot = await getDocs(accountsQuery);
+      const accounts = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as AccountRecord[];
+
+      console.log(`[Bank Accounts] Loaded ${accounts.length} GL accounts for company ${companyId}`);
+      return accounts;
     } catch (error) {
       console.error('Failed to load GL accounts', error);
+      toast.error('Could not load GL accounts. Please ensure Chart of Accounts is set up for this company.');
       return [];
     }
   };
@@ -283,14 +303,20 @@ export default function BankAccountsAdminPage() {
   const handleCreateAccount = async () => {
     if (!selectedTenantId || !user?.uid) return;
 
-    // Validation
-    if (!accountForm.name.trim() || !accountForm.accountNumber.trim() || !accountForm.bankName.trim()) {
-      toast.error('Name, account number, and bank name are required');
-      return;
-    }
+    setValidationAttempted(true);
 
-    if (!accountForm.glAccountId) {
-      toast.error('GL account is required');
+    // Validation
+    const errors: string[] = [];
+    if (!accountForm.name.trim()) errors.push('Account name');
+    if (!accountForm.accountNumber.trim()) errors.push('Account number');
+    if (!accountForm.bankName.trim()) errors.push('Bank name');
+    if (!accountForm.glAccountId) errors.push('GL account');
+
+    if (errors.length > 0) {
+      toast.error(`Please fill in required fields: ${errors.join(', ')}`, {
+        duration: 5000,
+        icon: '⚠️',
+      });
       return;
     }
 
@@ -299,28 +325,38 @@ export default function BankAccountsAdminPage() {
 
       const balanceAsOf = accountForm.balance.asOf ? new Date(accountForm.balance.asOf) : new Date();
 
+      // Build account data, only including fields with actual values
+      const accountData: any = {
+        name: accountForm.name.trim(),
+        accountNumber: accountForm.accountNumber.trim(),
+        accountType: accountForm.accountType,
+        bankName: accountForm.bankName.trim(),
+        currency: accountForm.currency.trim(),
+        glAccountId: accountForm.glAccountId,
+        isPrimary: accountForm.isPrimary,
+        status: 'active',
+        signatories: [],
+        balance: {
+          ledger: Number(accountForm.balance.ledger) || 0,
+          currency: accountForm.currency.trim(),
+          asOf: balanceAsOf,
+        },
+      };
+
+      // Only add optional fields if they have values
+      if (accountForm.branch.trim()) accountData.branch = accountForm.branch.trim();
+      if (accountForm.branchCode.trim()) accountData.branchCode = accountForm.branchCode.trim();
+      if (accountForm.country.trim()) accountData.country = accountForm.country.trim();
+      if (accountForm.balance.available) {
+        accountData.balance.available = Number(accountForm.balance.available);
+      }
+      if (accountForm.approvalThreshold) {
+        accountData.approvalThreshold = Number(accountForm.approvalThreshold);
+      }
+
       await bankAccountService.createBankAccount(
         selectedTenantId,
-        {
-          name: accountForm.name.trim(),
-          accountNumber: accountForm.accountNumber.trim(),
-          accountType: accountForm.accountType,
-          bankName: accountForm.bankName.trim(),
-          branch: accountForm.branch.trim() || undefined,
-          country: accountForm.country.trim() || undefined,
-          currency: accountForm.currency.trim(),
-          glAccountId: accountForm.glAccountId,
-          isPrimary: accountForm.isPrimary,
-          status: 'active',
-          signatories: [],
-          balance: {
-            ledger: Number(accountForm.balance.ledger) || 0,
-            available: accountForm.balance.available ? Number(accountForm.balance.available) : undefined,
-            currency: accountForm.currency.trim(),
-            asOf: balanceAsOf,
-          },
-          approvalThreshold: accountForm.approvalThreshold ? Number(accountForm.approvalThreshold) : undefined,
-        },
+        accountData,
         user.uid
       );
 
@@ -330,9 +366,117 @@ export default function BankAccountsAdminPage() {
       toast.success('Bank account created successfully');
       setShowNewAccountDialog(false);
       setAccountForm(defaultBankAccountForm());
+      setValidationAttempted(false);
     } catch (error) {
       console.error('Failed to create bank account', error);
       toast.error('Could not create bank account');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditAccount = (account: BankAccount) => {
+    // Populate form with account data
+    setAccountForm({
+      name: account.name,
+      accountNumber: account.accountNumber,
+      accountType: account.accountType,
+      bankName: account.bankName,
+      branch: account.branch || '',
+      branchCode: account.branchCode || '',
+      country: account.country || '',
+      currency: account.currency,
+      glAccountId: account.glAccountId,
+      isPrimary: account.isPrimary,
+      balance: {
+        ledger: account.balance.ledger.toString(),
+        available: account.balance.available?.toString() || '',
+        asOf: account.balance.asOf
+          ? new Date(account.balance.asOf).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10),
+      },
+      approvalThreshold: account.approvalThreshold?.toString() || '',
+    });
+    setSelectedAccount(account);
+    setShowEditAccountDialog(true);
+  };
+
+  const handleUpdateAccount = async () => {
+    if (!selectedTenantId || !user?.uid || !selectedAccount) return;
+
+    setValidationAttempted(true);
+
+    // Validation
+    const errors: string[] = [];
+    if (!accountForm.name.trim()) errors.push('Account name');
+    if (!accountForm.accountNumber.trim()) errors.push('Account number');
+    if (!accountForm.bankName.trim()) errors.push('Bank name');
+    if (!accountForm.glAccountId) errors.push('GL account');
+
+    if (errors.length > 0) {
+      toast.error(`Please fill in required fields: ${errors.join(', ')}`, {
+        duration: 5000,
+        icon: '⚠️',
+      });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const balanceAsOf = accountForm.balance.asOf ? new Date(accountForm.balance.asOf) : new Date();
+
+      // Build update data
+      const updateData: any = {
+        name: accountForm.name.trim(),
+        accountNumber: accountForm.accountNumber.trim(),
+        accountType: accountForm.accountType,
+        bankName: accountForm.bankName.trim(),
+        currency: accountForm.currency.trim(),
+        glAccountId: accountForm.glAccountId,
+        isPrimary: accountForm.isPrimary,
+        balance: {
+          ledger: Number(accountForm.balance.ledger) || 0,
+          currency: accountForm.currency.trim(),
+          asOf: balanceAsOf,
+        },
+        updatedBy: user.uid,
+      };
+
+      // Only add optional fields if they have values
+      if (accountForm.branch.trim()) {
+        updateData.branch = accountForm.branch.trim();
+      }
+      if (accountForm.branchCode.trim()) {
+        updateData.branchCode = accountForm.branchCode.trim();
+      }
+      if (accountForm.country.trim()) {
+        updateData.country = accountForm.country.trim();
+      }
+      if (accountForm.balance.available) {
+        updateData.balance.available = Number(accountForm.balance.available);
+      }
+      if (accountForm.approvalThreshold) {
+        updateData.approvalThreshold = Number(accountForm.approvalThreshold);
+      }
+
+      await bankAccountService.updateBankAccount(
+        selectedTenantId,
+        selectedAccount.id,
+        updateData
+      );
+
+      const refreshedAccounts = await bankAccountService.listBankAccounts(selectedTenantId, { includeInactive: true });
+      setBankAccounts(refreshedAccounts);
+
+      toast.success('Bank account updated successfully');
+      setShowEditAccountDialog(false);
+      setAccountForm(defaultBankAccountForm());
+      setSelectedAccount(null);
+      setValidationAttempted(false);
+    } catch (error) {
+      console.error('Failed to update bank account', error);
+      toast.error('Could not update bank account');
     } finally {
       setSubmitting(false);
     }
@@ -575,6 +719,7 @@ export default function BankAccountsAdminPage() {
             accounts={filteredAccounts}
             loading={loading}
             onStatusChange={handleStatusChange}
+            onEditAccount={handleEditAccount}
             onManageSignatories={(account) => {
               setSelectedAccount(account);
               setShowSignatoryDialog(true);
@@ -604,7 +749,37 @@ export default function BankAccountsAdminPage() {
             glAccounts={glAccounts}
             onSubmit={handleCreateAccount}
             submitting={submitting}
-            onCancel={() => setShowNewAccountDialog(false)}
+            validationAttempted={validationAttempted}
+            mode="create"
+            onCancel={() => {
+              setShowNewAccountDialog(false);
+              setAccountForm(defaultBankAccountForm());
+              setValidationAttempted(false);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Account Dialog */}
+      <Dialog open={showEditAccountDialog} onOpenChange={setShowEditAccountDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit bank account</DialogTitle>
+          </DialogHeader>
+          <BankAccountForm
+            form={accountForm}
+            onChange={setAccountForm}
+            glAccounts={glAccounts}
+            onSubmit={handleUpdateAccount}
+            submitting={submitting}
+            validationAttempted={validationAttempted}
+            mode="edit"
+            onCancel={() => {
+              setShowEditAccountDialog(false);
+              setAccountForm(defaultBankAccountForm());
+              setSelectedAccount(null);
+              setValidationAttempted(false);
+            }}
           />
         </DialogContent>
       </Dialog>
@@ -686,6 +861,7 @@ interface BankAccountsTableProps {
   onStatusChange: (accountId: string, newStatus: BankAccountStatus) => void;
   onManageSignatories: (account: BankAccount) => void;
   onInitiateTransfer: (account: BankAccount) => void;
+  onEditAccount: (account: BankAccount) => void;
 }
 
 function BankAccountsTable({
@@ -694,6 +870,7 @@ function BankAccountsTable({
   onStatusChange,
   onManageSignatories,
   onInitiateTransfer,
+  onEditAccount,
 }: BankAccountsTableProps) {
   if (loading) {
     return (
@@ -817,8 +994,18 @@ function BankAccountsTable({
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => onEditAccount(account)}
+                        className="h-8 w-8 p-0"
+                        title="Edit account"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => onManageSignatories(account)}
                         className="h-8 w-8 p-0"
+                        title="Manage signatories"
                       >
                         <Users className="h-4 w-4" />
                       </Button>
@@ -828,6 +1015,7 @@ function BankAccountsTable({
                           size="sm"
                           onClick={() => onInitiateTransfer(account)}
                           className="h-8 w-8 p-0"
+                          title="Initiate transfer"
                         >
                           <Send className="h-4 w-4" />
                         </Button>
@@ -860,6 +1048,8 @@ interface BankAccountFormProps {
   onSubmit: () => void;
   onCancel: () => void;
   submitting: boolean;
+  validationAttempted?: boolean;
+  mode: 'create' | 'edit';
 }
 
 function BankAccountForm({
@@ -869,22 +1059,38 @@ function BankAccountForm({
   onSubmit,
   onCancel,
   submitting,
+  validationAttempted = false,
+  mode,
 }: BankAccountFormProps) {
+  const hasError = (fieldValue: string) => validationAttempted && !fieldValue.trim();
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
-        <Input
-          label="Account name"
-          placeholder="e.g. Primary Checking Account"
-          value={form.name}
-          onChange={(e) => onChange({ ...form, name: e.target.value })}
-        />
-        <Input
-          label="Account number"
-          placeholder="e.g. 1234567890"
-          value={form.accountNumber}
-          onChange={(e) => onChange({ ...form, accountNumber: e.target.value })}
-        />
+        <div>
+          <Input
+            label="Account name *"
+            placeholder="e.g. Primary Checking Account"
+            value={form.name}
+            onChange={(e) => onChange({ ...form, name: e.target.value })}
+            className={hasError(form.name) ? 'border-red-500 focus:ring-red-500' : ''}
+          />
+          {hasError(form.name) && (
+            <p className="text-xs text-red-600 mt-1">Account name is required</p>
+          )}
+        </div>
+        <div>
+          <Input
+            label="Account number *"
+            placeholder="e.g. 1234567890"
+            value={form.accountNumber}
+            onChange={(e) => onChange({ ...form, accountNumber: e.target.value })}
+            className={hasError(form.accountNumber) ? 'border-red-500 focus:ring-red-500' : ''}
+          />
+          {hasError(form.accountNumber) && (
+            <p className="text-xs text-red-600 mt-1">Account number is required</p>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -903,29 +1109,52 @@ function BankAccountForm({
           </select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">GL Account</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">GL Account *</label>
           <select
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+            className={cn(
+              "w-full rounded-lg border bg-white px-3 py-2 text-sm",
+              glAccounts.length === 0 ? "border-amber-300 bg-amber-50" :
+              validationAttempted && !form.glAccountId ? "border-red-500 focus:ring-red-500" :
+              "border-gray-200"
+            )}
             value={form.glAccountId}
             onChange={(e) => onChange({ ...form, glAccountId: e.target.value })}
           >
-            <option value="">Select GL account</option>
+            <option value="">
+              {glAccounts.length === 0
+                ? "⚠️ No GL accounts available - Set up Chart of Accounts first"
+                : "Select GL account (required)"}
+            </option>
             {glAccounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.code} - {account.name}
               </option>
             ))}
           </select>
+          {glAccounts.length === 0 && (
+            <p className="text-xs text-amber-600 mt-1">
+              Go to Companies → Edit Company → Reset COA to create GL accounts
+            </p>
+          )}
+          {validationAttempted && !form.glAccountId && glAccounts.length > 0 && (
+            <p className="text-xs text-red-600 mt-1">GL account is required</p>
+          )}
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Input
-          label="Bank name"
-          placeholder="e.g. First National Bank"
-          value={form.bankName}
-          onChange={(e) => onChange({ ...form, bankName: e.target.value })}
-        />
+        <div>
+          <Input
+            label="Bank name *"
+            placeholder="e.g. First National Bank"
+            value={form.bankName}
+            onChange={(e) => onChange({ ...form, bankName: e.target.value })}
+            className={hasError(form.bankName) ? 'border-red-500 focus:ring-red-500' : ''}
+          />
+          {hasError(form.bankName) && (
+            <p className="text-xs text-red-600 mt-1">Bank name is required</p>
+          )}
+        </div>
         <Input
           label="Branch (optional)"
           placeholder="e.g. Downtown Branch"
@@ -936,16 +1165,25 @@ function BankAccountForm({
 
       <div className="grid gap-4 md:grid-cols-2">
         <Input
-          label="Currency"
-          placeholder="e.g. USD"
-          value={form.currency}
-          onChange={(e) => onChange({ ...form, currency: e.target.value.toUpperCase() })}
+          label="Branch Code (optional)"
+          placeholder="e.g. 250655"
+          value={form.branchCode}
+          onChange={(e) => onChange({ ...form, branchCode: e.target.value })}
         />
         <Input
           label="Country (optional)"
           placeholder="e.g. United States"
           value={form.country}
           onChange={(e) => onChange({ ...form, country: e.target.value })}
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Input
+          label="Currency"
+          placeholder="e.g. USD"
+          value={form.currency}
+          onChange={(e) => onChange({ ...form, currency: e.target.value.toUpperCase() })}
         />
       </div>
 
@@ -1008,7 +1246,7 @@ function BankAccountForm({
           Cancel
         </Button>
         <Button onClick={onSubmit} loading={submitting} disabled={submitting}>
-          Create account
+          {mode === 'create' ? 'Create account' : 'Update account'}
         </Button>
       </div>
     </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Building2, ShieldCheck, Users, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Building2, ShieldCheck, Users, ToggleLeft, ToggleRight, Factory, Edit, ArrowRight } from 'lucide-react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PageHeader } from '@/components/ui/navigation';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { Company, CompanyType } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { INDUSTRY_TEMPLATES } from '@/lib/accounting/industry-knowledge-base';
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -214,83 +215,129 @@ export default function CompaniesPage() {
             <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredCompanies.map((company, index) => (
                 <FadeIn key={company.id} delay={0.05 * index}>
-                  <Card hover className="bg-white border border-gray-100">
-                    <div className="p-6 space-y-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          {company.logoUrl ? (
-                            <img
-                              src={company.logoUrl}
-                              alt={company.name}
-                              className="h-12 w-12 rounded-xl object-cover"
-                            />
-                          ) : (
-                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                              {company.name.charAt(0).toUpperCase()}
+                  <Card hover className="bg-white border border-gray-100 overflow-hidden relative group">
+                    {/* Logo watermark background */}
+                    {company.logoUrl && (
+                      <div className="absolute inset-0 opacity-[0.03] group-hover:opacity-[0.04] transition-opacity duration-300">
+                        <img
+                          src={company.logoUrl}
+                          alt=""
+                          className="w-full h-full object-cover scale-110"
+                        />
+                      </div>
+                    )}
+
+                    <div className="relative p-6 space-y-4">
+                      {/* Header with logo and status */}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          {/* Logo - smaller, more refined */}
+                          <div className="flex-shrink-0">
+                            {company.logoUrl ? (
+                              <div className="h-10 w-10 rounded-lg overflow-hidden ring-1 ring-gray-200">
+                                <img
+                                  src={company.logoUrl}
+                                  alt={company.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm ring-1 ring-indigo-200">
+                                {company.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Company info */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg font-semibold text-gray-900 truncate">{company.name}</h3>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-xs font-medium text-gray-500">
+                                {company.type === 'peakflow' ? 'PeakFlow' : 'Client'}
+                              </span>
+                              <span className="text-gray-300">·</span>
+                              <span className="text-xs text-gray-500 truncate">
+                                {company.domain || 'www.orlicron.com'}
+                              </span>
                             </div>
-                          )}
-                          <div>
-                            <h3 className="text-base font-semibold text-gray-900">{company.name}</h3>
-                            <p className="text-sm text-gray-500">
-                              {company.type === 'peakflow' ? 'PeakFlow' : 'Client'} ·{' '}
-                              {company.domain || 'No domain'}
-                            </p>
+                            {company.industry && INDUSTRY_TEMPLATES[company.industry] && (
+                              <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                <Factory className="h-3 w-3" />
+                                <span className="text-xs font-medium">
+                                  {INDUSTRY_TEMPLATES[company.industry].name}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
+
+                        {/* Status badge */}
                         <span
                           className={cn(
-                            'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold',
-                            company.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                            'flex-shrink-0 inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset',
+                            company.isActive
+                              ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                              : 'bg-gray-50 text-gray-600 ring-gray-500/20'
                           )}
                         >
                           {company.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </div>
 
-                      <div className="space-y-2 text-sm text-gray-600">
-                        {company.email && <p>{company.email}</p>}
+                      {/* Contact details */}
+                      <div className="space-y-1 text-sm text-gray-600 min-h-[2.5rem]">
+                        {company.email && (
+                          <p className="truncate" title={company.email}>{company.email}</p>
+                        )}
                         {company.phone && <p>{company.phone}</p>}
                         {!company.email && !company.phone && (
-                          <p className="text-xs text-gray-400">No contact details captured yet.</p>
+                          <p className="text-xs text-gray-400 italic">No contact details</p>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <Link href={`/companies/${company.id}`}>
-                          <Button variant="outline" size="sm">
-                            View details
+                      {/* Action buttons */}
+                      <div className="flex flex-col gap-2 pt-2">
+                        <Link href={`/workspace/${company.id}/dashboard`} className="w-full">
+                          <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                            <ArrowRight className="h-4 w-4 mr-2" />
+                            Open Workspace
                           </Button>
                         </Link>
-                        <Link href={`/companies/${company.id}/financial-dashboard`}>
-                          <Button variant="outline" size="sm">
-                            Financial dashboard
-                          </Button>
-                        </Link>
-                        <Link href={`/dashboard/bank-statements/${company.id}`}>
-                          <Button variant="outline" size="sm">
-                            Bank statements
-                          </Button>
-                        </Link>
+                        <div className="flex gap-2">
+                          <Link href={`/companies/${company.id}`} className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full">
+                              View details
+                            </Button>
+                          </Link>
+                          <Link href={`/companies/${company.id}/edit`} className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
 
+                      {/* Admin actions */}
                       {canManageCompanies && (
                         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleToggleStatus(company)}
-                            className={company.isActive ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'}
+                            className={company.isActive ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'}
                           >
-                            {company.isActive ? <ToggleLeft className="h-4 w-4" /> : <ToggleRight className="h-4 w-4" />}
+                            {company.isActive ? <ToggleLeft className="h-4 w-4 mr-1" /> : <ToggleRight className="h-4 w-4 mr-1" />}
                             {company.isActive ? 'Deactivate' : 'Activate'}
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               setCompanyToDelete(company);
                               setShowDeleteModal(true);
                             }}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
                             Delete
                           </Button>

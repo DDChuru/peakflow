@@ -13,10 +13,25 @@ import {
   serverTimestamp,
   DocumentData,
   QueryConstraint,
-  Timestamp
+  Timestamp,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from './config';
-import { Creditor, CreditorSummary } from '@/types/financial';
+import { Creditor, CreditorSummary, FinancialContact, ContactPerson } from '@/types/financial';
+
+// Browser-compatible UUID generation
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 export class CreditorService {
   private getCollectionPath(companyId: string): string {
@@ -249,6 +264,8 @@ export class CreditorService {
       category: data.category,
       notes: data.notes,
       metadata: data.metadata,
+      primaryContact: data.primaryContact,
+      financialContacts: data.financialContacts || [],
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
       createdBy: data.createdBy
@@ -319,6 +336,195 @@ export class CreditorService {
     } catch (error) {
       console.error('Error getting creditor categories:', error);
       throw new Error(`Failed to get creditor categories: ${error}`);
+    }
+  }
+
+  /**
+   * Add a financial contact to a creditor
+   */
+  async addFinancialContact(
+    companyId: string,
+    creditorId: string,
+    contact: {
+      name: string;
+      email: string;
+      phone?: string;
+      position: string;
+      isPrimary?: boolean;
+    }
+  ): Promise<FinancialContact> {
+    try {
+      const newContact: FinancialContact = {
+        id: generateUUID(),
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        position: contact.position,
+        isActive: true,
+        isPrimary: contact.isPrimary || false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const creditorRef = doc(db, this.getCollectionPath(companyId), creditorId);
+      await updateDoc(creditorRef, {
+        financialContacts: arrayUnion(newContact),
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[CreditorService] Added financial contact to creditor: ${creditorId}`);
+      return newContact;
+    } catch (error) {
+      console.error('Error adding financial contact:', error);
+      throw new Error(`Failed to add financial contact: ${error}`);
+    }
+  }
+
+  /**
+   * Update a financial contact
+   */
+  async updateFinancialContact(
+    companyId: string,
+    creditorId: string,
+    contactId: string,
+    updates: Partial<Omit<FinancialContact, 'id' | 'createdAt'>>
+  ): Promise<void> {
+    try {
+      const creditor = await this.getCreditor(companyId, creditorId);
+      if (!creditor?.financialContacts) {
+        throw new Error('No financial contacts found');
+      }
+
+      const updatedContacts = creditor.financialContacts.map(contact => {
+        if (contact.id === contactId) {
+          return {
+            ...contact,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return contact;
+      });
+
+      const creditorRef = doc(db, this.getCollectionPath(companyId), creditorId);
+      await updateDoc(creditorRef, {
+        financialContacts: updatedContacts,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[CreditorService] Updated financial contact: ${contactId}`);
+    } catch (error) {
+      console.error('Error updating financial contact:', error);
+      throw new Error(`Failed to update financial contact: ${error}`);
+    }
+  }
+
+  /**
+   * Remove a financial contact
+   */
+  async removeFinancialContact(
+    companyId: string,
+    creditorId: string,
+    contactId: string
+  ): Promise<void> {
+    try {
+      const creditor = await this.getCreditor(companyId, creditorId);
+      if (!creditor?.financialContacts) {
+        return;
+      }
+
+      const contactToRemove = creditor.financialContacts.find(c => c.id === contactId);
+      if (!contactToRemove) {
+        return;
+      }
+
+      const creditorRef = doc(db, this.getCollectionPath(companyId), creditorId);
+      await updateDoc(creditorRef, {
+        financialContacts: arrayRemove(contactToRemove),
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[CreditorService] Removed financial contact: ${contactId}`);
+    } catch (error) {
+      console.error('Error removing financial contact:', error);
+      throw new Error(`Failed to remove financial contact: ${error}`);
+    }
+  }
+
+  /**
+   * Get all active financial contact emails (for mailing list)
+   */
+  async getFinancialContactEmails(
+    companyId: string,
+    creditorId: string
+  ): Promise<string[]> {
+    try {
+      const creditor = await this.getCreditor(companyId, creditorId);
+
+      if (!creditor?.financialContacts) {
+        return [];
+      }
+
+      return creditor.financialContacts
+        .filter(contact => contact.isActive && contact.email)
+        .map(contact => contact.email);
+    } catch (error) {
+      console.error('Error getting financial contact emails:', error);
+      throw new Error(`Failed to get financial contact emails: ${error}`);
+    }
+  }
+
+  /**
+   * Update primary contact information
+   */
+  async updatePrimaryContact(
+    companyId: string,
+    creditorId: string,
+    contact: ContactPerson
+  ): Promise<void> {
+    try {
+      const creditorRef = doc(db, this.getCollectionPath(companyId), creditorId);
+      await updateDoc(creditorRef, {
+        primaryContact: contact,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[CreditorService] Updated primary contact for creditor: ${creditorId}`);
+    } catch (error) {
+      console.error('Error updating primary contact:', error);
+      throw new Error(`Failed to update primary contact: ${error}`);
+    }
+  }
+
+  /**
+   * Get primary contact for a creditor
+   */
+  async getPrimaryContact(
+    companyId: string,
+    creditorId: string
+  ): Promise<ContactPerson | null> {
+    try {
+      const creditor = await this.getCreditor(companyId, creditorId);
+      return creditor?.primaryContact || null;
+    } catch (error) {
+      console.error('Error getting primary contact:', error);
+      throw new Error(`Failed to get primary contact: ${error}`);
+    }
+  }
+
+  /**
+   * Get all financial contacts for a creditor
+   */
+  async getFinancialContacts(
+    companyId: string,
+    creditorId: string
+  ): Promise<FinancialContact[]> {
+    try {
+      const creditor = await this.getCreditor(companyId, creditorId);
+      return creditor?.financialContacts || [];
+    } catch (error) {
+      console.error('Error getting financial contacts:', error);
+      throw new Error(`Failed to get financial contacts: ${error}`);
     }
   }
 }

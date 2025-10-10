@@ -6,8 +6,6 @@ export interface QuoteLineItem {
   quantity: number;
   unitPrice: number;
   amount: number;
-  taxRate?: number;
-  taxAmount?: number;
   glAccountId: string; // Revenue account for eventual invoice
   accountCode?: string;
   itemCode?: string;
@@ -38,6 +36,7 @@ export interface Quote {
 
   // Financial
   subtotal: number;
+  taxRate?: number; // Document-level tax rate percentage
   taxAmount: number;
   totalAmount: number;
   currency: string;
@@ -90,9 +89,10 @@ export interface QuoteCreateRequest {
   // Financial
   currency: string;
   exchangeRate?: number;
+  taxRate?: number; // Document-level tax rate percentage
 
   // Content
-  lineItems: Omit<QuoteLineItem, 'id' | 'amount' | 'taxAmount'>[];
+  lineItems: Omit<QuoteLineItem, 'id' | 'amount'>[];
 
   // Optional
   notes?: string;
@@ -107,7 +107,8 @@ export interface QuoteCreateRequest {
 export interface QuoteRevisionRequest {
   quoteId: string;
   changes: {
-    lineItems?: Omit<QuoteLineItem, 'id' | 'amount' | 'taxAmount'>[];
+    lineItems?: Omit<QuoteLineItem, 'id' | 'amount'>[];
+    taxRate?: number;
     validityPeriod?: number;
     notes?: string;
     termsAndConditions?: string;

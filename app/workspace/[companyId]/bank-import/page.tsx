@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 import {
   Upload,
   FileText,
@@ -28,11 +28,16 @@ import {
   Sparkles
 } from 'lucide-react';
 import { BankToLedgerImport } from '@/components/banking/BankToLedgerImport';
-import { BankStatementUpload } from '@/components/bank-statement/BankStatementUpload';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import BankStatementUpload from '@/components/bank-statement/BankStatementUpload';
+import { useAuth } from '@/contexts/AuthContext';
+import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { bankAccountService } from '@/lib/firebase';
+import { CompaniesService } from '@/lib/firebase/companies-service';
+import { IndustryTemplateService } from '@/lib/accounting/industry-template-service';
 import { BankAccount } from '@/types/accounting/bank-account';
+import { Company } from '@/types/auth';
+import { GLMappingRule } from '@/types/accounting/bank-import';
 
 interface ImportSession {
   id: string;
@@ -46,29 +51,52 @@ interface ImportSession {
 export default function BankImportPage() {
   const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
   const { user } = useAuth();
 
   const companyId = params.companyId as string;
 
+  // Check workspace access
+  const { canAccess, loading: accessLoading, error: accessError } = useWorkspaceAccess(companyId);
+
   const [loading, setLoading] = useState(false);
+  const [company, setCompany] = useState<Company | null>(null);
   const [activeTab, setActiveTab] = useState<'import' | 'upload' | 'history' | 'rules'>('import');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>('');
   const [importHistory, setImportHistory] = useState<ImportSession[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [mappingRules, setMappingRules] = useState<GLMappingRule[]>([]);
+  const [loadingRules, setLoadingRules] = useState(false);
+  const [stats, setStats] = useState({
+    transactionsThisMonth: 0,
+    autoMappedPercentage: 0,
+    totalValueThisMonth: 0,
+    activeMappingRules: 0
+  });
 
-  // Load bank accounts
+  // Load company data and bank accounts
   useEffect(() => {
     if (companyId) {
+      loadCompany();
       loadBankAccounts();
       loadImportHistory();
+      loadMappingRules();
     }
   }, [companyId]);
 
+  const loadCompany = async () => {
+    try {
+      const companiesService = new CompaniesService();
+      const companyData = await companiesService.getCompanyById(companyId);
+      setCompany(companyData);
+    } catch (error) {
+      console.error('Failed to load company:', error);
+    }
+  };
+
   const loadBankAccounts = async () => {
     try {
-      const accounts = await bankAccountService.list(companyId);
+      const accounts = await bankAccountService.listBankAccounts(companyId);
       setBankAccounts(accounts);
       if (accounts.length > 0 && !selectedBankAccount) {
         setSelectedBankAccount(accounts[0].id);
@@ -78,27 +106,68 @@ export default function BankImportPage() {
     }
   };
 
+  const loadMappingRules = async () => {
+    try {
+      setLoadingRules(true);
+      const templateService = new IndustryTemplateService(companyId);
+      const rules = await templateService.getAllMappingRules();
+      console.log(`[Bank Import] Loaded ${rules.length} GL mapping rules`);
+      setMappingRules(rules);
+
+      // Update stats with active rule count
+      const activeRules = rules.filter(r => r.isActive).length;
+      setStats(prev => ({ ...prev, activeMappingRules: activeRules }));
+    } catch (error) {
+      console.error('Failed to load mapping rules:', error);
+      toast.error('Failed to load mapping rules');
+    } finally {
+      setLoadingRules(false);
+    }
+  };
+
   const loadImportHistory = async () => {
-    // This would load from the bankImportSessions collection
-    // For now, using mock data
-    setImportHistory([
-      {
-        id: '1',
-        date: '2025-01-15',
-        status: 'completed',
-        totalTransactions: 45,
-        postedTransactions: 45,
-        totalAmount: 12500.00
-      },
-      {
-        id: '2',
-        date: '2025-01-10',
-        status: 'completed',
-        totalTransactions: 32,
-        postedTransactions: 30,
-        totalAmount: 8750.50
-      }
-    ]);
+    try {
+      // TODO: Implement real query from bankImportSessions collection
+      // const sessions = await bankImportSessionService.listSessions(companyId);
+      // setImportHistory(sessions);
+
+      // For now, set empty array - real implementation coming in Phase 6
+      setImportHistory([]);
+      await calculateStats();
+    } catch (error) {
+      console.error('Failed to load import history:', error);
+      setImportHistory([]);
+    }
+  };
+
+  const calculateStats = async () => {
+    try {
+      // TODO: Query real data from Firestore
+      // For now, calculate from importHistory if available
+      const thisMonth = importHistory.filter(session => {
+        const sessionDate = new Date(session.date);
+        const now = new Date();
+        return sessionDate.getMonth() === now.getMonth() &&
+               sessionDate.getFullYear() === now.getFullYear();
+      });
+
+      const totalTransactions = thisMonth.reduce((sum, s) => sum + s.totalTransactions, 0);
+      const totalPosted = thisMonth.reduce((sum, s) => sum + s.postedTransactions, 0);
+      const totalValue = thisMonth.reduce((sum, s) => sum + s.totalAmount, 0);
+      const autoMappedPct = totalTransactions > 0
+        ? Math.round((totalPosted / totalTransactions) * 100)
+        : 0;
+
+      setStats(prev => ({
+        ...prev,
+        transactionsThisMonth: totalTransactions,
+        autoMappedPercentage: autoMappedPct,
+        totalValueThisMonth: totalValue
+        // activeMappingRules updated by loadMappingRules()
+      }));
+    } catch (error) {
+      console.error('Failed to calculate stats:', error);
+    }
   };
 
   const handleImportComplete = () => {
@@ -160,11 +229,9 @@ export default function BankImportPage() {
         <CardContent>
           <BankStatementUpload
             companyId={companyId}
-            onUploadComplete={() => {
-              toast({
-                title: 'Upload Complete',
-                description: 'Bank statement has been processed successfully'
-              });
+            companyName={company?.name || 'Company'}
+            onUploadSuccess={() => {
+              toast.success('Bank statement has been processed successfully');
               setActiveTab('import');
             }}
           />
@@ -186,71 +253,306 @@ export default function BankImportPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4">
-        {importHistory.map((session) => (
-          <Card key={session.id}>
-            <CardContent className="pt-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="font-semibold">Import Session #{session.id}</p>
-                    {session.status === 'completed' ? (
-                      <Badge variant="default">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Completed
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        Partial
-                      </Badge>
-                    )}
+      {importHistory.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12 text-muted-foreground">
+              <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="font-medium">No import history yet</p>
+              <p className="text-sm mt-2">
+                Import sessions will appear here after you upload and process bank statements
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setActiveTab('upload')}
+              >
+                Upload Your First Statement
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {importHistory.map((session) => (
+            <Card key={session.id}>
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="font-semibold">Import Session #{session.id}</p>
+                      {session.status === 'completed' ? (
+                        <Badge variant="default">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Completed
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          Partial
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Date: {session.date}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Transactions: {session.postedTransactions} / {session.totalTransactions}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">Date: {session.date}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Transactions: {session.postedTransactions} / {session.totalTransactions}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold">
+                      ${session.totalAmount.toFixed(2)}
+                    </p>
+                    <Button variant="ghost" size="sm" className="mt-2">
+                      View Details
+                    </Button>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold">
-                    ${session.totalAmount.toFixed(2)}
-                  </p>
-                  <Button variant="ghost" size="sm" className="mt-2">
-                    View Details
-                  </Button>
-                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderRulesTab = () => {
+    const activeRules = mappingRules.filter(r => r.isActive);
+    const inactiveRules = mappingRules.filter(r => !r.isActive);
+    const patternRules = activeRules.filter(r => !r.metadata?.vendor);
+    const vendorRules = activeRules.filter(r => r.metadata?.vendor);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-semibold">GL Mapping Rules</h3>
+            <p className="text-sm text-muted-foreground">
+              {mappingRules.length} total rules ({activeRules.length} active, {inactiveRules.length} inactive)
+            </p>
+          </div>
+          <Button onClick={loadMappingRules} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+
+        {loadingRules ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading mapping rules...</p>
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
-    </div>
-  );
+        ) : mappingRules.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-12 text-muted-foreground">
+                <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No mapping rules configured yet</p>
+                <p className="text-sm mt-2">Apply an industry template to automatically create mapping rules</p>
+                <Button
+                  className="mt-4"
+                  onClick={() => router.push(`/companies/${companyId}/edit`)}
+                >
+                  Go to Company Settings
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pattern Rules</p>
+                      <p className="text-2xl font-bold">{patternRules.length}</p>
+                    </div>
+                    <Search className="h-8 w-8 text-blue-500 opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
 
-  const renderRulesTab = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">GL Mapping Rules</h3>
-          <p className="text-sm text-muted-foreground">Configure automatic GL account mapping rules</p>
-        </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Rule
-        </Button>
-      </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Vendor Rules</p>
+                      <p className="text-2xl font-bold">{vendorRules.length}</p>
+                    </div>
+                    <CreditCard className="h-8 w-8 text-green-500 opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center py-12 text-muted-foreground">
-            <Settings className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No mapping rules configured yet</p>
-            <p className="text-sm mt-2">Create rules to automatically map bank transactions to GL accounts</p>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Active Rules</p>
+                      <p className="text-2xl font-bold">{activeRules.length}</p>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-emerald-500 opacity-50" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Pattern Rules Table */}
+            {patternRules.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="h-5 w-5" />
+                    Transaction Pattern Rules ({patternRules.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Auto-match transactions based on description patterns
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-4 font-medium">Pattern</th>
+                          <th className="text-left py-2 px-4 font-medium">Type</th>
+                          <th className="text-left py-2 px-4 font-medium">GL Account</th>
+                          <th className="text-left py-2 px-4 font-medium">Priority</th>
+                          <th className="text-left py-2 px-4 font-medium">Category</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {patternRules.slice(0, 50).map(rule => (
+                          <tr key={rule.id} className="border-b hover:bg-gray-50">
+                            <td className="py-2 px-4 font-mono text-xs">{rule.pattern}</td>
+                            <td className="py-2 px-4">
+                              <Badge variant="outline" className="text-xs">
+                                {rule.patternType}
+                              </Badge>
+                            </td>
+                            <td className="py-2 px-4">
+                              <div className="flex flex-col">
+                                <span className="font-medium">{rule.glAccountCode}</span>
+                                <span className="text-xs text-muted-foreground">{rule.glAccountName}</span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-4">{rule.priority}</td>
+                            <td className="py-2 px-4">
+                              {rule.metadata?.category && (
+                                <Badge className="text-xs">
+                                  {rule.metadata.category}
+                                </Badge>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {patternRules.length > 50 && (
+                      <div className="text-center py-4 text-sm text-muted-foreground">
+                        Showing 50 of {patternRules.length} pattern rules
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Vendor Rules Table */}
+            {vendorRules.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Vendor Mapping Rules ({vendorRules.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Auto-match transactions from recognized vendors
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-4 font-medium">Vendor</th>
+                          <th className="text-left py-2 px-4 font-medium">Pattern</th>
+                          <th className="text-left py-2 px-4 font-medium">GL Account</th>
+                          <th className="text-left py-2 px-4 font-medium">Priority</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vendorRules.slice(0, 50).map(rule => (
+                          <tr key={rule.id} className="border-b hover:bg-gray-50">
+                            <td className="py-2 px-4 font-medium">{rule.metadata?.vendor}</td>
+                            <td className="py-2 px-4 font-mono text-xs">{rule.pattern}</td>
+                            <td className="py-2 px-4">
+                              <div className="flex flex-col">
+                                <span className="font-medium">{rule.glAccountCode}</span>
+                                <span className="text-xs text-muted-foreground">{rule.glAccountName}</span>
+                              </div>
+                            </td>
+                            <td className="py-2 px-4">{rule.priority}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {vendorRules.length > 50 && (
+                      <div className="text-center py-4 text-sm text-muted-foreground">
+                        Showing 50 of {vendorRules.length} vendor rules
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Check access control
+  if (accessLoading) {
+    return (
+      <ProtectedRoute requireCompany>
+        <div className="container mx-auto p-6 max-w-7xl">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-gray-600">Checking workspace access...</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Access denied
+  if (!canAccess) {
+    return (
+      <ProtectedRoute requireCompany>
+        <div className="container mx-auto p-6 max-w-7xl">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {accessError || 'You do not have access to this workspace.'}
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4">
+            <Button onClick={() => router.push('/dashboard')}>
+              Return to Dashboard
+            </Button>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute requireCompany>
@@ -291,11 +593,13 @@ export default function BankImportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-2xl font-bold">127</p>
+                  <p className="text-2xl font-bold">{stats.transactionsThisMonth}</p>
                 </div>
                 <FileText className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Transactions imported</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stats.transactionsThisMonth === 0 ? 'No transactions yet' : 'Transactions imported'}
+              </p>
             </CardContent>
           </Card>
 
@@ -304,11 +608,13 @@ export default function BankImportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Auto-Mapped</p>
-                  <p className="text-2xl font-bold">85%</p>
+                  <p className="text-2xl font-bold">{stats.autoMappedPercentage}%</p>
                 </div>
                 <Sparkles className="h-8 w-8 text-blue-500" />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Success rate</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stats.autoMappedPercentage === 0 ? 'Start importing to track' : 'Success rate'}
+              </p>
             </CardContent>
           </Card>
 
@@ -317,11 +623,17 @@ export default function BankImportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Value</p>
-                  <p className="text-2xl font-bold">$45.2K</p>
+                  <p className="text-2xl font-bold">
+                    ${stats.totalValueThisMonth > 0
+                      ? (stats.totalValueThisMonth / 1000).toFixed(1) + 'K'
+                      : '0'}
+                  </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-500" />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">This month</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stats.totalValueThisMonth === 0 ? 'No imports yet' : 'This month'}
+              </p>
             </CardContent>
           </Card>
 
@@ -330,11 +642,13 @@ export default function BankImportPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Rules</p>
-                  <p className="text-2xl font-bold">12</p>
+                  <p className="text-2xl font-bold">{stats.activeMappingRules}</p>
                 </div>
                 <Settings className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground mt-2">Mapping rules</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stats.activeMappingRules === 0 ? 'Create your first rule' : 'Mapping rules'}
+              </p>
             </CardContent>
           </Card>
         </div>

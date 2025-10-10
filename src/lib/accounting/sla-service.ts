@@ -48,6 +48,31 @@ export class SLAService {
   }
 
   /**
+   * Generate a unique contract number for SLA
+   */
+  private async generateContractNumber(companyId: string): Promise<string> {
+    const year = new Date().getFullYear();
+    const slasQuery = query(
+      collection(db, this.getCollectionPath(companyId)),
+      where('contractNumber', '>=', `SLA-${year}-`),
+      where('contractNumber', '<', `SLA-${year + 1}-`),
+      orderBy('contractNumber', 'desc'),
+      limit(1)
+    );
+
+    const snapshot = await getDocs(slasQuery);
+    let nextNumber = 1;
+
+    if (!snapshot.empty) {
+      const lastSLA = snapshot.docs[0].data();
+      const lastNumber = parseInt(lastSLA.contractNumber.split('-')[2]) || 0;
+      nextNumber = lastNumber + 1;
+    }
+
+    return `SLA-${year}-${nextNumber.toString().padStart(4, '0')}`;
+  }
+
+  /**
    * Create a new service agreement
    */
   async createSLA(
@@ -56,26 +81,33 @@ export class SLAService {
     userId: string
   ): Promise<ServiceAgreement> {
     try {
-      // Validate SLA before creation
-      const validation = await this.validateSLA({ ...sla, companyId } as ServiceAgreement);
-      if (!validation.isValid) {
-        throw new Error(`SLA validation failed: ${validation.errors.map(e => e.message).join(', ')}`);
-      }
-
       const slaRef = doc(collection(db, this.getCollectionPath(companyId)));
 
-      // Calculate total contract value from line items
-      const totalValue = sla.lineItems.reduce((sum, item) => sum + item.amount, 0);
+      // Generate contract number
+      const contractNumber = await this.generateContractNumber(companyId);
+
+      // Calculate total contract value from line items (subtotal + tax)
+      const subtotal = sla.lineItems.reduce((sum, item) => sum + item.amount, 0);
+      const taxRate = sla.taxRate || 0;
+      const tax = subtotal * (taxRate / 100);
+      const totalValue = subtotal + tax;
 
       const newSLA: ServiceAgreement = {
         ...sla,
         id: slaRef.id,
         companyId,
+        contractNumber,
         contractValue: totalValue,
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: userId
       };
+
+      // Validate SLA after building complete object
+      const validation = await this.validateSLA(newSLA);
+      if (!validation.isValid) {
+        throw new Error(`SLA validation failed: ${validation.errors.map(e => e.message).join(', ')}`);
+      }
 
       // Generate line item IDs and ensure they have required fields
       newSLA.lineItems = sla.lineItems.map((item, index) => ({

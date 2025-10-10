@@ -1,10 +1,12 @@
 // Export all Firebase configurations and services
 export { app, auth, db, storage, functions } from './config';
 export { AdminService } from './admin-service';
+export { CompaniesService } from './companies-service';
 export { DebtorService } from './debtor-service';
 export { CreditorService } from './creditor-service';
 export { TransactionService } from './transaction-service';
 export { BankAccountService } from './bank-account-service';
+export { BankStatementService } from './bank-statement-service';
 export { ReconciliationService } from '../accounting/reconciliation-service';
 export { SLAService } from '../accounting/sla-service';
 export { RecurringInvoiceService } from '../accounting/recurring-invoice-service';
@@ -26,7 +28,9 @@ export type {
   PaymentReconciliation,
   DebtorSummary,
   CreditorSummary,
-  TransactionSummary
+  TransactionSummary,
+  ContactPerson,
+  FinancialContact
 } from '@/types/financial';
 
 // Export bank account types
@@ -116,6 +120,7 @@ export type {
   Company,
   UserRole,
   CompanyType,
+  SupportedCurrency,
   AuthState,
   LoginCredentials,
   SignupCredentials,
@@ -125,10 +130,12 @@ export type {
 
 // Create singleton instances for services
 import { AdminService } from './admin-service';
+import { CompaniesService } from './companies-service';
 import { DebtorService } from './debtor-service';
 import { CreditorService } from './creditor-service';
 import { TransactionService } from './transaction-service';
 import { BankAccountService } from './bank-account-service';
+import { BankStatementService } from './bank-statement-service';
 import { ReconciliationService } from '../accounting/reconciliation-service';
 import { SLAService } from '../accounting/sla-service';
 import { ChartOfAccountsService } from '../accounting/chart-of-accounts-service';
@@ -138,10 +145,12 @@ import { SalesOrderService } from '../accounting/sales-order-service';
 import { InvoiceIntegrationService } from '../accounting/invoice-integration-service';
 
 export const adminService = new AdminService();
+export const companiesService = new CompaniesService();
 export const debtorService = new DebtorService();
 export const creditorService = new CreditorService();
 export const transactionService = new TransactionService();
 export const bankAccountService = new BankAccountService();
+export const bankStatementService = new BankStatementService();
 export const reconciliationService = new ReconciliationService();
 export const slaService = new SLAService();
 export const chartOfAccountsService = new ChartOfAccountsService();

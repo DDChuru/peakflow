@@ -1,19 +1,19 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
+import {
+  collection,
+  doc,
+  getDocs,
   getDoc,
   addDoc,
-  updateDoc, 
+  updateDoc,
   deleteDoc,
-  query, 
-  where, 
+  query,
+  where,
   orderBy,
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
 import { db } from './config';
-import { Company, CompanyType } from '@/types/auth';
+import { Company, CompanyType, SupportedCurrency } from '@/types/auth';
 
 export class CompaniesService {
   private collectionName = 'companies';
@@ -79,7 +79,7 @@ export class CompaniesService {
   }
 
   // Create a new company
-  async createCompany(company: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<Company> {
+  async createCompany(company: Omit<Company, 'id' | 'createdAt' | 'updatedAt'>, userId: string): Promise<string> {
     try {
       // Filter out undefined values
       const cleanCompanyData: Record<string, unknown> = {
@@ -92,22 +92,18 @@ export class CompaniesService {
       };
 
       // Only add optional fields if they have values
+      if (company.industry) cleanCompanyData.industry = company.industry;
       if (company.domain) cleanCompanyData.domain = company.domain;
       if (company.logoUrl) cleanCompanyData.logoUrl = company.logoUrl;
       if (company.description) cleanCompanyData.description = company.description;
       if (company.address) cleanCompanyData.address = company.address;
       if (company.phone) cleanCompanyData.phone = company.phone;
       if (company.email) cleanCompanyData.email = company.email;
+      if (company.vatNumber) cleanCompanyData.vatNumber = company.vatNumber;
 
       const docRef = await addDoc(collection(db, this.collectionName), cleanCompanyData);
-      
-      // Fetch the created company to get the server timestamps
-      const createdCompany = await this.getCompanyById(docRef.id);
-      if (!createdCompany) {
-        throw new Error('Failed to create company');
-      }
-      
-      return createdCompany;
+
+      return docRef.id;
     } catch (error) {
       console.error('Error creating company:', error);
       throw error;
@@ -186,14 +182,76 @@ export class CompaniesService {
         collection(db, 'users'),
         where('companyId', '==', companyId)
       );
-      
+
       const usersSnapshot = await getDocs(usersQuery);
-      
+
       return {
         userCount: usersSnapshot.size
       };
     } catch (error) {
       console.error('Error fetching company stats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update company currency and VAT settings
+   */
+  async updateCompanyConfig(
+    companyId: string,
+    config: {
+      defaultCurrency?: SupportedCurrency;
+      vatPercentage?: number;
+    }
+  ): Promise<void> {
+    try {
+      const companyRef = doc(db, this.collectionName, companyId);
+      const updates: Record<string, unknown> = {
+        updatedAt: serverTimestamp(),
+      };
+
+      if (config.defaultCurrency !== undefined) {
+        updates.defaultCurrency = config.defaultCurrency;
+      }
+
+      if (config.vatPercentage !== undefined) {
+        // Validate VAT percentage
+        if (config.vatPercentage < 0 || config.vatPercentage > 100) {
+          throw new Error('VAT percentage must be between 0 and 100');
+        }
+        updates.vatPercentage = config.vatPercentage;
+      }
+
+      await updateDoc(companyRef, updates);
+      console.log(`[CompaniesService] Updated config for company: ${companyId}`);
+    } catch (error) {
+      console.error('Error updating company config:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get company currency configuration
+   */
+  async getCompanyCurrency(companyId: string): Promise<SupportedCurrency | undefined> {
+    try {
+      const company = await this.getCompanyById(companyId);
+      return company?.defaultCurrency;
+    } catch (error) {
+      console.error('Error fetching company currency:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get company VAT configuration
+   */
+  async getCompanyVAT(companyId: string): Promise<number | undefined> {
+    try {
+      const company = await this.getCompanyById(companyId);
+      return company?.vatPercentage;
+    } catch (error) {
+      console.error('Error fetching company VAT:', error);
       throw error;
     }
   }

@@ -1,3 +1,24 @@
+// Primary contact person for a customer/supplier
+export interface ContactPerson {
+  name: string;
+  email?: string;
+  phone?: string;
+  position?: string; // Job title/role
+}
+
+// Financial department contact for invoicing/mailing lists
+export interface FinancialContact {
+  id: string; // UUID
+  name: string;
+  email: string; // Required for mailing list
+  phone?: string;
+  position: string; // Free text: "Financial Director", "Creditor Controller", etc.
+  isActive: boolean; // For enabling/disabling without deletion
+  isPrimary: boolean; // Mark one as primary contact
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Debtor {
   id: string;
   companyId: string; // Required for tenant isolation
@@ -12,6 +33,8 @@ export interface Debtor {
   paymentTerms: number; // Days
   status: 'active' | 'inactive' | 'blocked';
   notes?: string;
+  primaryContact?: ContactPerson;
+  financialContacts?: FinancialContact[]; // For invoice mailing list
   metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +60,8 @@ export interface Creditor {
   status: 'active' | 'inactive';
   category?: string; // e.g., 'supplier', 'contractor', 'service_provider'
   notes?: string;
+  primaryContact?: ContactPerson;
+  financialContacts?: FinancialContact[]; // For invoice mailing list
   metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;

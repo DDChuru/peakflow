@@ -67,7 +67,6 @@ export interface SLALineItem {
   glAccountId: string; // Reference to chart of accounts
   glAccountCode?: string; // For display purposes
   glAccountName?: string; // For display purposes
-  taxRate?: number; // Override SLA default tax rate
 
   // Flexibility and Lifecycle Management
   effectiveFrom: string; // ISO date string

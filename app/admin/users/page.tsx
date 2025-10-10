@@ -13,7 +13,8 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
   const adminService = new AdminService();
 
   useEffect(() => {
@@ -71,10 +72,187 @@ export default function AdminUsersPage() {
     }
   };
 
+  const CreateUserModal = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [fullName, setFullName] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(['client']);
+    const [selectedCompany, setSelectedCompany] = useState('none');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleCreate = async () => {
+      if (!email || !password || !fullName) {
+        toast.error('Email, password, and full name are required');
+        return;
+      }
+
+      if (selectedRoles.length === 0) {
+        toast.error('Please select at least one role');
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        await adminService.createUser({
+          email,
+          password,
+          fullName,
+          phoneNumber: phoneNumber || undefined,
+          roles: selectedRoles,
+          companyId: selectedCompany !== 'none' ? selectedCompany : undefined
+        });
+
+        toast.success('User created successfully');
+        setIsCreateModalOpen(false);
+        fetchData();
+
+        // Reset form
+        setEmail('');
+        setPassword('');
+        setFullName('');
+        setPhoneNumber('');
+        setSelectedRoles(['client']);
+        setSelectedCompany('none');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to create user');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    const toggleRole = (role: UserRole) => {
+      if (selectedRoles.includes(role)) {
+        setSelectedRoles(selectedRoles.filter(r => r !== role));
+      } else {
+        setSelectedRoles([...selectedRoles, role]);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-96 max-h-[90vh] overflow-y-auto">
+          <h3 className="text-lg font-semibold mb-4">Create New User</h3>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="user@example.com"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="Min. 6 characters"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="John Doe"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="+1234567890"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Roles *</label>
+              <div className="space-y-2">
+                {(['admin', 'developer', 'client'] as UserRole[]).map(role => (
+                  <label key={role} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedRoles.includes(role)}
+                      onChange={() => toggleRole(role)}
+                      className="mr-2"
+                      disabled={isSubmitting}
+                    />
+                    {role.charAt(0).toUpperCase() + role.slice(1)}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                disabled={isSubmitting}
+              >
+                <option value="none">No Company</option>
+                {companies.map(company => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 mt-6">
+            <button
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                // Reset form
+                setEmail('');
+                setPassword('');
+                setFullName('');
+                setPhoneNumber('');
+                setSelectedRoles(['client']);
+                setSelectedCompany('none');
+              }}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreate}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Creating...' : 'Create User'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const EditUserModal = () => {
     const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(selectedUser?.roles || []);
     const [selectedCompany, setSelectedCompany] = useState(selectedUser?.companyId || 'none');
-    
+
     if (!selectedUser) return null;
 
     const handleSave = async () => {
@@ -165,6 +343,17 @@ export default function AdminUsersPage() {
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-6 flex justify-end">
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create User
+            </button>
+          </div>
           <div className="bg-white shadow rounded-lg">
             {loading ? (
               <div className="flex justify-center py-8">
@@ -295,6 +484,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {isCreateModalOpen && <CreateUserModal />}
       {isEditModalOpen && <EditUserModal />}
     </ProtectedRoute>
   );

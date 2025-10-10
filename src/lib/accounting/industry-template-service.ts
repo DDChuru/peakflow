@@ -1,10 +1,13 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   getDocs,
+  deleteDoc,
   query,
   where,
+  orderBy,
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
@@ -19,8 +22,34 @@ import {
   generateSmartSuggestions
 } from './industry-knowledge-base';
 import { ChartOfAccountsService } from './chart-of-accounts-service';
-import { BankToLedgerService, GLMappingRule } from './bank-to-ledger-service';
+import { GLMappingRule } from './bank-to-ledger-service';
 import { AccountRecord } from '@/types/accounting/chart-of-accounts';
+
+/**
+ * Company-level Chart of Accounts record structure
+ * Stored in companies/{companyId}/chartOfAccounts subcollection
+ * This is separate from the formal AccountRecord used in the new accounting system
+ */
+export interface CompanyAccountRecord {
+  id?: string;
+  code: string;
+  name: string;
+  type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
+  subType?: string;
+  parentCode?: string;
+  description?: string;
+  normalBalance: 'debit' | 'credit';
+  isActive: boolean;
+  isSystemAccount?: boolean;
+  metadata?: {
+    mappingKeywords?: string[];
+    typicalVolume?: string;
+    taxRelevant?: boolean;
+  };
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface IndustrySetupOptions {
   companyId: string;
@@ -40,11 +69,9 @@ export interface IndustryAnalysis {
 
 export class IndustryTemplateService {
   private coaService: ChartOfAccountsService;
-  private bankToLedgerService: BankToLedgerService;
 
   constructor(private companyId: string) {
     this.coaService = new ChartOfAccountsService(companyId);
-    this.bankToLedgerService = new BankToLedgerService(companyId);
   }
 
   /**
@@ -111,6 +138,10 @@ export class IndustryTemplateService {
       throw new Error(`Industry template not found: ${options.industryId}`);
     }
 
+    console.log(`[IndustryTemplate] Starting template application for ${template.name}`);
+    console.log(`[IndustryTemplate] Company ID: ${this.companyId}`);
+    console.log(`[IndustryTemplate] Created by: ${options.createdBy}`);
+
     const result = {
       accountsCreated: 0,
       patternsCreated: 0,
@@ -120,34 +151,48 @@ export class IndustryTemplateService {
 
     try {
       // Step 1: Create Chart of Accounts
-      console.log(`Applying COA for ${template.name}`);
+      console.log(`[IndustryTemplate] Applying COA for ${template.name}`);
+      console.log(`[IndustryTemplate] Template has ${template.chartOfAccounts?.length || 0} top-level accounts`);
       const accountsResult = await this.createAccountsFromTemplate(
         template.chartOfAccounts,
         options.createdBy
       );
       result.accountsCreated = accountsResult.created;
       result.errors.push(...accountsResult.errors);
+      console.log(`[IndustryTemplate] Accounts created: ${accountsResult.created}`);
 
       // Step 2: Create transaction patterns (mapping rules)
       if (options.includePatterns !== false) {
-        console.log('Creating transaction patterns...');
-        const patternsResult = await this.createPatternsFromTemplate(
-          template.transactionPatterns,
-          template.chartOfAccounts
-        );
-        result.patternsCreated = patternsResult.created;
-        result.errors.push(...patternsResult.errors);
+        console.log('[IndustryTemplate] Creating transaction patterns...');
+        try {
+          const patternsResult = await this.createPatternsFromTemplate(
+            template.transactionPatterns,
+            template.chartOfAccounts
+          );
+          result.patternsCreated = patternsResult.created;
+          result.errors.push(...patternsResult.errors);
+          console.log(`[IndustryTemplate] Patterns created: ${patternsResult.created}`);
+        } catch (error: any) {
+          console.error('[IndustryTemplate] Failed to create patterns:', error);
+          result.errors.push(`Pattern creation failed: ${error?.message || error}. You may need to create mapping rules manually.`);
+        }
       }
 
       // Step 3: Create vendor mappings
       if (options.includeVendors !== false) {
-        console.log('Creating vendor mappings...');
-        const vendorsResult = await this.createVendorMappings(
-          template.commonVendors,
-          template.chartOfAccounts
-        );
-        result.vendorsCreated = vendorsResult.created;
-        result.errors.push(...vendorsResult.errors);
+        console.log('[IndustryTemplate] Creating vendor mappings...');
+        try {
+          const vendorsResult = await this.createVendorMappings(
+            template.commonVendors,
+            template.chartOfAccounts
+          );
+          result.vendorsCreated = vendorsResult.created;
+          result.errors.push(...vendorsResult.errors);
+          console.log(`[IndustryTemplate] Vendors created: ${vendorsResult.created}`);
+        } catch (error: any) {
+          console.error('[IndustryTemplate] Failed to create vendor mappings:', error);
+          result.errors.push(`Vendor mapping creation failed: ${error?.message || error}. You may need to create mappings manually.`);
+        }
       }
 
       // Step 4: Store industry configuration
@@ -170,52 +215,105 @@ export class IndustryTemplateService {
   ): Promise<{ created: number; errors: string[] }> {
     const result = { created: 0, errors: [] as string[] };
     const batch = writeBatch(db);
+    let accountsQueued = 0;
 
     const processAccount = (account: COATemplate, parentCode?: string) => {
       try {
-        const accountData: Omit<AccountRecord, 'id'> = {
+        console.log(`Processing account: ${account.code} - ${account.name}`);
+
+        // Build metadata object, only including defined fields
+        const metadata: any = {};
+        if (account.mappingKeywords !== undefined) {
+          metadata.mappingKeywords = account.mappingKeywords;
+        }
+        if (account.typicalTransactionVolume !== undefined) {
+          metadata.typicalVolume = account.typicalTransactionVolume;
+        }
+        if (account.taxRelevant !== undefined) {
+          metadata.taxRelevant = account.taxRelevant;
+        }
+
+        // Build account data, only including defined fields
+        const accountData: any = {
           code: account.code,
           name: account.name,
           type: account.type,
-          subType: account.subType,
-          parentCode: parentCode,
           description: account.description || `${account.name} account`,
           normalBalance: account.normalBalance,
           isActive: true,
-          isSystemAccount: account.isRequired,
-          metadata: {
-            mappingKeywords: account.mappingKeywords,
-            typicalVolume: account.typicalTransactionVolume,
-            taxRelevant: account.taxRelevant
-          },
+          isSystemAccount: account.isRequired || false,
           createdBy,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-
-        const docRef = doc(collection(db, `companies/${this.companyId}/chartOfAccounts`));
-        batch.set(docRef, {
-          ...accountData,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
-        });
+        };
 
-        result.created++;
+        // Only add optional fields if they're defined
+        if (account.subType !== undefined) {
+          accountData.subType = account.subType;
+        }
+        if (parentCode !== undefined) {
+          accountData.parentCode = parentCode;
+        }
+        if (Object.keys(metadata).length > 0) {
+          accountData.metadata = metadata;
+        }
+
+        const docRef = doc(collection(db, `companies/${this.companyId}/chartOfAccounts`));
+        batch.set(docRef, accountData);
+
+        accountsQueued++;
+        console.log(`Queued account ${account.code}, total queued: ${accountsQueued}`);
 
         // Process children recursively
         if (account.children) {
+          console.log(`Processing ${account.children.length} children of ${account.code}`);
           account.children.forEach(child => processAccount(child, account.code));
         }
       } catch (error) {
-        result.errors.push(`Failed to create account ${account.code}: ${error}`);
+        console.error(`Error processing account ${account.code}:`, error);
+        result.errors.push(`Failed to queue account ${account.code}: ${error}`);
       }
     };
 
     // Process all top-level accounts
-    templates.forEach(account => processAccount(account));
+    console.log(`About to process ${templates?.length || 0} templates`);
+    console.log(`Templates array:`, templates);
+
+    if (!templates || templates.length === 0) {
+      console.error('No templates to process!');
+      result.errors.push('No chart of accounts templates provided');
+      return result;
+    }
+
+    templates.forEach((account, index) => {
+      console.log(`Processing template ${index + 1}/${templates.length}`);
+      processAccount(account);
+    });
+
+    console.log(`Queued ${accountsQueued} accounts for batch commit`);
 
     // Commit the batch
-    await batch.commit();
+    try {
+      if (accountsQueued > 0) {
+        console.log(`[COA Batch] Attempting to commit ${accountsQueued} accounts to companies/${this.companyId}/chartOfAccounts`);
+        await batch.commit();
+        result.created = accountsQueued;
+        console.log(`[COA Batch] Successfully committed ${accountsQueued} accounts to Firestore`);
+      } else {
+        console.warn('[COA Batch] No accounts queued for commit');
+      }
+    } catch (error: any) {
+      console.error('[COA Batch] Failed to commit batch:', error);
+      console.error('[COA Batch] Error code:', error?.code);
+      console.error('[COA Batch] Error message:', error?.message);
+      console.error('[COA Batch] Full error:', JSON.stringify(error, null, 2));
+      result.errors.push(`Batch commit failed: ${error?.message || error}`);
+
+      // Provide helpful error messages
+      if (error?.code === 'permission-denied' || error?.message?.includes('Missing or insufficient permissions')) {
+        result.errors.push('Permission denied: User must have admin or developer role to create chart of accounts');
+      }
+    }
 
     return result;
   }
@@ -244,6 +342,13 @@ export class IndustryTemplateService {
       return searchAccounts(coaTemplates);
     };
 
+    // Use batch writes to avoid permission check rate limits
+    let batch = writeBatch(db);
+    let batchCount = 0;
+    let totalQueued = 0;
+
+    console.log(`[GL Patterns] Starting to process ${patterns.length} patterns`);
+
     for (const pattern of patterns) {
       try {
         const account = findAccount(pattern.suggestedAccount);
@@ -252,26 +357,61 @@ export class IndustryTemplateService {
           continue;
         }
 
-        const rule: Omit<GLMappingRule, 'id' | 'companyId' | 'createdAt' | 'updatedAt'> = {
+        const ruleId = pattern.pattern.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+        const ruleData = {
+          id: ruleId,
+          companyId: this.companyId,
           pattern: pattern.pattern,
           patternType: pattern.patternType === 'regex' ? 'regex' : 'contains',
           glAccountCode: pattern.suggestedAccount,
           glAccountId: `${this.companyId}_${pattern.suggestedAccount}`,
-          priority: Math.round((1 - pattern.confidence) * 100), // Higher confidence = lower priority number
+          priority: Math.round((1 - pattern.confidence) * 100),
           isActive: true,
           metadata: {
             description: pattern.description,
             category: pattern.id,
             vendor: pattern.examples?.[0]
-          }
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         };
 
-        await this.bankToLedgerService.saveMappingRule(rule);
+        batch.set(
+          doc(db, `companies/${this.companyId}/glMappingRules`, ruleId),
+          ruleData
+        );
+        batchCount++;
+        totalQueued++;
         result.created++;
-      } catch (error) {
-        result.errors.push(`Failed to create pattern ${pattern.id}: ${error}`);
+
+        // Firestore batch limit is 500 operations
+        if (batchCount >= 500) {
+          console.log(`[GL Patterns Batch] Attempting to commit ${batchCount} pattern rules to companies/${this.companyId}/glMappingRules`);
+          await batch.commit();
+          console.log(`[GL Patterns Batch] ✅ Successfully committed ${batchCount} pattern rules`);
+          batch = writeBatch(db); // Create new batch
+          batchCount = 0;
+        }
+      } catch (error: any) {
+        console.error(`[GL Patterns] Error processing pattern ${pattern.id}:`, error);
+        result.errors.push(`Failed to create pattern ${pattern.id}: ${error?.message || error}`);
       }
     }
+
+    // Commit remaining patterns
+    if (batchCount > 0) {
+      try {
+        console.log(`[GL Patterns Batch] Attempting to commit final batch of ${batchCount} pattern rules to companies/${this.companyId}/glMappingRules`);
+        await batch.commit();
+        console.log(`[GL Patterns Batch] ✅ Successfully committed final batch of ${batchCount} pattern rules`);
+      } catch (error: any) {
+        console.error('[GL Patterns Batch] ❌ Failed to commit final batch:', error);
+        console.error('[GL Patterns Batch] Error details:', JSON.stringify(error, null, 2));
+        result.errors.push(`Failed to commit pattern batch: ${error?.message || error}`);
+      }
+    }
+
+    console.log(`[GL Patterns] Queued: ${totalQueued}, Created: ${result.created}, Errors: ${result.errors.length}`);
 
     return result;
   }
@@ -285,32 +425,52 @@ export class IndustryTemplateService {
   ): Promise<{ created: number; errors: string[] }> {
     const result = { created: 0, errors: [] as string[] };
 
+    // Use batch writes to avoid permission check rate limits
+    let batch = writeBatch(db);
+    let batchCount = 0;
+    let totalQueued = 0;
+
+    console.log(`[GL Vendors] Starting to process ${vendors.length} vendors`);
+
     for (const vendor of vendors) {
       try {
         // Create primary vendor rule
-        const primaryRule: Omit<GLMappingRule, 'id' | 'companyId' | 'createdAt' | 'updatedAt'> = {
+        const primaryRuleId = vendor.vendorName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+        const primaryRuleData = {
+          id: primaryRuleId,
+          companyId: this.companyId,
           pattern: vendor.vendorName,
-          patternType: 'contains',
+          patternType: 'contains' as const,
           glAccountCode: vendor.defaultAccount,
           glAccountId: `${this.companyId}_${vendor.defaultAccount}`,
-          priority: 1, // Vendor rules have high priority
+          priority: 1,
           isActive: true,
           metadata: {
             description: `${vendor.vendorType} vendor`,
             vendor: vendor.vendorName,
             category: vendor.vendorType
-          }
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         };
 
-        await this.bankToLedgerService.saveMappingRule(primaryRule);
+        batch.set(
+          doc(db, `companies/${this.companyId}/glMappingRules`, primaryRuleId),
+          primaryRuleData
+        );
+        batchCount++;
+        totalQueued++;
         result.created++;
 
         // Create rules for alternate names
         if (vendor.alternateNames) {
           for (const altName of vendor.alternateNames) {
-            const altRule: Omit<GLMappingRule, 'id' | 'companyId' | 'createdAt' | 'updatedAt'> = {
+            const altRuleId = altName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            const altRuleData = {
+              id: altRuleId,
+              companyId: this.companyId,
               pattern: altName,
-              patternType: 'contains',
+              patternType: 'contains' as const,
               glAccountCode: vendor.defaultAccount,
               glAccountId: `${this.companyId}_${vendor.defaultAccount}`,
               priority: 2,
@@ -319,17 +479,49 @@ export class IndustryTemplateService {
                 description: `${vendor.vendorType} vendor (alternate)`,
                 vendor: vendor.vendorName,
                 category: vendor.vendorType
-              }
+              },
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
             };
 
-            await this.bankToLedgerService.saveMappingRule(altRule);
+            batch.set(
+              doc(db, `companies/${this.companyId}/glMappingRules`, altRuleId),
+              altRuleData
+            );
+            batchCount++;
+            totalQueued++;
             result.created++;
           }
         }
-      } catch (error) {
-        result.errors.push(`Failed to create vendor mapping for ${vendor.vendorName}: ${error}`);
+
+        // Firestore batch limit is 500 operations
+        if (batchCount >= 500) {
+          console.log(`[GL Vendors Batch] Attempting to commit ${batchCount} vendor rules to companies/${this.companyId}/glMappingRules`);
+          await batch.commit();
+          console.log(`[GL Vendors Batch] ✅ Successfully committed ${batchCount} vendor rules`);
+          batch = writeBatch(db); // Create new batch
+          batchCount = 0;
+        }
+      } catch (error: any) {
+        console.error(`[GL Vendors] Error processing vendor ${vendor.vendorName}:`, error);
+        result.errors.push(`Failed to create vendor mapping for ${vendor.vendorName}: ${error?.message || error}`);
       }
     }
+
+    // Commit remaining vendors
+    if (batchCount > 0) {
+      try {
+        console.log(`[GL Vendors Batch] Attempting to commit final batch of ${batchCount} vendor rules to companies/${this.companyId}/glMappingRules`);
+        await batch.commit();
+        console.log(`[GL Vendors Batch] ✅ Successfully committed final batch of ${batchCount} vendor rules`);
+      } catch (error: any) {
+        console.error('[GL Vendors Batch] ❌ Failed to commit final batch:', error);
+        console.error('[GL Vendors Batch] Error details:', JSON.stringify(error, null, 2));
+        result.errors.push(`Failed to commit vendor batch: ${error?.message || error}`);
+      }
+    }
+
+    console.log(`[GL Vendors] Queued: ${totalQueued}, Created: ${result.created}, Errors: ${result.errors.length}`);
 
     return result;
   }
@@ -488,7 +680,7 @@ export class IndustryTemplateService {
         const confidence = Math.min(0.7 + (commonWords.length * 0.1), 0.95);
 
         try {
-          await this.bankToLedgerService.saveMappingRule({
+          await this.saveMappingRule({
             pattern,
             patternType: 'regex',
             glAccountCode: account,
@@ -509,4 +701,208 @@ export class IndustryTemplateService {
 
     return result;
   }
+
+  /**
+   * List all accounts for this company
+   */
+  async listAccounts(): Promise<CompanyAccountRecord[]> {
+    const accountsRef = collection(db, `companies/${this.companyId}/chartOfAccounts`);
+    const q = query(accountsRef, orderBy('code', 'asc'));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        code: data.code,
+        name: data.name,
+        type: data.type,
+        subType: data.subType,
+        parentCode: data.parentCode,
+        description: data.description,
+        normalBalance: data.normalBalance,
+        isActive: data.isActive ?? true,
+        isSystemAccount: data.isSystemAccount ?? false,
+        metadata: data.metadata,
+        createdBy: data.createdBy,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date()
+      } as CompanyAccountRecord;
+    });
+  }
+
+  /**
+   * Get a single account by ID
+   */
+  async getAccount(accountId: string): Promise<CompanyAccountRecord | null> {
+    const accountRef = doc(db, `companies/${this.companyId}/chartOfAccounts`, accountId);
+    const accountDoc = await getDoc(accountRef);
+
+    if (!accountDoc.exists()) {
+      return null;
+    }
+
+    const data = accountDoc.data();
+    return {
+      id: accountDoc.id,
+      code: data.code,
+      name: data.name,
+      type: data.type,
+      subType: data.subType,
+      parentCode: data.parentCode,
+      description: data.description,
+      normalBalance: data.normalBalance,
+      isActive: data.isActive ?? true,
+      isSystemAccount: data.isSystemAccount ?? false,
+      metadata: data.metadata,
+      createdBy: data.createdBy,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date()
+    } as CompanyAccountRecord;
+  }
+
+  /**
+   * Save a GL mapping rule
+   */
+  async saveMappingRule(rule: Omit<GLMappingRule, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): Promise<GLMappingRule> {
+    const ruleId = rule.pattern.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+
+    const ruleData: GLMappingRule = {
+      id: ruleId,
+      companyId: this.companyId,
+      ...rule,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await setDoc(
+      doc(db, `companies/${this.companyId}/glMappingRules`, ruleId),
+      {
+        ...ruleData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    );
+
+    return ruleData;
+  }
+
+  /**
+   * Get all mapping rules (including inactive) for deletion
+   */
+  async getAllMappingRules(): Promise<GLMappingRule[]> {
+    const rulesQuery = query(
+      collection(db, `companies/${this.companyId}/glMappingRules`)
+    );
+
+    const snapshot = await getDocs(rulesQuery);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+      updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+    } as GLMappingRule));
+  }
+
+  /**
+   * Delete a mapping rule
+   */
+  async deleteMappingRule(ruleId: string): Promise<void> {
+    await deleteDoc(doc(db, `companies/${this.companyId}/glMappingRules`, ruleId));
+  }
+
+  /**
+   * Delete all COA entries, patterns, and vendor mappings for a company
+   */
+  async deleteAllCOAData(): Promise<{
+    accountsDeleted: number;
+    patternsDeleted: number;
+    vendorsDeleted: number;
+    errors: string[];
+  }> {
+    const result = {
+      accountsDeleted: 0,
+      patternsDeleted: 0,
+      vendorsDeleted: 0,
+      errors: [] as string[]
+    };
+
+    try {
+      // 1. Delete all Chart of Accounts entries
+      const accountsRef = collection(db, `companies/${this.companyId}/chartOfAccounts`);
+      const accountsSnapshot = await getDocs(accountsRef);
+
+      const deleteBatch = writeBatch(db);
+      accountsSnapshot.docs.forEach(docSnap => {
+        deleteBatch.delete(docSnap.ref);
+        result.accountsDeleted++;
+      });
+
+      // Commit in batches of 500 (Firestore limit)
+      if (accountsSnapshot.docs.length > 0) {
+        await deleteBatch.commit();
+      }
+
+      // 2. Delete all GL mapping rules (patterns and vendors)
+      const mappingRules = await this.getAllMappingRules();
+      for (const rule of mappingRules) {
+        try {
+          await this.deleteMappingRule(rule.id);
+          if (rule.metadata?.vendor) {
+            result.vendorsDeleted++;
+          } else {
+            result.patternsDeleted++;
+          }
+        } catch (error) {
+          result.errors.push(`Failed to delete mapping rule ${rule.id}: ${error}`);
+        }
+      }
+
+      // 3. Delete industry configuration
+      try {
+        const configDoc = doc(db, `companies/${this.companyId}/configuration`, 'industry');
+        await deleteDoc(configDoc);
+      } catch (error) {
+        // Configuration might not exist, ignore this error
+        console.log('Industry configuration not found (may not exist yet)');
+      }
+
+    } catch (error) {
+      result.errors.push(`Critical error during deletion: ${error}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Reset COA: Delete all existing data and apply new industry template
+   */
+  async resetAndApplyTemplate(options: IndustrySetupOptions): Promise<{
+    deleted: { accountsDeleted: number; patternsDeleted: number; vendorsDeleted: number };
+    created: { accountsCreated: number; patternsCreated: number; vendorsCreated: number };
+    errors: string[];
+  }> {
+    // Step 1: Delete all existing data
+    const deleteResult = await this.deleteAllCOAData();
+
+    // Step 2: Apply new template
+    const createResult = await this.applyIndustryTemplate(options);
+
+    return {
+      deleted: {
+        accountsDeleted: deleteResult.accountsDeleted,
+        patternsDeleted: deleteResult.patternsDeleted,
+        vendorsDeleted: deleteResult.vendorsDeleted
+      },
+      created: {
+        accountsCreated: createResult.accountsCreated,
+        patternsCreated: createResult.patternsCreated,
+        vendorsCreated: createResult.vendorsCreated
+      },
+      errors: [...deleteResult.errors, ...createResult.errors]
+    };
+  }
 }
+
+// Export singleton instance
+export const industryTemplateService = new IndustryTemplateService();

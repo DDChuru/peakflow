@@ -13,10 +13,25 @@ import {
   serverTimestamp,
   DocumentData,
   QueryConstraint,
-  Timestamp
+  Timestamp,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from './config';
-import { Debtor, DebtorSummary } from '@/types/financial';
+import { Debtor, DebtorSummary, FinancialContact, ContactPerson } from '@/types/financial';
+
+// Browser-compatible UUID generation
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 export class DebtorService {
   private getCollectionPath(companyId: string): string {
@@ -238,6 +253,8 @@ export class DebtorService {
       status: data.status || 'active',
       notes: data.notes,
       metadata: data.metadata,
+      primaryContact: data.primaryContact,
+      financialContacts: data.financialContacts || [],
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
       createdBy: data.createdBy
@@ -293,5 +310,194 @@ export class DebtorService {
     }
 
     return results;
+  }
+
+  /**
+   * Add a financial contact to a debtor
+   */
+  async addFinancialContact(
+    companyId: string,
+    debtorId: string,
+    contact: {
+      name: string;
+      email: string;
+      phone?: string;
+      position: string;
+      isPrimary?: boolean;
+    }
+  ): Promise<FinancialContact> {
+    try {
+      const newContact: FinancialContact = {
+        id: generateUUID(),
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        position: contact.position,
+        isActive: true,
+        isPrimary: contact.isPrimary || false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const debtorRef = doc(db, this.getCollectionPath(companyId), debtorId);
+      await updateDoc(debtorRef, {
+        financialContacts: arrayUnion(newContact),
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[DebtorService] Added financial contact to debtor: ${debtorId}`);
+      return newContact;
+    } catch (error) {
+      console.error('Error adding financial contact:', error);
+      throw new Error(`Failed to add financial contact: ${error}`);
+    }
+  }
+
+  /**
+   * Update a financial contact
+   */
+  async updateFinancialContact(
+    companyId: string,
+    debtorId: string,
+    contactId: string,
+    updates: Partial<Omit<FinancialContact, 'id' | 'createdAt'>>
+  ): Promise<void> {
+    try {
+      const debtor = await this.getDebtor(companyId, debtorId);
+      if (!debtor?.financialContacts) {
+        throw new Error('No financial contacts found');
+      }
+
+      const updatedContacts = debtor.financialContacts.map(contact => {
+        if (contact.id === contactId) {
+          return {
+            ...contact,
+            ...updates,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return contact;
+      });
+
+      const debtorRef = doc(db, this.getCollectionPath(companyId), debtorId);
+      await updateDoc(debtorRef, {
+        financialContacts: updatedContacts,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[DebtorService] Updated financial contact: ${contactId}`);
+    } catch (error) {
+      console.error('Error updating financial contact:', error);
+      throw new Error(`Failed to update financial contact: ${error}`);
+    }
+  }
+
+  /**
+   * Remove a financial contact
+   */
+  async removeFinancialContact(
+    companyId: string,
+    debtorId: string,
+    contactId: string
+  ): Promise<void> {
+    try {
+      const debtor = await this.getDebtor(companyId, debtorId);
+      if (!debtor?.financialContacts) {
+        return;
+      }
+
+      const contactToRemove = debtor.financialContacts.find(c => c.id === contactId);
+      if (!contactToRemove) {
+        return;
+      }
+
+      const debtorRef = doc(db, this.getCollectionPath(companyId), debtorId);
+      await updateDoc(debtorRef, {
+        financialContacts: arrayRemove(contactToRemove),
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[DebtorService] Removed financial contact: ${contactId}`);
+    } catch (error) {
+      console.error('Error removing financial contact:', error);
+      throw new Error(`Failed to remove financial contact: ${error}`);
+    }
+  }
+
+  /**
+   * Get all active financial contact emails (for mailing list)
+   */
+  async getFinancialContactEmails(
+    companyId: string,
+    debtorId: string
+  ): Promise<string[]> {
+    try {
+      const debtor = await this.getDebtor(companyId, debtorId);
+
+      if (!debtor?.financialContacts) {
+        return [];
+      }
+
+      return debtor.financialContacts
+        .filter(contact => contact.isActive && contact.email)
+        .map(contact => contact.email);
+    } catch (error) {
+      console.error('Error getting financial contact emails:', error);
+      throw new Error(`Failed to get financial contact emails: ${error}`);
+    }
+  }
+
+  /**
+   * Update primary contact information
+   */
+  async updatePrimaryContact(
+    companyId: string,
+    debtorId: string,
+    contact: ContactPerson
+  ): Promise<void> {
+    try {
+      const debtorRef = doc(db, this.getCollectionPath(companyId), debtorId);
+      await updateDoc(debtorRef, {
+        primaryContact: contact,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log(`[DebtorService] Updated primary contact for debtor: ${debtorId}`);
+    } catch (error) {
+      console.error('Error updating primary contact:', error);
+      throw new Error(`Failed to update primary contact: ${error}`);
+    }
+  }
+
+  /**
+   * Get primary contact for a debtor
+   */
+  async getPrimaryContact(
+    companyId: string,
+    debtorId: string
+  ): Promise<ContactPerson | null> {
+    try {
+      const debtor = await this.getDebtor(companyId, debtorId);
+      return debtor?.primaryContact || null;
+    } catch (error) {
+      console.error('Error getting primary contact:', error);
+      throw new Error(`Failed to get primary contact: ${error}`);
+    }
+  }
+
+  /**
+   * Get all financial contacts for a debtor
+   */
+  async getFinancialContacts(
+    companyId: string,
+    debtorId: string
+  ): Promise<FinancialContact[]> {
+    try {
+      const debtor = await this.getDebtor(companyId, debtorId);
+      return debtor?.financialContacts || [];
+    } catch (error) {
+      console.error('Error getting financial contacts:', error);
+      throw new Error(`Failed to get financial contacts: ${error}`);
+    }
   }
 }

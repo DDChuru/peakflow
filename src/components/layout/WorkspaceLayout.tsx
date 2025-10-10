@@ -23,6 +23,7 @@ import {
   UserCheck,
   Calculator,
   BarChart3,
+  BookOpen,
   Menu,
   X,
   LogOut,
@@ -151,6 +152,11 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
       href: hasCompany ? `/workspace/${companyId || user?.companyId}/reports` : '#',
       icon: BarChart3,
     },
+    {
+      name: 'Resources',
+      href: '/resources',
+      icon: BookOpen,
+    },
   ];
 
   // Admin navigation items
@@ -169,6 +175,11 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
           name: 'User Management',
           href: '/admin/users',
           icon: Users,
+        },
+        {
+          name: 'Bank Accounts',
+          href: '/admin/bank-accounts',
+          icon: CreditCard,
         },
         {
           name: 'COA Templates',

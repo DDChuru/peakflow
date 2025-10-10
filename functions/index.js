@@ -495,3 +495,115 @@ exports.testExtraction = onRequest({
     });
   });
 });
+
+// Create a new user (Admin only)
+exports.createUser = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'us-central1'
+}, async (request) => {
+  try {
+    // Check authentication
+    if (!request.auth) {
+      throw new Error('Authentication required');
+    }
+
+    // Verify that the calling user is an admin
+    const callerDoc = await db.collection('users').doc(request.auth.uid).get();
+
+    if (!callerDoc.exists) {
+      throw new Error('Caller user not found');
+    }
+
+    const callerData = callerDoc.data();
+    const isAdmin = callerData.roles && callerData.roles.includes('admin');
+
+    if (!isAdmin) {
+      throw new Error('Only administrators can create users');
+    }
+
+    // Extract user data from request
+    const { email, password, fullName, phoneNumber, roles, companyId } = request.data;
+
+    // Validate required fields
+    if (!email || !password || !fullName) {
+      throw new Error('Email, password, and full name are required');
+    }
+
+    if (!roles || !Array.isArray(roles) || roles.length === 0) {
+      throw new Error('At least one role is required');
+    }
+
+    // Validate roles
+    const validRoles = ['admin', 'developer', 'client'];
+    const invalidRoles = roles.filter(role => !validRoles.includes(role));
+    if (invalidRoles.length > 0) {
+      throw new Error(`Invalid roles: ${invalidRoles.join(', ')}`);
+    }
+
+    logger.info('Creating new user', {
+      email,
+      roles,
+      companyId: companyId || 'none',
+      createdBy: request.auth.uid
+    });
+
+    // Create the user in Firebase Auth
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: fullName,
+      phoneNumber: phoneNumber || undefined,
+      emailVerified: false
+    });
+
+    // Create the user document in Firestore
+    const userData = {
+      uid: userRecord.uid,
+      email: userRecord.email,
+      fullName,
+      roles,
+      emailVerified: false,
+      isActive: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: request.auth.uid
+    };
+
+    // Add optional fields
+    if (phoneNumber) userData.phoneNumber = phoneNumber;
+    if (companyId) userData.companyId = companyId;
+
+    await db.collection('users').doc(userRecord.uid).set(userData);
+
+    logger.info('User created successfully', {
+      uid: userRecord.uid,
+      email: userRecord.email,
+      createdBy: request.auth.uid
+    });
+
+    return {
+      success: true,
+      uid: userRecord.uid,
+      message: 'User created successfully'
+    };
+
+  } catch (error) {
+    logger.error('Create user error', {
+      error: error.message,
+      callerUid: request.auth?.uid,
+      stack: error.stack
+    });
+
+    // Provide more specific error messages
+    if (error.code === 'auth/email-already-exists') {
+      throw new Error('A user with this email already exists');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Invalid email address');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('Password is too weak. It should be at least 6 characters');
+    }
+
+    throw new Error(`Failed to create user: ${error.message}`);
+  }
+});

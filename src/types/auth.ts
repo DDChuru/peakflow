@@ -1,32 +1,42 @@
 export type UserRole = 'admin' | 'developer' | 'client';
 
+// Supported currencies in the system
+export type SupportedCurrency = 'USD' | 'ZAR' | 'EUR' | 'ZWD' | 'ZIG';
+
 export interface User {
   uid: string;
   email: string;
   fullName: string;
   roles: UserRole[];
   imageUrl?: string;
-  companyId?: string;
+  companyId?: string; // TODO: Rename to primaryCompanyId in Phase 6
   phoneNumber?: string;
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt?: Date;
   isActive: boolean;
+  // TODO (Phase 6): Add for multi-company access
+  // primaryCompanyId?: string;
+  // accessibleCompanyIds?: string[];
 }
 
-export type CompanyType = 'client' | 'peakflow';
+export type CompanyType = 'client' | 'peakflow' | 'manageAccounts';
 
 export interface Company {
   id: string;
   name: string;
   type: CompanyType;
+  industry?: string;
   domain?: string;
   logoUrl?: string;
   description?: string;
   address?: string;
   phone?: string;
   email?: string;
+  defaultCurrency?: SupportedCurrency;
+  vatNumber?: string; // VAT/Tax registration number
+  vatPercentage?: number; // 0-100, e.g., 15 for 15%
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;

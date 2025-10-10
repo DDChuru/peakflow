@@ -7,8 +7,6 @@ export interface InvoiceLineItem {
   quantity: number;
   unitPrice: number;
   amount: number;
-  taxRate?: number;
-  taxAmount?: number;
   glAccountId: string; // Revenue account
   accountCode?: string; // Account code for reference
   itemCode?: string;
@@ -53,6 +51,7 @@ export interface Invoice {
 
   // Financial
   subtotal: number;
+  taxRate: number; // Document-level tax rate percentage
   taxAmount: number;
   totalAmount: number;
   amountPaid: number;
@@ -115,6 +114,7 @@ export interface InvoiceCreateRequest {
   // Financial
   currency: string;
   exchangeRate?: number;
+  taxRate?: number; // Document-level tax rate percentage
 
   // Content
   lineItems: Omit<InvoiceLineItem, 'id' | 'amount' | 'taxAmount'>[];

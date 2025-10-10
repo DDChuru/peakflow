@@ -100,6 +100,7 @@ export class BankAccountService {
       accountType: data.accountType,
       bankName: data.bankName,
       branch: data.branch,
+      branchCode: data.branchCode,
       country: data.country,
       currency: data.currency,
       glAccountId: data.glAccountId,
@@ -169,7 +170,8 @@ export class BankAccountService {
     const collectionRef = collection(db, COLLECTION_PATH(companyId));
     const documentRef = payload.id ? doc(collectionRef, payload.id) : doc(collectionRef);
 
-    const bankAccount: BankAccount = {
+    // Build bank account object, only including defined fields
+    const bankAccount: any = {
       id: documentRef.id,
       companyId,
       name: payload.name,
@@ -177,31 +179,36 @@ export class BankAccountService {
       accountNumberMasked: payload.accountNumberMasked ?? this.maskAccountNumber(payload.accountNumber),
       accountType: payload.accountType,
       bankName: payload.bankName,
-      branch: payload.branch,
-      country: payload.country,
       currency: payload.currency,
       glAccountId: payload.glAccountId,
       isPrimary: payload.isPrimary ?? false,
       status: payload.status ?? 'active',
       signatories: payload.signatories ?? [],
-      limits: payload.limits,
       balance: {
         ledger: payload.balance?.ledger ?? 0,
-        available: payload.balance?.available,
-        pending: payload.balance?.pending,
         currency: payload.balance?.currency ?? payload.currency,
-        asOf: payload.balance?.asOf,
       },
-      approvalThreshold: payload.approvalThreshold,
-      integration: payload.integration,
-      lastReconciledAt: payload.lastReconciledAt,
-      lastStatementAt: payload.lastStatementAt,
       metadata: payload.metadata ?? {},
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: userId,
       updatedBy: userId,
     };
+
+    // Only add optional fields if they have values
+    if (payload.branch) bankAccount.branch = payload.branch;
+    if (payload.branchCode) bankAccount.branchCode = payload.branchCode;
+    if (payload.country) bankAccount.country = payload.country;
+    if (payload.limits) bankAccount.limits = payload.limits;
+    if (payload.approvalThreshold !== undefined) bankAccount.approvalThreshold = payload.approvalThreshold;
+    if (payload.integration) bankAccount.integration = payload.integration;
+    if (payload.lastReconciledAt) bankAccount.lastReconciledAt = payload.lastReconciledAt;
+    if (payload.lastStatementAt) bankAccount.lastStatementAt = payload.lastStatementAt;
+
+    // Add optional balance fields
+    if (payload.balance?.available !== undefined) bankAccount.balance.available = payload.balance.available;
+    if (payload.balance?.pending !== undefined) bankAccount.balance.pending = payload.balance.pending;
+    if (payload.balance?.asOf) bankAccount.balance.asOf = payload.balance.asOf;
 
     await setDoc(documentRef, {
       ...this.toFirestore(bankAccount),

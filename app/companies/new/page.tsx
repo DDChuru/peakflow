@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
@@ -11,16 +11,21 @@ import { CompaniesService } from '@/lib/firebase/companies-service';
 import { CompanyType } from '@/types/auth';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { IndustryTemplateService, industryTemplateService } from '@/lib/accounting/industry-template-service';
+import { INDUSTRY_TEMPLATES } from '@/lib/accounting/industry-knowledge-base';
+import { ImageUpload } from '@/components/ui/image-upload';
 
 const companySchema = z.object({
   name: z.string().min(2, 'Company name must be at least 2 characters'),
   type: z.enum(['client', 'peakflow']),
+  industry: z.string().min(1, 'Please select an industry'),
   domain: z.string().optional(),
   description: z.string().optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  logoUrl: z.string().url('Invalid URL').optional().or(z.literal(''))
+  logoUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
+  vatNumber: z.string().optional()
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
@@ -28,6 +33,9 @@ type CompanyFormData = z.infer<typeof companySchema>;
 export default function NewCompanyPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedType, setSelectedType] = useState<CompanyType>('client');
+  const [suggestedIndustry, setSuggestedIndustry] = useState<string>('');
+  const [industryConfidence, setIndustryConfidence] = useState<number>(0);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
   const companiesService = new CompaniesService();
@@ -36,13 +44,37 @@ export default function NewCompanyPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors }
   } = useForm<CompanyFormData>({
     resolver: zodResolver(companySchema),
     defaultValues: {
-      type: 'client'
+      type: 'client',
+      industry: ''
     }
   });
+
+  const watchName = watch('name');
+  const watchDescription = watch('description');
+
+  // Auto-suggest industry based on company name and description
+  useEffect(() => {
+    const analyzeName = async () => {
+      if (watchName && watchName.length > 3) {
+        const analysis = await industryTemplateService.analyzeCompany(
+          watchName,
+          watchDescription
+        );
+        if (analysis.suggestedIndustry && analysis.confidence > 0.5) {
+          setSuggestedIndustry(analysis.suggestedIndustry);
+          setIndustryConfidence(analysis.confidence);
+        }
+      }
+    };
+
+    const debounceTimer = setTimeout(analyzeName, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [watchName, watchDescription]);
 
   const onSubmit = async (data: CompanyFormData) => {
     if (!user) {
@@ -52,14 +84,48 @@ export default function NewCompanyPage() {
 
     try {
       setIsLoading(true);
-      
-      // Don't send undefined values to Firebase
+
+      // Create company with industry
       const companyData = {
         name: data.name,
-        type: data.type
+        type: data.type,
+        industry: data.industry,
+        domain: data.domain,
+        description: data.description,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        logoUrl: data.logoUrl,
+        vatNumber: data.vatNumber
       };
 
-      await companiesService.createCompany(companyData, user.uid);
+      const companyId = await companiesService.createCompany(companyData, user.uid);
+
+      // Apply industry template to provision Chart of Accounts
+      if (data.industry && companyId) {
+        setApplyingTemplate(true);
+        toast.loading('Setting up Chart of Accounts...', { id: 'template' });
+
+        try {
+          const templateService = new IndustryTemplateService(companyId);
+          const result = await templateService.applyIndustryTemplate({
+            companyId,
+            industryId: data.industry,
+            includePatterns: true,
+            includeVendors: true,
+            createdBy: user.uid
+          });
+
+          toast.success(
+            `Created ${result.accountsCreated} accounts for ${data.name}`,
+            { id: 'template' }
+          );
+        } catch (templateError) {
+          console.error('Error applying template:', templateError);
+          toast.error('Company created but Chart of Accounts setup failed', { id: 'template' });
+        }
+      }
+
       toast.success('Company created successfully!');
       router.push('/companies');
     } catch (error: unknown) {
@@ -68,6 +134,7 @@ export default function NewCompanyPage() {
       toast.error(message);
     } finally {
       setIsLoading(false);
+      setApplyingTemplate(false);
     }
   };
 
@@ -298,24 +365,41 @@ export default function NewCompanyPage() {
                   </div>
                 </div>
 
-                {/* Logo URL */}
+                {/* VAT Number */}
                 <div>
-                  <label htmlFor="logoUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                    Logo URL
+                  <label htmlFor="vatNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                    VAT/Tax Number
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
                     <input
-                      {...register('logoUrl')}
-                      type="url"
+                      {...register('vatNumber')}
+                      type="text"
                       className="pl-10 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                      placeholder="https://example.com/logo.png"
+                      placeholder="e.g., 4123456789"
                     />
                   </div>
+                </div>
+
+                {/* Company Logo */}
+                <div className="md:col-span-2">
+                  <ImageUpload
+                    value={watch('logoUrl')}
+                    onChange={(url) => {
+                      setValue('logoUrl', url || '');
+                      console.log('📸 Logo uploaded - URL:', url ? 'YES' : 'NO');
+                    }}
+                    onError={(error) => toast.error(error)}
+                    storagePath="company-logos"
+                    maxSizeMB={2}
+                    aspectRatio="1:1"
+                    label="Company Logo"
+                    description="Upload your company logo for invoices, quotes, and reports"
+                  />
                   {errors.logoUrl && (
                     <p className="mt-1 text-sm text-red-600">{errors.logoUrl.message}</p>
                   )}
@@ -342,6 +426,55 @@ export default function NewCompanyPage() {
                   </div>
                 </div>
 
+                {/* Industry Selection - Full Width */}
+                <div className="md:col-span-2">
+                  <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-2">
+                    Industry Type *
+                    {suggestedIndustry && (
+                      <span className="ml-2 text-xs text-indigo-600">
+                        (Suggested: {INDUSTRY_TEMPLATES[suggestedIndustry]?.name} - {Math.round(industryConfidence * 100)}% match)
+                      </span>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    <select
+                      {...register('industry')}
+                      className="pl-10 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 text-gray-900"
+                    >
+                      <option value="">Select an industry...</option>
+                      {Object.entries(INDUSTRY_TEMPLATES).map(([key, template]) => (
+                        <option
+                          key={key}
+                          value={key}
+                          className={suggestedIndustry === key ? 'bg-indigo-50 font-medium' : ''}
+                        >
+                          {template.name} ({template.chartOfAccounts?.length || 0} accounts, {template.transactionPatterns?.length || 0} patterns)
+                        </option>
+                      ))}
+                    </select>
+                    {suggestedIndustry && industryConfidence > 0.7 && (
+                      <button
+                        type="button"
+                        onClick={() => setValue('industry', suggestedIndustry)}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors"
+                      >
+                        Use Suggestion
+                      </button>
+                    )}
+                  </div>
+                  {errors.industry && (
+                    <p className="mt-1 text-sm text-red-600">{errors.industry.message}</p>
+                  )}
+                  <p className="mt-2 text-xs text-gray-500">
+                    Selecting an industry will automatically set up a tailored Chart of Accounts with relevant GL accounts and transaction matching patterns.
+                  </p>
+                </div>
+
                 {/* Description - Full Width */}
                 <div className="md:col-span-2">
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
@@ -357,7 +490,7 @@ export default function NewCompanyPage() {
                       {...register('description')}
                       rows={3}
                       className="pl-10 block w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Brief description of the company..."
+                      placeholder="Brief description of the company (helps with industry detection)..."
                     />
                   </div>
                 </div>
@@ -382,13 +515,13 @@ export default function NewCompanyPage() {
                     : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 focus:ring-green-500'
                 } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isLoading ? (
+                {isLoading || applyingTemplate ? (
                   <span className="flex items-center">
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Creating...
+                    {applyingTemplate ? 'Setting up Chart of Accounts...' : 'Creating...'}
                   </span>
                 ) : (
                   `Create ${selectedType === 'peakflow' ? 'PeakFlow' : 'Client'} Company`

@@ -61,8 +61,11 @@ export class InvoiceService {
     return `INV-${year}-${nextNumber.toString().padStart(4, '0')}`;
   }
 
-  // Calculate line item amounts and totals
-  private calculateInvoiceAmounts(lineItems: Omit<InvoiceLineItem, 'id' | 'amount' | 'taxAmount'>[]): {
+  // Calculate line item amounts and totals (with document-level tax)
+  private calculateInvoiceAmounts(
+    lineItems: Omit<InvoiceLineItem, 'id' | 'amount' | 'taxAmount'>[],
+    taxRate: number = 0
+  ): {
     calculatedLineItems: InvoiceLineItem[];
     subtotal: number;
     taxAmount: number;
@@ -70,18 +73,17 @@ export class InvoiceService {
   } {
     const calculatedLineItems: InvoiceLineItem[] = lineItems.map((item, index) => {
       const amount = item.quantity * item.unitPrice;
-      const taxAmount = item.taxRate ? (amount * item.taxRate) / 100 : 0;
 
       return {
         ...item,
         id: `line-${index + 1}`,
         amount,
-        taxAmount
+        taxAmount: 0 // No per-line-item tax
       };
     });
 
     const subtotal = calculatedLineItems.reduce((sum, item) => sum + item.amount, 0);
-    const taxAmount = calculatedLineItems.reduce((sum, item) => sum + (item.taxAmount || 0), 0);
+    const taxAmount = subtotal * (taxRate / 100);
     const totalAmount = subtotal + taxAmount;
 
     return {
@@ -111,11 +113,12 @@ export class InvoiceService {
 
       const invoiceNumber = await this.generateInvoiceNumber(companyId);
       const { calculatedLineItems, subtotal, taxAmount, totalAmount } =
-        this.calculateInvoiceAmounts(invoiceData.lineItems);
+        this.calculateInvoiceAmounts(invoiceData.lineItems, invoiceData.taxRate || 0);
 
       const dueDate = this.calculateDueDate(invoiceData.invoiceDate, invoiceData.paymentTerms);
 
-      const newInvoice: Invoice = {
+      // Build invoice object with only defined values
+      const newInvoice: any = {
         id: invoiceRef.id,
         companyId,
         invoiceNumber,
@@ -128,9 +131,8 @@ export class InvoiceService {
         paymentTerms: invoiceData.paymentTerms,
         status: 'draft',
         source: invoiceData.source,
-        sourceDocumentId: invoiceData.sourceDocumentId,
-        purchaseOrderNumber: invoiceData.purchaseOrderNumber,
         subtotal,
+        taxRate: invoiceData.taxRate || 0,
         taxAmount,
         totalAmount,
         amountPaid: 0,
@@ -139,16 +141,25 @@ export class InvoiceService {
         exchangeRate: invoiceData.exchangeRate || 1,
         lineItems: calculatedLineItems,
         paymentHistory: [],
-        notes: invoiceData.notes,
-        termsAndConditions: invoiceData.termsAndConditions,
         metadata: {},
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: userId
       };
 
+      // Only add optional fields if they have values
+      if (invoiceData.sourceDocumentId) newInvoice.sourceDocumentId = invoiceData.sourceDocumentId;
+      if (invoiceData.purchaseOrderNumber) newInvoice.purchaseOrderNumber = invoiceData.purchaseOrderNumber;
+      if (invoiceData.notes) newInvoice.notes = invoiceData.notes;
+      if (invoiceData.termsAndConditions) newInvoice.termsAndConditions = invoiceData.termsAndConditions;
+
+      // Filter out undefined values before saving to Firestore
+      const cleanInvoiceData = Object.fromEntries(
+        Object.entries(newInvoice).filter(([_, value]) => value !== undefined)
+      );
+
       await setDoc(invoiceRef, {
-        ...newInvoice,
+        ...cleanInvoiceData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         invoiceDate: Timestamp.fromDate(new Date(newInvoice.invoiceDate)),
@@ -537,6 +548,40 @@ export class InvoiceService {
     }
   }
 
+  // Update invoice
+  async updateInvoice(
+    companyId: string,
+    invoiceId: string,
+    updates: Partial<Invoice>,
+    userId: string
+  ): Promise<void> {
+    try {
+      const invoiceRef = doc(db, this.getCollectionPath(companyId), invoiceId);
+
+      // If line items are being updated, recalculate amounts
+      if (updates.lineItems) {
+        const taxRate = updates.taxRate !== undefined ? updates.taxRate : 0;
+        const { calculatedLineItems, subtotal, taxAmount, totalAmount } =
+          this.calculateInvoiceAmounts(updates.lineItems as any, taxRate);
+
+        updates.lineItems = calculatedLineItems;
+        updates.subtotal = subtotal;
+        updates.taxAmount = taxAmount;
+        updates.totalAmount = totalAmount;
+        updates.amountDue = totalAmount - (updates.amountPaid || 0);
+      }
+
+      await updateDoc(invoiceRef, {
+        ...updates,
+        modifiedBy: userId,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      throw new Error(`Failed to update invoice: ${error}`);
+    }
+  }
+
   // Update invoice status
   async updateInvoiceStatus(
     companyId: string,
@@ -730,6 +775,7 @@ export class InvoiceService {
       sourceDocumentNumber: data.sourceDocumentNumber,
       purchaseOrderNumber: data.purchaseOrderNumber,
       subtotal: data.subtotal || 0,
+      taxRate: data.taxRate || 0,
       taxAmount: data.taxAmount || 0,
       totalAmount: data.totalAmount || 0,
       amountPaid: data.amountPaid || 0,

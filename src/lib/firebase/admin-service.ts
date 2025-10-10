@@ -1,15 +1,16 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  updateDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  getDocs,
+  updateDoc,
+  query,
+  where,
   orderBy,
   serverTimestamp,
   setDoc
 } from 'firebase/firestore';
-import { db } from './config';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './config';
 import { User, Company, UserRole } from '@/types/auth';
 
 export class AdminService {
@@ -190,7 +191,7 @@ export class AdminService {
 
       const querySnapshot = await getDocs(q);
       const users: User[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         users.push({ ...doc.data(), uid: doc.id } as User);
       });
@@ -199,6 +200,31 @@ export class AdminService {
     } catch (error) {
       console.error('Error fetching unassigned users:', error);
       throw error;
+    }
+  }
+
+  // Create a new user via Cloud Function
+  async createUser(userData: {
+    email: string;
+    password: string;
+    fullName: string;
+    phoneNumber?: string;
+    roles: UserRole[];
+    companyId?: string;
+  }): Promise<{ success: boolean; uid: string; message: string }> {
+    try {
+      const createUserFunction = httpsCallable<
+        typeof userData,
+        { success: boolean; uid: string; message: string }
+      >(functions, 'createUser');
+
+      const result = await createUserFunction(userData);
+      return result.data;
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      // Extract the error message from Firebase Functions error
+      const errorMessage = error.message || 'Failed to create user';
+      throw new Error(errorMessage);
     }
   }
 }

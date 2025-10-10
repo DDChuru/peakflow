@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { ShieldAlert } from 'lucide-react';
 import { AuthLayout } from '@/components/auth/AuthLayout';

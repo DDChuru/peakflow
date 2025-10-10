@@ -38,11 +38,15 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency, formatRelativeTime } from '@/lib/utils';
 
-export default function CompanyInvoicesPage() {
+interface CompanyInvoicesPageProps {
+  companyId?: string;
+}
+
+export default function CompanyInvoicesPage({ companyId: propCompanyId }: CompanyInvoicesPageProps = {}) {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  const companyId = params.id as string;
+  const companyId = propCompanyId || (params.id as string);
 
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);

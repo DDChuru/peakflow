@@ -55,13 +55,17 @@ service cloud.firestore {
     match /companies/{companyId} {
       // All authenticated users can read companies
       allow read: if isAuthenticated();
-      
+
       // Only admins and developers can create companies
       allow create: if canManageCompanies();
-      
-      // Only admins and developers can update companies
-      allow update: if canManageCompanies();
-      
+
+      // Users belonging to company can update config fields (currency, VAT)
+      // Only admins and developers can update other fields
+      allow update: if canManageCompanies() ||
+        (belongsToCompany(companyId) &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['defaultCurrency', 'vatPercentage', 'updatedAt']));
+
       // Only admins can delete companies
       allow delete: if isAdmin();
     }
@@ -113,8 +117,13 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid
       );
 
-      // Only admins can delete bank statements
-      allow delete: if isAdmin();
+      // Users can delete their own bank statements or statements from their company
+      allow delete: if isAuthenticated() && (
+        canManageCompanies() || // Admins/developers can delete any
+        resource.data.userId == request.auth.uid || // Owner can delete their uploads
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == resource.data.companyId)
+      );
     }
 
     // Usage tracking collection
@@ -208,7 +217,7 @@ service cloud.firestore {
         allow read: if belongsToCompany(companyId) || canManageCompanies();
         allow create: if belongsToCompany(companyId);
         allow update: if belongsToCompany(companyId) || canManageCompanies();
-        allow delete: if canManageCompanies();
+        allow delete: if belongsToCompany(companyId) || canManageCompanies();
       }
 
       // Ledger entries collection
@@ -250,7 +259,7 @@ service cloud.firestore {
       // Debtors collection - scoped to company
       match /debtors/{debtorId} {
         // Users can only read debtors from their own company
-        allow read: if belongsToCompany(companyId);
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
 
         // Users can create debtors for their own company
         allow create: if belongsToCompany(companyId) &&
@@ -269,7 +278,7 @@ service cloud.firestore {
       // Creditors collection - scoped to company
       match /creditors/{creditorId} {
         // Users can only read creditors from their own company
-        allow read: if belongsToCompany(companyId);
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
 
         // Users can create creditors for their own company
         allow create: if belongsToCompany(companyId) &&
@@ -313,6 +322,18 @@ service cloud.firestore {
 
       // Chart of accounts for company
       match /chartOfAccounts/{accountId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update, delete: if canManageCompanies();
+      }
+
+      // GL Mapping Rules for bank-to-ledger import
+      match /glMappingRules/{ruleId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create, update, delete: if canManageCompanies();
+      }
+
+      // Configuration subcollection (industry settings, feature flags, etc.)
+      match /configuration/{configDoc} {
         allow read: if belongsToCompany(companyId) || canManageCompanies();
         allow create, update, delete: if canManageCompanies();
       }
@@ -385,11 +406,11 @@ service cloud.firestore {
         // Users can read quotes from their own company
         allow read: if belongsToCompany(companyId) || canManageCompanies();
 
-        // Users can create quotes for their own company
-        allow create: if belongsToCompany(companyId) &&
+        // Users can create quotes for any company (workspace access checked in app)
+        allow create: if isAuthenticated() &&
           request.resource.data.companyId == companyId;
 
-        // Users can update quotes
+        // Users can update quotes in their company
         allow update: if belongsToCompany(companyId) &&
           resource.data.companyId == companyId;
 

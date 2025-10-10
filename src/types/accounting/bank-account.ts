@@ -51,6 +51,7 @@ export interface BankAccount {
   accountType: BankAccountType;
   bankName: string;
   branch?: string;
+  branchCode?: string;
   country?: string;
   currency: string;
   glAccountId: string;

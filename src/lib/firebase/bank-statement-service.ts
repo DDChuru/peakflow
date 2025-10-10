@@ -10,6 +10,7 @@ import {
   getDocs,
   doc,
   getDoc,
+  deleteDoc,
   Timestamp
 } from 'firebase/firestore';
 import {
@@ -19,6 +20,8 @@ import {
   BankStatementSummary,
   BankAccountInfo
 } from '@/types/bank-statement';
+import { detectBank } from '../banking/bank-parsers';
+import { fixStatementTransactions, applyStatementFixes } from '../banking/fix-statement-amounts';
 
 type RawTransaction = {
   date?: string;
@@ -221,7 +224,7 @@ export async function processBankStatement(
       statementPeriod: normalizeStatementPeriod(summary.statementPeriod)
     };
 
-    const bankStatement: BankStatement = {
+    let bankStatement: BankStatement = {
       companyId,
       companyName,
       uploadedAt: new Date(),
@@ -235,6 +238,33 @@ export async function processBankStatement(
       extractedData: removeUndefinedDeep(result.data),
       userId: user.uid
     };
+
+    // AUTO-FIX: Apply bank-specific parser to correct debit/credit amounts
+    try {
+      console.log('[Bank Parser] Detecting bank...');
+      const bankName = detectBank('', bankStatement.accountInfo);
+      console.log('[Bank Parser] Detected bank:', bankName);
+
+      if (bankName !== 'Unknown') {
+        console.log('[Bank Parser] Applying bank-specific corrections...');
+        const fixResult = fixStatementTransactions(bankStatement);
+
+        if (fixResult.transactionsFixed > 0) {
+          console.log(`[Bank Parser] Fixed ${fixResult.transactionsFixed} transactions`);
+          bankStatement = applyStatementFixes(bankStatement, fixResult);
+          // Add metadata to show auto-fix was applied
+          bankStatement.accountInfo = {
+            ...bankStatement.accountInfo,
+            bankName: fixResult.bankDetected
+          };
+        } else {
+          console.log('[Bank Parser] No corrections needed - transactions already correct');
+        }
+      }
+    } catch (parserError) {
+      console.warn('[Bank Parser] Auto-fix failed, using original amounts:', parserError);
+      // Continue with original data if parser fails
+    }
 
     // Save to Firestore
     const firestorePayload = removeUndefinedDeep({
@@ -549,4 +579,26 @@ export function calculateSummaryStats(transactions: BankTransaction[]): {
     transactionsByCategory,
     transactionsByType
   };
+}
+
+// Class wrapper for bank statement service functions
+/**
+ * Delete a bank statement
+ */
+export async function deleteBankStatement(statementId: string): Promise<void> {
+  await ensureAuthenticated();
+
+  const statementRef = doc(db, 'bank_statements', statementId);
+  await deleteDoc(statementRef);
+
+  console.log(`[BankStatementService] Deleted statement: ${statementId}`);
+}
+
+export class BankStatementService {
+  fileToBase64 = fileToBase64;
+  processBankStatement = processBankStatement;
+  getCompanyBankStatements = getCompanyBankStatements;
+  getBankStatement = getBankStatement;
+  calculateSummaryStats = calculateSummaryStats;
+  deleteBankStatement = deleteBankStatement;
 }
