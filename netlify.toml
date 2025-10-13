@@ -6,6 +6,7 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
+  # Public Firebase Configuration (safe to expose)
   NEXT_PUBLIC_FIREBASE_API_KEY = "AIzaSyCMuPp8kXVgBkHKxxEt2XIX6mwr_tRR_jc"
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "peakflow-3a2ed.firebaseapp.com"
   NEXT_PUBLIC_FIREBASE_PROJECT_ID = "peakflow-3a2ed"
@@ -15,3 +16,11 @@
   NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID = "G-0SHKPBDPJR"
   NEXT_PUBLIC_USE_FIREBASE_EMULATOR = "false"
   NEXT_PUBLIC_GEMINI_API_KEY = "AIzaSyBTQPGX78kfkV71LSOZeUy1vwZihUvrOuo"
+
+# IMPORTANT: Add these SECRET variables in Netlify Dashboard
+# (Site settings → Environment variables)
+#
+# ANTHROPIC_API_KEY = "sk-ant-api03-..." (for AI workspace chat)
+# ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929"
+#
+# DO NOT add secret keys to this file - they must be set in Netlify Dashboard!
