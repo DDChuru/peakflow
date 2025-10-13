@@ -14,10 +14,10 @@ import {
   ArrowRightIcon,
   CheckIcon,
   StarIcon,
-  PlayIcon,
-  SparklesIcon
+  PlayIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 60 },
@@ -167,14 +167,19 @@ export default function LandingPage() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <SparklesIcon className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+            <Link href="/" className="flex items-center gap-3">
+              <Image
+                src="/peakflow-logo.png"
+                alt="PeakFlow Accounting Software logo"
+                width={180}
+                height={120}
+                priority
+                className="hidden h-12 w-auto sm:block"
+              />
+              <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent sm:hidden">
                 PeakFlow
               </span>
-            </div>
+            </Link>
 
             <div className="hidden md:flex items-center space-x-8">
               <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
@@ -211,6 +216,17 @@ export default function LandingPage() {
             {...fadeInUp}
             className="space-y-8"
           >
+            <div className="flex justify-center">
+              <Image
+                src="/peakflow-logo.png"
+                alt="PeakFlow Accounting Software logo"
+                width={320}
+                height={214}
+                priority
+                className="w-40 sm:w-56 lg:w-64 h-auto drop-shadow-lg"
+              />
+            </div>
+
             <Badge className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border-blue-200">
               🚀 Revolutionizing Financial Management
             </Badge>
@@ -588,12 +604,15 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <SparklesIcon className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold">PeakFlow</span>
-              </div>
+              <Link href="/" className="inline-flex items-center">
+                <Image
+                  src="/peakflow-logo.png"
+                  alt="PeakFlow Accounting Software logo"
+                  width={180}
+                  height={120}
+                  className="h-12 w-auto"
+                />
+              </Link>
               <p className="text-gray-400">
                 Simplifying financial operations for modern businesses.
               </p>
