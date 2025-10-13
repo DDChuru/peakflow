@@ -9,17 +9,19 @@ export async function POST(request: NextRequest) {
     const {
       transaction,
       availableAccounts,
+      companyId,
       userMessage
     }: {
       transaction: BankTransaction;
       availableAccounts: CompanyAccountRecord[];
+      companyId: string;
       userMessage?: string;
     } = body;
 
     // Validate inputs
-    if (!transaction || !availableAccounts || availableAccounts.length === 0) {
+    if (!transaction || !availableAccounts || availableAccounts.length === 0 || !companyId) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields (transaction, availableAccounts, companyId)' },
         { status: 400 }
       );
     }
@@ -39,28 +41,52 @@ export async function POST(request: NextRequest) {
     // Create assistant instance
     const assistant = new AccountingAssistant();
 
-    // Analyze transaction
+    console.log('[AI API] Analyzing transaction with entity matching enabled');
+    console.log(`  CompanyId: ${companyId}`);
+    console.log(`  Transaction: ${transaction.description}`);
+
+    // Analyze transaction (now with fuzzy entity matching!)
     const result = await assistant.analyzeTransaction(
       transaction,
       availableAccounts,
+      companyId,
       userMessage
     );
 
+    // Log entity match if found
+    if (result.suggestion?.entityMatch) {
+      console.log(`[AI API] ✅ Entity matched: ${result.suggestion.entityMatch.entityName} (${result.suggestion.entityMatch.type})`);
+      console.log(`  Confidence: ${result.suggestion.entityMatch.confidence}%`);
+      if (result.suggestion.entityMatch.suggestedDocument) {
+        console.log(`  Suggested Document: ${result.suggestion.entityMatch.suggestedDocument.number}`);
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      ...result
+      message: result.message,
+      suggestion: result.suggestion, // Now includes entityMatch!
+      createAccount: result.createAccount,
+      needsMoreInfo: result.needsMoreInfo
     });
 
   } catch (error: any) {
     console.error('[AI API] Error:', error);
+    console.error('[AI API] Error stack:', error?.stack);
 
+    // Return a user-friendly error message with fallback flag
     return NextResponse.json(
       {
-        error: 'Failed to analyze transaction',
+        success: false,
+        error: 'AI analysis failed',
+        message: 'I encountered an error analyzing this transaction. You can map it manually or try again.',
         details: error?.message || 'Unknown error',
-        fallback: true
+        fallback: true,
+        suggestion: null,
+        createAccount: null,
+        needsMoreInfo: false
       },
-      { status: 500 }
+      { status: 200 } // Return 200 with error flag instead of 500
     );
   }
 }

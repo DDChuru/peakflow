@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select,
+  RadixSelect,
   SelectContent,
   SelectItem,
   SelectTrigger,
@@ -61,6 +61,11 @@ import { BankToLedgerService } from '@/lib/accounting/bank-to-ledger-service';
 import { IndustryTemplateService, CompanyAccountRecord } from '@/lib/accounting/industry-template-service';
 import { bankStatementService } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { MappingPipeline, TransactionMapping, ProcessingResult } from '@/lib/ai/mapping-pipeline';
+import { RuleLearningService } from '@/lib/ai/rule-learning-service';
+import { AIMappingArtifact } from '@/components/banking/AIMappingArtifact';
+import { MappingSuggestion, AccountCreationSuggestion } from '@/lib/ai/accounting-assistant';
+import { fuzzyMatch, normalizeForMatching } from '@/lib/utils/string-matching';
 
 interface BankToLedgerImportProps {
   companyId: string;
@@ -95,15 +100,43 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
   const [userInput, setUserInput] = useState<string>('');
   const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
 
+  // Tri-state buckets for AI-assisted mapping
+  const [autoMapped, setAutoMapped] = useState<Array<{
+    transaction: BankTransaction;
+    mapping: TransactionMapping;
+  }>>([]);
+  const [needsReview, setNeedsReview] = useState<Array<{
+    transaction: BankTransaction;
+    suggestedMapping: TransactionMapping;
+  }>>([]);
+  const [needsAI, setNeedsAI] = useState<Array<{
+    transaction: BankTransaction;
+  }>>([]);
+
+  // Processing state
+  const [processingStats, setProcessingStats] = useState<ProcessingResult['stats'] | null>(null);
+  const [activeTab, setActiveTab] = useState<'auto-mapped' | 'needs-review' | 'needs-ai'>('auto-mapped');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // AI artifact state
+  const [currentAIIndex, setCurrentAIIndex] = useState(0);
+  const [currentAISuggestion, setCurrentAISuggestion] = useState<MappingSuggestion | null>(null);
+  const [currentAccountCreation, setCurrentAccountCreation] = useState<AccountCreationSuggestion | null>(null);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
+
   // Services
   const [bankToLedgerService, setBankToLedgerService] = useState<BankToLedgerService | null>(null);
   const [coaService, setCoaService] = useState<IndustryTemplateService | null>(null);
+  const [mappingPipeline, setMappingPipeline] = useState<MappingPipeline | null>(null);
+  const [ruleLearningService, setRuleLearningService] = useState<RuleLearningService | null>(null);
 
   // Initialize services
   useEffect(() => {
     if (companyId) {
       setBankToLedgerService(new BankToLedgerService(companyId));
       setCoaService(new IndustryTemplateService(companyId));
+      setMappingPipeline(new MappingPipeline(companyId));
+      setRuleLearningService(new RuleLearningService(companyId));
     }
   }, [companyId]);
 
@@ -208,42 +241,108 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     }
   };
 
-  // Suggest GL mappings for transactions
+  // Suggest GL mappings for transactions using AI-powered pipeline
   const suggestMappings = async (txs: ImportedTransaction[]) => {
-    if (!bankToLedgerService) return;
-
-    const newMappings = new Map<string, GLMapping>();
-
-    for (const tx of txs) {
-      try {
-        const suggestions = await bankToLedgerService.suggestGLAccounts(tx);
-
-        if (suggestions.confidence > 0.5) {
-          newMappings.set(tx.id, {
-            debitAccount: suggestions.debitAccount ? {
-              id: suggestions.debitAccount.id,
-              code: suggestions.debitAccount.code,
-              name: suggestions.debitAccount.name
-            } : undefined,
-            creditAccount: suggestions.creditAccount ? {
-              id: suggestions.creditAccount.id,
-              code: suggestions.creditAccount.code,
-              name: suggestions.creditAccount.name
-            } : undefined,
-            confidence: suggestions.confidence
-          });
-
-          // Update transaction status
-          tx.mappingStatus = 'suggested';
-          tx.glMapping = newMappings.get(tx.id);
-        }
-      } catch (error) {
-        console.error(`Failed to suggest mapping for transaction ${tx.id}:`, error);
-      }
+    if (!mappingPipeline) {
+      console.warn('MappingPipeline not initialized yet');
+      return;
     }
 
-    setMappings(newMappings);
-    calculateStatistics(txs);
+    setIsProcessing(true);
+
+    try {
+      console.log(`[SUGGEST MAPPINGS] Processing ${txs.length} transactions with MappingPipeline...`);
+
+      // Convert ImportedTransaction[] to BankTransaction[]
+      const bankTransactions: BankTransaction[] = txs.map(tx => ({
+        id: tx.id,
+        date: tx.date,
+        description: tx.description,
+        debit: tx.debit,
+        credit: tx.credit,
+        balance: tx.balance,
+        category: tx.category,
+        reference: tx.reference
+      }));
+
+      // Process through pipeline
+      const result = await mappingPipeline.processTransactions(bankTransactions, {
+        autoMapThreshold: 85,
+        reviewThreshold: 60,
+        enableExactMatch: true,
+        enablePatternMatch: true,
+        enableFuzzyMatch: true,
+        enableCategoryMatch: true,
+        fuzzyMatchThreshold: 0.8
+      });
+
+      // Update tri-state buckets
+      setAutoMapped(result.autoMapped);
+      setNeedsReview(result.needsReview);
+      setNeedsAI(result.needsAI);
+      setProcessingStats(result.stats);
+
+      console.log(`[SUGGEST MAPPINGS] Pipeline complete:`, {
+        autoMapped: result.stats.autoMappedCount,
+        needsReview: result.stats.needsReviewCount,
+        needsAI: result.stats.needsAICount,
+        autoMapPercentage: `${result.stats.autoMappedPercentage.toFixed(1)}%`,
+        estimatedAICost: `$${result.stats.estimatedAICost.toFixed(3)}`
+      });
+
+      // Apply auto-mapped transactions to mappings
+      const newMappings = new Map<string, GLMapping>();
+      result.autoMapped.forEach(({ transaction, mapping }) => {
+        newMappings.set(transaction.id, {
+          debitAccount: {
+            id: mapping.debitAccount.id || '',
+            code: mapping.debitAccount.code,
+            name: mapping.debitAccount.name
+          },
+          creditAccount: {
+            id: mapping.creditAccount.id || '',
+            code: mapping.creditAccount.code,
+            name: mapping.creditAccount.name
+          },
+          confidence: mapping.confidence / 100,
+          manuallyMapped: false
+        });
+
+        // Update transaction status
+        const tx = txs.find(t => t.id === transaction.id);
+        if (tx) {
+          tx.mappingStatus = 'suggested';
+          tx.glMapping = newMappings.get(transaction.id);
+        }
+      });
+
+      setMappings(newMappings);
+      calculateStatistics(txs);
+
+      // Show success message with statistics
+      toast.success(
+        `✨ Processing complete!\n` +
+        `🟢 ${result.stats.autoMappedCount} auto-mapped (${result.stats.autoMappedPercentage.toFixed(1)}%)\n` +
+        `🟡 ${result.stats.needsReviewCount} need review\n` +
+        `🔵 ${result.stats.needsAICount} need AI assistance`,
+        { duration: 5000 }
+      );
+
+      // Auto-switch to appropriate tab
+      if (result.stats.autoMappedCount > 0) {
+        setActiveTab('auto-mapped');
+      } else if (result.stats.needsReviewCount > 0) {
+        setActiveTab('needs-review');
+      } else if (result.stats.needsAICount > 0) {
+        setActiveTab('needs-ai');
+      }
+
+    } catch (error) {
+      console.error('Failed to process transactions with pipeline:', error);
+      toast.error('Failed to process transactions. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Calculate import statistics
@@ -330,6 +429,62 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     calculateStatistics(updatedTransactions);
   };
 
+  /**
+   * Batch-apply mapping to similar unmapped transactions
+   * Finds all unmapped transactions with similar descriptions and applies the same mapping
+   *
+   * @param mappedTransaction - The transaction that was just mapped
+   * @param mapping - The GL mapping to apply
+   * @param similarityThreshold - Minimum similarity score (0-100) to consider a match
+   * @returns Number of additional transactions mapped
+   */
+  const applyMappingToSimilar = (
+    mappedTransaction: ImportedTransaction,
+    mapping: GLMapping,
+    similarityThreshold: number = 80
+  ): number => {
+    let count = 0;
+
+    // Get all unmapped transactions (from all buckets)
+    const unmappedTransactions = [
+      ...needsReview.map(item => item.transaction),
+      ...needsAI.map(item => item.transaction),
+      ...transactions.filter(tx =>
+        tx.mappingStatus === 'unmapped' &&
+        tx.id !== mappedTransaction.id &&
+        !mappings.has(tx.id)
+      )
+    ];
+
+    // Find similar transactions using fuzzy matching
+    const similarTransactions = unmappedTransactions.filter(tx => {
+      const matchResult = fuzzyMatch(
+        mappedTransaction.description,
+        tx.description,
+        {
+          maxLevenshteinDistance: 5,
+          minSimilarityRatio: similarityThreshold / 100,
+          checkAbbreviation: false,
+          checkPartialWords: true
+        }
+      );
+
+      return matchResult.isMatch && matchResult.confidence >= similarityThreshold;
+    });
+
+    // Apply mapping to all similar transactions
+    similarTransactions.forEach(tx => {
+      saveMapping(tx.id, {
+        ...mapping,
+        manuallyMapped: false // Marked as auto-applied from similar transaction
+      });
+      setSelectedTransactions(prev => new Set([...prev, tx.id]));
+      count++;
+    });
+
+    return count;
+  };
+
   // Get AI suggestion for transaction
   const getAISuggestion = async () => {
     if (!currentMappingTransaction) return;
@@ -343,7 +498,8 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transaction: currentMappingTransaction,
-          availableAccounts: glAccounts
+          availableAccounts: glAccounts,
+          companyId // Now includes companyId for entity matching!
         })
       });
 
@@ -391,6 +547,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         body: JSON.stringify({
           transaction: currentMappingTransaction,
           availableAccounts: glAccounts,
+          companyId, // Now includes companyId for entity matching!
           userMessage: userInput
         })
       });
@@ -460,6 +617,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     }
 
     try {
+      // Batch-apply to similar unmapped transactions BEFORE saving rule
+      const similarCount = applyMappingToSimilar(currentMappingTransaction, mapping, 80);
+
       // If saveAsRule is checked, create a new GL mapping rule
       if (saveAsRule && currentMappingTransaction.description) {
         // Extract key terms from the transaction description
@@ -494,13 +654,38 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
             }
           });
 
-          toast.success('Mapping saved and rule created for future auto-matching!');
+          // Show success message with batch count
+          if (similarCount > 0) {
+            toast.success(
+              `✅ Mapping applied to ${similarCount + 1} similar transactions!\n📋 Rule created for future auto-matching!`,
+              { duration: 5000 }
+            );
+          } else {
+            toast.success('Mapping saved and rule created for future auto-matching!');
+          }
         } else {
           toast.error('Could not create rule pattern from transaction description');
         }
       } else {
-        toast.success('Mapping saved successfully');
+        // No rule, just show batch mapping results
+        if (similarCount > 0) {
+          toast.success(
+            `✅ Mapping applied to ${similarCount + 1} similar transactions!`,
+            { duration: 4000 }
+          );
+        } else {
+          toast.success('Mapping saved successfully');
+        }
       }
+
+      // Update buckets - remove all newly mapped transactions
+      const newlyMappedIds = new Set<string>();
+      transactions.forEach(t => {
+        if (mappings.has(t.id)) newlyMappedIds.add(t.id);
+      });
+
+      setNeedsAI(needsAI.filter(item => !newlyMappedIds.has(item.transaction.id)));
+      setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
 
       // Close dialog and reset
       setShowMappingDialog(false);
@@ -594,6 +779,287 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       toast.error('Failed to post transactions to ledger');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // AI Artifact Handlers
+  const handleAnalyzeWithAI = async () => {
+    if (needsAI.length === 0 || currentAIIndex >= needsAI.length) return;
+
+    const currentTransaction = needsAI[currentAIIndex].transaction;
+    setIsProcessingAI(true);
+
+    try {
+      const response = await fetch('/api/ai/analyze-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transaction: currentTransaction,
+          availableAccounts: glAccounts,
+          companyId // Now includes companyId for entity matching!
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.suggestion) {
+        setCurrentAISuggestion(data.suggestion);
+        setCurrentAccountCreation(data.createAccount || null);
+        toast.success('AI analysis complete!');
+      } else if (data.fallback || !data.success) {
+        // AI encountered an error or returned fallback mode
+        const errorMessage = data.message || data.details || 'Could not generate suggestion';
+        toast.error(`${errorMessage}\n\nOpening manual mapping...`);
+        console.error('[AI] Analysis failed:', errorMessage);
+
+        // Open manual mapping dialog as fallback
+        const tx = transactions.find(t => t.id === currentTransaction.id);
+        if (tx) {
+          openMappingDialog(tx);
+        }
+      } else {
+        toast.error('Could not generate suggestion. Opening manual mapping...');
+
+        // Open manual mapping dialog as fallback
+        const tx = transactions.find(t => t.id === currentTransaction.id);
+        if (tx) {
+          openMappingDialog(tx);
+        }
+      }
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      toast.error('Failed to analyze transaction. Opening manual mapping...');
+
+      // Open manual mapping dialog as fallback
+      const tx = transactions.find(t => t.id === currentTransaction.id);
+      if (tx) {
+        openMappingDialog(tx);
+      }
+    } finally {
+      setIsProcessingAI(false);
+    }
+  };
+
+  const handleApproveAISuggestion = async () => {
+    if (!currentAISuggestion || !ruleLearningService) return;
+
+    const currentTransaction = needsAI[currentAIIndex].transaction;
+    setIsProcessingAI(true);
+
+    try {
+      // Save AI approval as rule using RuleLearningService
+      const ruleResult = await ruleLearningService.saveAIApprovalAsRule(
+        currentTransaction,
+        currentAISuggestion
+      );
+
+      if (ruleResult.created) {
+        // Apply mapping to current transaction
+        const mapping: GLMapping = {
+          debitAccount: {
+            id: currentAISuggestion.debitAccount.id || '',
+            code: currentAISuggestion.debitAccount.code,
+            name: currentAISuggestion.debitAccount.name
+          },
+          creditAccount: {
+            id: currentAISuggestion.creditAccount.id || '',
+            code: currentAISuggestion.creditAccount.code,
+            name: currentAISuggestion.creditAccount.name
+          },
+          confidence: currentAISuggestion.confidence / 100,
+          manuallyMapped: false
+        };
+
+        // Find the ImportedTransaction from transactions array
+        const tx = transactions.find(t => t.id === currentTransaction.id);
+        if (tx) {
+          saveMapping(currentTransaction.id, mapping);
+          setSelectedTransactions(new Set([...selectedTransactions, currentTransaction.id]));
+
+          // Batch-apply to similar unmapped transactions
+          const similarCount = applyMappingToSimilar(tx, mapping, 80);
+
+          // Update buckets - remove all newly mapped transactions
+          const newlyMappedIds = new Set([currentTransaction.id]);
+          transactions.forEach(t => {
+            if (mappings.has(t.id)) newlyMappedIds.add(t.id);
+          });
+
+          setNeedsAI(needsAI.filter(item => !newlyMappedIds.has(item.transaction.id)));
+          setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
+
+          // Show success message with batch count
+          if (similarCount > 0) {
+            toast.success(
+              `✅ Mapping applied to ${similarCount + 1} similar transactions!\n📋 ${ruleResult.message}`,
+              { duration: 5000 }
+            );
+          } else {
+            toast.success(`✅ Mapping applied and rule saved!\n📋 ${ruleResult.message}`);
+          }
+        }
+
+        // Move to next or clear
+        if (needsAI.length > 1) {
+          setCurrentAISuggestion(null);
+          setCurrentAccountCreation(null);
+          // Keep currentAIIndex the same since we removed one item
+        } else {
+          setCurrentAISuggestion(null);
+          setCurrentAccountCreation(null);
+          setCurrentAIIndex(0);
+          toast.info('All AI transactions processed! 🎉');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to approve AI suggestion:', error);
+      toast.error('Failed to save mapping');
+    } finally {
+      setIsProcessingAI(false);
+    }
+  };
+
+  const handleEditAISuggestion = () => {
+    if (needsAI.length === 0 || currentAIIndex >= needsAI.length) return;
+
+    const currentTransaction = needsAI[currentAIIndex].transaction;
+    const tx = transactions.find(t => t.id === currentTransaction.id);
+    if (tx) {
+      openMappingDialog(tx);
+    }
+  };
+
+  const handleSkipAISuggestion = () => {
+    // Move to next transaction or wrap around
+    if (currentAIIndex < needsAI.length - 1) {
+      setCurrentAIIndex(currentAIIndex + 1);
+      setCurrentAISuggestion(null);
+      setCurrentAccountCreation(null);
+    } else {
+      setCurrentAISuggestion(null);
+      setCurrentAccountCreation(null);
+      setCurrentAIIndex(0);
+      toast.info('Reached end of AI transactions');
+    }
+  };
+
+  const handlePreviousAI = () => {
+    if (currentAIIndex > 0) {
+      setCurrentAIIndex(currentAIIndex - 1);
+      setCurrentAISuggestion(null);
+      setCurrentAccountCreation(null);
+    }
+  };
+
+  const handleNextAI = () => {
+    if (currentAIIndex < needsAI.length - 1) {
+      setCurrentAIIndex(currentAIIndex + 1);
+      setCurrentAISuggestion(null);
+      setCurrentAccountCreation(null);
+    }
+  };
+
+  const handleSelectAlternative = async (alternativeIndex: number) => {
+    if (!currentAISuggestion || !currentAISuggestion.alternatives) return;
+
+    const alternative = currentAISuggestion.alternatives[alternativeIndex];
+    if (alternative) {
+      // Replace current suggestion with the selected alternative
+      setCurrentAISuggestion({
+        ...currentAISuggestion,
+        debitAccount: alternative.debitAccount,
+        creditAccount: alternative.creditAccount,
+        confidence: alternative.confidence,
+        reasoning: alternative.reasoning ? [alternative.reasoning] : currentAISuggestion.reasoning
+      });
+      toast.info('Alternative mapping selected');
+    }
+  };
+
+  const handleCreateAndApply = async () => {
+    if (!currentAccountCreation?.needed || !currentAISuggestion || !ruleLearningService) return;
+
+    const currentTransaction = needsAI[currentAIIndex].transaction;
+    setIsProcessingAI(true);
+
+    try {
+      // Create account AND save rule in one operation
+      const result = await ruleLearningService.createAccountAndSaveRule(
+        currentTransaction,
+        currentAISuggestion,
+        currentAccountCreation
+      );
+
+      if (result.account.created && result.rule.created) {
+        // Apply mapping to current transaction
+        const mapping: GLMapping = {
+          debitAccount: {
+            id: result.account.accountId,
+            code: result.account.code,
+            name: result.account.name
+          },
+          creditAccount: {
+            id: currentAISuggestion.creditAccount.id || '',
+            code: currentAISuggestion.creditAccount.code,
+            name: currentAISuggestion.creditAccount.name
+          },
+          confidence: currentAISuggestion.confidence / 100,
+          manuallyMapped: false
+        };
+
+        // Find the ImportedTransaction from transactions array
+        const tx = transactions.find(t => t.id === currentTransaction.id);
+        if (tx) {
+          saveMapping(currentTransaction.id, mapping);
+          setSelectedTransactions(new Set([...selectedTransactions, currentTransaction.id]));
+
+          // Batch-apply to similar unmapped transactions
+          const similarCount = applyMappingToSimilar(tx, mapping, 80);
+
+          // Update buckets - remove all newly mapped transactions
+          const newlyMappedIds = new Set([currentTransaction.id]);
+          transactions.forEach(t => {
+            if (mappings.has(t.id)) newlyMappedIds.add(t.id);
+          });
+
+          setNeedsAI(needsAI.filter(item => !newlyMappedIds.has(item.transaction.id)));
+          setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
+
+          // Reload GL accounts to include newly created account
+          await loadGLAccounts();
+
+          // Show success message with batch count
+          if (similarCount > 0) {
+            toast.success(
+              `✨ Success!\n📊 ${result.account.code} - ${result.account.name}\n✅ Applied to ${similarCount + 1} similar transactions!\n📋 ${result.rule.message}`,
+              { duration: 6000 }
+            );
+          } else {
+            toast.success(
+              `✨ Success!\n📊 ${result.account.code} - ${result.account.name}\n📋 ${result.rule.message}`,
+              { duration: 5000 }
+            );
+          }
+        }
+
+        // Move to next or clear
+        if (needsAI.length > 1) {
+          setCurrentAISuggestion(null);
+          setCurrentAccountCreation(null);
+        } else {
+          setCurrentAISuggestion(null);
+          setCurrentAccountCreation(null);
+          setCurrentAIIndex(0);
+          toast.info('All AI transactions processed! 🎉');
+        }
+      } else {
+        toast.error('Failed to create account or rule');
+      }
+    } catch (error) {
+      console.error('Failed to create account and apply:', error);
+      toast.error('Failed to create account');
+    } finally {
+      setIsProcessingAI(false);
     }
   };
 
@@ -700,11 +1166,12 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
 
   const renderMappingStep = () => (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Map Transactions to GL Accounts</h3>
+          <h3 className="text-lg font-semibold">AI-Powered Transaction Mapping</h3>
           <p className="text-sm text-muted-foreground">
-            Review and map bank transactions to general ledger accounts
+            Intelligently categorized by confidence level
           </p>
         </div>
         <div className="flex gap-2">
@@ -716,13 +1183,14 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
             onClick={() => setCurrentStep('preview')}
             disabled={selectedTransactions.size === 0}
           >
-            Preview
+            Preview ({selectedTransactions.size})
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
       </div>
 
-      {statistics && (
+      {/* Tri-State Statistics Cards */}
+      {processingStats && (
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
@@ -730,160 +1198,365 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                 <p className="text-sm text-muted-foreground">Total</p>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-bold">{statistics.totalTransactions}</p>
+              <p className="text-2xl font-bold">{processingStats.total}</p>
+              <p className="text-xs text-muted-foreground mt-1">All transactions</p>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="border-green-200 bg-green-50/50">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Mapped</p>
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <p className="text-sm font-semibold text-green-700">🟢 Auto-Mapped</p>
+                <CheckCircle className="h-4 w-4 text-green-600" />
               </div>
-              <p className="text-2xl font-bold">{statistics.mappedTransactions}</p>
+              <p className="text-2xl font-bold text-green-700">{processingStats.autoMappedCount}</p>
+              <p className="text-xs text-green-600 mt-1">
+                {processingStats.autoMappedPercentage.toFixed(0)}% - Ready to apply
+              </p>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="border-yellow-200 bg-yellow-50/50">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Suggested</p>
-                <Sparkles className="h-4 w-4 text-blue-500" />
+                <p className="text-sm font-semibold text-yellow-700">🟡 Needs Review</p>
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
               </div>
-              <p className="text-2xl font-bold">{statistics.suggestedMappings}</p>
+              <p className="text-2xl font-bold text-yellow-700">{processingStats.needsReviewCount}</p>
+              <p className="text-xs text-yellow-600 mt-1">
+                Medium confidence - verify
+              </p>
             </CardContent>
           </Card>
-          <Card>
+
+          <Card className="border-blue-200 bg-blue-50/50">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Selected</p>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-semibold text-blue-700">🔵 Needs AI</p>
+                <Sparkles className="h-4 w-4 text-blue-600" />
               </div>
-              <p className="text-2xl font-bold">{selectedTransactions.size}</p>
+              <p className="text-2xl font-bold text-blue-700">{processingStats.needsAICount}</p>
+              <p className="text-xs text-blue-600 mt-1">
+                Est. cost: ${processingStats.estimatedAICost.toFixed(3)}
+              </p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <div className="flex gap-4 items-center">
-        <div className="flex-1">
-          <Input
-            placeholder="Search transactions..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {Object.keys(statistics?.categorySummary || {}).map(cat => (
-              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="unmapped">Unmapped</SelectItem>
-            <SelectItem value="suggested">Suggested</SelectItem>
-            <SelectItem value="mapped">Mapped</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={applyBulkMapping} disabled={selectedTransactions.size === 0}>
-          Bulk Map
-        </Button>
-      </div>
+      {/* Processing Indicator */}
+      {isProcessing && (
+        <Alert>
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <AlertDescription>
+            Processing transactions through AI pipeline...
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedTransactions.size === filteredTransactions.length && filteredTransactions.length > 0}
-                  onCheckedChange={(checked) => selectAllTransactions(!!checked)}
+      {/* Tri-State Tabs */}
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as typeof activeTab)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="auto-mapped" className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Auto-Mapped ({autoMapped.length})
+          </TabsTrigger>
+          <TabsTrigger value="needs-review" className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            Needs Review ({needsReview.length})
+          </TabsTrigger>
+          <TabsTrigger value="needs-ai" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Needs AI ({needsAI.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Tab 1: Auto-Mapped */}
+        <TabsContent value="auto-mapped" className="space-y-4">
+          {autoMapped.length === 0 ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                No high-confidence mappings found. Review other tabs for transactions needing attention.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  These transactions matched existing rules with high confidence (≥85%)
+                </p>
+                <Button
+                  onClick={() => {
+                    // Select all auto-mapped transactions
+                    const autoIds = autoMapped.map(item => item.transaction.id);
+                    setSelectedTransactions(new Set(autoIds));
+                  }}
+                  size="sm"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Select All {autoMapped.length}
+                </Button>
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={autoMapped.every(item => selectedTransactions.has(item.transaction.id))}
+                          onCheckedChange={(checked) => {
+                            const autoIds = autoMapped.map(item => item.transaction.id);
+                            if (checked) {
+                              setSelectedTransactions(new Set([...selectedTransactions, ...autoIds]));
+                            } else {
+                              const newSet = new Set(selectedTransactions);
+                              autoIds.forEach(id => newSet.delete(id));
+                              setSelectedTransactions(newSet);
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Mapping</TableHead>
+                      <TableHead>Confidence</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {autoMapped.map(({ transaction, mapping }) => (
+                      <TableRow key={transaction.id} className="hover:bg-green-50/50">
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedTransactions.has(transaction.id)}
+                            onCheckedChange={() => toggleTransactionSelection(transaction.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-sm">{transaction.date}</TableCell>
+                        <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
+                        <TableCell className="text-sm">
+                          ${(transaction.debit || transaction.credit || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div>Dr: {mapping.debitAccount.code}</div>
+                          <div>Cr: {mapping.creditAccount.code}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default" className="bg-green-600">
+                            {mapping.confidence}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {/* Tab 2: Needs Review */}
+        <TabsContent value="needs-review" className="space-y-4">
+          {needsReview.length === 0 ? (
+            <Alert>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription>
+                No transactions need review. All transactions either auto-mapped or need AI assistance.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  These transactions have medium confidence (60-84%). Quick review recommended.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {needsReview.map(({ transaction, suggestedMapping }) => (
+                  <Card key={transaction.id} className="border-yellow-200">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Checkbox
+                              checked={selectedTransactions.has(transaction.id)}
+                              onCheckedChange={() => toggleTransactionSelection(transaction.id)}
+                            />
+                            <div>
+                              <p className="font-semibold text-sm">{transaction.description}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {transaction.date} • ${(transaction.debit || transaction.credit || 0).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="ml-6 text-sm space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">Debit:</span>
+                              <span className="font-medium">{suggestedMapping.debitAccount.code} - {suggestedMapping.debitAccount.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">Credit:</span>
+                              <span className="font-medium">{suggestedMapping.creditAccount.code} - {suggestedMapping.creditAccount.name}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge variant="outline" className="border-yellow-600 text-yellow-700">
+                            {suggestedMapping.confidence}% Match
+                          </Badge>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={() => {
+                              const tx = transactions.find(t => t.id === transaction.id);
+                              if (tx) openMappingDialog(tx);
+                            }}>
+                              Edit
+                            </Button>
+                            <Button size="sm" onClick={() => {
+                              // Apply the suggested mapping
+                              const mapping: GLMapping = {
+                                debitAccount: {
+                                  id: suggestedMapping.debitAccount.id || '',
+                                  code: suggestedMapping.debitAccount.code,
+                                  name: suggestedMapping.debitAccount.name
+                                },
+                                creditAccount: {
+                                  id: suggestedMapping.creditAccount.id || '',
+                                  code: suggestedMapping.creditAccount.code,
+                                  name: suggestedMapping.creditAccount.name
+                                },
+                                confidence: suggestedMapping.confidence / 100,
+                                manuallyMapped: false
+                              };
+                              saveMapping(transaction.id, mapping);
+                              setSelectedTransactions(new Set([...selectedTransactions, transaction.id]));
+                              toast.success('Mapping applied!');
+                            }}>
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Approve
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {/* Tab 3: Needs AI */}
+        <TabsContent value="needs-ai" className="space-y-4">
+          {needsAI.length === 0 ? (
+            <Alert>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription>
+                All transactions have been mapped! No AI assistance needed.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {/* Show AIMappingArtifact when analyzing */}
+              {currentAISuggestion ? (
+                <AIMappingArtifact
+                  transaction={needsAI[currentAIIndex].transaction}
+                  suggestion={currentAISuggestion}
+                  createAccount={currentAccountCreation}
+                  currentIndex={currentAIIndex + 1}
+                  totalCount={needsAI.length}
+                  onApprove={handleApproveAISuggestion}
+                  onEdit={handleEditAISuggestion}
+                  onSkip={handleSkipAISuggestion}
+                  onPrevious={currentAIIndex > 0 ? handlePreviousAI : undefined}
+                  onNext={currentAIIndex < needsAI.length - 1 ? handleNextAI : undefined}
+                  onSelectAlternative={handleSelectAlternative}
+                  onCreateAndApply={handleCreateAndApply}
+                  isLoading={isProcessingAI}
                 />
-              </TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Debit</TableHead>
-              <TableHead className="text-right">Credit</TableHead>
-              <TableHead>GL Mapping</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTransactions.map((tx) => (
-              <TableRow key={tx.id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedTransactions.has(tx.id)}
-                    onCheckedChange={() => toggleTransactionSelection(tx.id)}
-                  />
-                </TableCell>
-                <TableCell>{tx.date}</TableCell>
-                <TableCell className="max-w-xs truncate">{tx.description}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{tx.category}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {tx.debit ? `$${tx.debit.toFixed(2)}` : '-'}
-                </TableCell>
-                <TableCell className="text-right">
-                  {tx.credit ? `$${tx.credit.toFixed(2)}` : '-'}
-                </TableCell>
-                <TableCell>
-                  {mappings.has(tx.id) ? (
-                    <div className="text-sm">
-                      {mappings.get(tx.id)?.debitAccount && (
-                        <p>Dr: {mappings.get(tx.id)?.debitAccount?.code}</p>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground">
+                      These transactions have no matching rules. AI analysis can suggest mappings.
+                    </p>
+                    <Button
+                      onClick={handleAnalyzeWithAI}
+                      disabled={needsAI.length === 0 || isProcessingAI}
+                    >
+                      {isProcessingAI ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Analyze with AI
+                        </>
                       )}
-                      {mappings.get(tx.id)?.creditAccount && (
-                        <p>Cr: {mappings.get(tx.id)?.creditAccount?.code}</p>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {tx.mappingStatus === 'suggested' && (
-                    <Badge variant="secondary">
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      Suggested
-                    </Badge>
-                  )}
-                  {tx.mappingStatus === 'mapped' && (
-                    <Badge variant="default">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Mapped
-                    </Badge>
-                  )}
-                  {tx.mappingStatus === 'unmapped' && (
-                    <Badge variant="outline">Unmapped</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => openMappingDialog(tx)}
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {needsAI.map(({ transaction }, idx) => (
+                      <Card
+                        key={transaction.id}
+                        className={`border-blue-200 hover:bg-blue-50/50 transition-colors ${
+                          idx === currentAIIndex ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                      >
+                        <CardContent className="pt-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Sparkles className="h-5 w-5 text-blue-600" />
+                              <div>
+                                <p className="font-semibold text-sm">{transaction.description}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {transaction.date} • ${(transaction.debit || transaction.credit || 0).toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="border-blue-600 text-blue-700">
+                                No Rule Match
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const tx = transactions.find(t => t.id === transaction.id);
+                                  if (tx) openMappingDialog(tx);
+                                }}
+                              >
+                                Manual Map
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentAIIndex(idx);
+                                  handleAnalyzeWithAI();
+                                }}
+                              >
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                AI Analyze
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 
@@ -1153,7 +1826,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <Select
+                    <RadixSelect
                       value={mappings.get(currentMappingTransaction.id)?.debitAccount?.id || ''}
                       onValueChange={(value) => {
                         const account = glAccounts.find(a => a.id === value);
@@ -1185,7 +1858,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                           ))
                         )}
                       </SelectContent>
-                    </Select>
+                    </RadixSelect>
                   )}
                 </div>
 
@@ -1204,7 +1877,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <Select
+                    <RadixSelect
                       value={mappings.get(currentMappingTransaction.id)?.creditAccount?.id || ''}
                       onValueChange={(value) => {
                         const account = glAccounts.find(a => a.id === value);
@@ -1236,7 +1909,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                           ))
                         )}
                       </SelectContent>
-                    </Select>
+                    </RadixSelect>
                   )}
                 </div>
 

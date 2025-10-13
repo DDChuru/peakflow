@@ -45,6 +45,7 @@ export interface Creditor {
   id: string;
   companyId: string; // Required for tenant isolation
   name: string;
+  creditorType: 'trade' | 'tax-authority' | 'statutory' | 'utility' | 'other'; // Type of creditor
   email?: string;
   phone?: string;
   address?: string;

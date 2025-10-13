@@ -28,7 +28,8 @@ import {
   X,
   LogOut,
   User,
-  FileUp
+  FileUp,
+  MessageCircle
 } from 'lucide-react';
 
 interface WorkspaceLayoutProps {
@@ -151,6 +152,12 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
       name: 'Reports',
       href: hasCompany ? `/workspace/${companyId || user?.companyId}/reports` : '#',
       icon: BarChart3,
+    },
+    {
+      name: 'AI Assistant',
+      href: hasCompany ? `/workspace/${companyId || user?.companyId}/ai-chat` : '#',
+      icon: MessageCircle,
+      badge: 'NEW'
     },
     {
       name: 'Resources',

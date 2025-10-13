@@ -762,6 +762,81 @@ export class IndustryTemplateService {
   }
 
   /**
+   * Create a single GL account
+   * Used by AI to create new accounts when needed
+   */
+  async createAccount(accountData: {
+    code: string;
+    name: string;
+    type: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
+    subtype?: string;
+    category?: string;
+    description?: string;
+    normalBalance: 'debit' | 'credit';
+    isActive?: boolean;
+    isRequired?: boolean;
+    metadata?: {
+      createdBy?: string;
+      reasoning?: string;
+      createdAt?: string;
+      source?: string;
+    };
+  }): Promise<CompanyAccountRecord> {
+    try {
+      // Build account document with only defined fields
+      const accountDoc: any = {
+        code: accountData.code,
+        name: accountData.name,
+        type: accountData.type,
+        description: accountData.description || `${accountData.name} account`,
+        normalBalance: accountData.normalBalance,
+        isActive: accountData.isActive ?? true,
+        isSystemAccount: accountData.isRequired ?? false,
+        createdBy: accountData.metadata?.createdBy || 'ai-assistant',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      // Only add optional fields if defined
+      if (accountData.subtype) {
+        accountDoc.subType = accountData.subtype;
+      }
+      if (accountData.category) {
+        accountDoc.category = accountData.category;
+      }
+      if (accountData.metadata) {
+        accountDoc.metadata = accountData.metadata;
+      }
+
+      // Create the document with auto-generated ID
+      const docRef = doc(collection(db, `companies/${this.companyId}/chartOfAccounts`));
+      await setDoc(docRef, accountDoc);
+
+      console.log(`✅ [IndustryTemplate] Created account ${accountData.code} - ${accountData.name} with ID: ${docRef.id}`);
+
+      // Return the created account with its ID
+      return {
+        id: docRef.id,
+        code: accountData.code,
+        name: accountData.name,
+        type: accountData.type,
+        subType: accountData.subtype,
+        description: accountData.description || `${accountData.name} account`,
+        normalBalance: accountData.normalBalance,
+        isActive: accountData.isActive ?? true,
+        isSystemAccount: accountData.isRequired ?? false,
+        metadata: accountData.metadata,
+        createdBy: accountData.metadata?.createdBy || 'ai-assistant',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      } as CompanyAccountRecord;
+    } catch (error) {
+      console.error(`❌ [IndustryTemplate] Failed to create account ${accountData.code}:`, error);
+      throw new Error(`Failed to create account: ${error}`);
+    }
+  }
+
+  /**
    * Save a GL mapping rule
    */
   async saveMappingRule(rule: Omit<GLMappingRule, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): Promise<GLMappingRule> {

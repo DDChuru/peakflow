@@ -11,7 +11,7 @@ import {
 } from '@/lib/accounting/industry-showcase-utils';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Select,
+  RadixSelect,
   SelectContent,
   SelectItem,
   SelectTrigger,
@@ -296,7 +296,7 @@ export default function IndustryCOAShowcase() {
                 </Tabs>
               </div>
               <div className="md:hidden">
-                <Select value={selectedIndustry} onValueChange={setSelectedIndustry}>
+                <RadixSelect value={selectedIndustry} onValueChange={setSelectedIndustry}>
                   <SelectTrigger className="bg-white/90">
                     <SelectValue placeholder="Choose an industry" />
                   </SelectTrigger>
@@ -307,7 +307,7 @@ export default function IndustryCOAShowcase() {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                </RadixSelect>
               </div>
             </div>
 

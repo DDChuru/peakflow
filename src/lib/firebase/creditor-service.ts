@@ -252,6 +252,7 @@ export class CreditorService {
       id,
       companyId: data.companyId,
       name: data.name,
+      creditorType: data.creditorType || 'trade',
       email: data.email,
       phone: data.phone,
       address: data.address,

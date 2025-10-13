@@ -294,6 +294,25 @@ service cloud.firestore {
         allow delete: if isCompanyAdmin(companyId);
       }
 
+      // Pending Payments collection - AI-matched payments awaiting allocation
+      match /pendingPayments/{paymentId} {
+        // Users can read pending payments from their own company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Users can create pending payments for their own company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId &&
+          request.resource.data.createdBy == request.auth.uid;
+
+        // Users can update pending payments (allocations, status) but not core fields
+        allow update: if belongsToCompany(companyId) &&
+          resource.data.companyId == companyId &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy', 'amount', 'entityId', 'entityType', 'transactionDate']));
+
+        // Only company admins can delete pending payments
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+      }
+
       // Transactions collection - scoped to company
       match /transactions/{transactionId} {
         // Users can only read transactions from their own company

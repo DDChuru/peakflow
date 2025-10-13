@@ -76,6 +76,7 @@ import { CreditorFinancialContactsManager } from '@/components/contacts/Creditor
 // Form validation schema
 const supplierFormSchema = z.object({
   name: z.string().min(1, 'Supplier name is required'),
+  creditorType: z.enum(['trade', 'tax-authority', 'statutory', 'utility', 'other']).default('trade'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
   address: z.string().optional(),
@@ -125,6 +126,7 @@ export default function SuppliersPage() {
     resolver: zodResolver(supplierFormSchema),
     defaultValues: {
       name: '',
+      creditorType: 'trade',
       email: '',
       phone: '',
       address: '',
@@ -212,6 +214,7 @@ export default function SuppliersPage() {
       // Build supplier data object, only including fields with values (Firestore doesn't accept undefined)
       const supplierData: any = {
         name: data.name,
+        creditorType: data.creditorType || 'trade',
         paymentTerms: data.paymentTerms || 0,
         status: data.status as 'active' | 'inactive',
         currentBalance: 0,
@@ -275,6 +278,7 @@ export default function SuppliersPage() {
       // Build updates object, only including fields with values (Firestore doesn't accept undefined)
       const updates: any = {
         name: data.name,
+        creditorType: data.creditorType || 'trade',
         paymentTerms: data.paymentTerms || 0,
         status: data.status as 'active' | 'inactive',
       };
@@ -333,6 +337,7 @@ export default function SuppliersPage() {
     setSelectedSupplier(supplier);
     form.reset({
       name: supplier.name,
+      creditorType: supplier.creditorType || 'trade',
       email: supplier.email || '',
       phone: supplier.phone || '',
       address: supplier.address || '',
@@ -462,6 +467,22 @@ export default function SuppliersPage() {
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getCreditorTypeInfo = (creditorType?: string) => {
+    switch (creditorType) {
+      case 'tax-authority':
+        return { label: 'Tax Authority', color: 'bg-orange-100 text-orange-800 border-orange-200' };
+      case 'statutory':
+        return { label: 'Statutory', color: 'bg-purple-100 text-purple-800 border-purple-200' };
+      case 'utility':
+        return { label: 'Utility', color: 'bg-blue-100 text-blue-800 border-blue-200' };
+      case 'other':
+        return { label: 'Other', color: 'bg-gray-100 text-gray-800 border-gray-200' };
+      case 'trade':
+      default:
+        return { label: 'Trade', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' };
     }
   };
 
@@ -680,18 +701,19 @@ export default function SuppliersPage() {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <div className="flex items-center gap-1.5">
-                              {supplier.category ? (
-                                <>
-                                  <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                    {supplier.category}
-                                  </span>
-                                  {supplier.bankDetails && (
-                                    <CreditCard className="h-3.5 w-3.5 text-gray-400" title="Bank details on file" />
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-sm text-gray-400 italic">Uncategorized</span>
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getCreditorTypeInfo(supplier.creditorType).color}`}>
+                                  {getCreditorTypeInfo(supplier.creditorType).label}
+                                </span>
+                                {supplier.bankDetails && (
+                                  <CreditCard className="h-3.5 w-3.5 text-gray-400" title="Bank details on file" />
+                                )}
+                              </div>
+                              {supplier.category && (
+                                <span className="text-xs text-gray-500">
+                                  {supplier.category}
+                                </span>
                               )}
                             </div>
                           </td>
@@ -853,6 +875,27 @@ export default function SuppliersPage() {
                             {form.formState.errors.name.message}
                           </p>
                         )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="creditorType">
+                          Creditor Type <span className="text-red-500">*</span>
+                        </Label>
+                        <Select
+                          value={form.watch('creditorType')}
+                          onValueChange={(value) => form.setValue('creditorType', value as any)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select creditor type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="trade">Trade Supplier</SelectItem>
+                            <SelectItem value="tax-authority">Tax Authority (e.g., SARS)</SelectItem>
+                            <SelectItem value="statutory">Statutory (e.g., UIF, Pension)</SelectItem>
+                            <SelectItem value="utility">Utility (e.g., Eskom, Municipality)</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div className="space-y-2">
@@ -1160,12 +1203,24 @@ export default function SuppliersPage() {
                       <p className="font-medium mt-1">{selectedSupplier.name}</p>
                     </div>
                     <div>
+                      <Label className="text-gray-500">Creditor Type</Label>
+                      <div className="mt-1">
+                        <Badge className={getCreditorTypeInfo(selectedSupplier.creditorType).color}>
+                          {getCreditorTypeInfo(selectedSupplier.creditorType).label}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
                       <Label className="text-gray-500">Status</Label>
                       <div className="mt-1">
                         <Badge className={getStatusColor(selectedSupplier.status)}>
                           {selectedSupplier.status.charAt(0).toUpperCase() + selectedSupplier.status.slice(1)}
                         </Badge>
                       </div>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500">Category</Label>
+                      <p className="mt-1">{selectedSupplier.category || 'Uncategorized'}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Email</Label>
@@ -1186,10 +1241,6 @@ export default function SuppliersPage() {
                     <div>
                       <Label className="text-gray-500">Account Number</Label>
                       <p className="mt-1">{selectedSupplier.accountNumber || 'Not provided'}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500">Category</Label>
-                      <p className="mt-1">{selectedSupplier.category || 'Uncategorized'}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Payment Terms</Label>
