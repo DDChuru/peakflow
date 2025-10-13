@@ -56,6 +56,8 @@ export default function QuoteToInvoiceModal({
   // Conversion settings
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentTerms, setPaymentTerms] = useState(30);
+  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState('');
+  const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState('');
 
   // Line items for conversion
@@ -77,6 +79,12 @@ export default function QuoteToInvoiceModal({
       notes: item.notes
     }));
     setLineItems(initialItems);
+
+    // Calculate average tax rate from quote line items
+    if (quote.lineItems.length > 0) {
+      const avgTaxRate = quote.lineItems.reduce((sum, item) => sum + (item.taxRate || 0), 0) / quote.lineItems.length;
+      setTaxRate(avgTaxRate);
+    }
   }, [quote]);
 
   const updateLineItem = (index: number, field: keyof QuoteLineItemForConversion, value: any) => {
@@ -144,6 +152,8 @@ export default function QuoteToInvoiceModal({
         customerId: quote.customerId,
         invoiceDate,
         paymentTerms,
+        purchaseOrderNumber: purchaseOrderNumber || undefined,
+        taxRate: taxRate,
         source: 'quote_conversion',
         sourceDocumentId: quote.id,
         currency: quote.currency,
@@ -446,6 +456,30 @@ export default function QuoteToInvoiceModal({
                       max="365"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Purchase Order Number
+                    </label>
+                    <Input
+                      type="text"
+                      value={purchaseOrderNumber}
+                      onChange={(e) => setPurchaseOrderNumber(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Tax Rate (%)
+                    </label>
+                    <Input
+                      type="number"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -481,6 +515,16 @@ export default function QuoteToInvoiceModal({
                     <div className="flex justify-between">
                       <span className="text-gray-600">Due Date:</span>
                       <span>{new Date(new Date(invoiceDate).getTime() + paymentTerms * 24 * 60 * 60 * 1000).toLocaleDateString()}</span>
+                    </div>
+                    {purchaseOrderNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">PO Number:</span>
+                        <span>{purchaseOrderNumber}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tax Rate:</span>
+                      <span>{taxRate}%</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Items:</span>
