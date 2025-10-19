@@ -2,6 +2,50 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL: Radix UI Select Component Usage
+
+**ALWAYS use `RadixSelect` instead of `Select` when using Radix UI Select components!**
+
+The `/src/components/ui/select.tsx` file exports TWO different Select components:
+1. **`Select`** - Native HTML `<select>` element (for simple forms)
+2. **`RadixSelect`** - Radix UI Select component (with SelectTrigger, SelectValue, etc.)
+
+### ❌ WRONG (causes "SelectTrigger must be used within Select" error):
+```tsx
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+
+<Select value={value} onValueChange={onChange}>
+  <SelectTrigger>
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="1">Option 1</SelectItem>
+  </SelectContent>
+</Select>
+```
+
+### ✅ CORRECT:
+```tsx
+import { RadixSelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+
+<RadixSelect value={value} onValueChange={onChange}>
+  <SelectTrigger>
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="1">Option 1</SelectItem>
+  </SelectContent>
+</RadixSelect>
+```
+
+**Why?** `SelectTrigger` is a Radix UI component that requires a Radix Select context, which only `RadixSelect` provides. The native `Select` component doesn't have this context, causing the error.
+
+**When to use each:**
+- Use `RadixSelect` when you need: custom styling, SelectTrigger, SelectValue, SelectContent, SelectItem
+- Use `Select` (native) when you need: simple form select with basic `<option>` tags
+
+---
+
 ## CRITICAL: Post-Implementation Testing Protocol
 
 **AFTER COMPLETING ANY FEATURE OR TASK**, you MUST:
@@ -70,6 +114,59 @@ This ensures the user can verify the implementation works correctly before movin
 - **Delegate specialized tasks** to domain-specific agents
 - **Use parallel delegation** when multiple independent tasks exist
 - **Prefer delegation over direct implementation** for complex analysis
+
+## CRITICAL: Centralized PDF Service Architecture
+
+**ALWAYS use the centralized PDF service** - DO NOT create component-specific PDF generation:
+
+### Centralized PDF Service Location
+**Path**: `/src/lib/pdf/pdf.service.ts`
+**Export**: `pdfService` (singleton instance)
+
+### Why Centralized?
+1. **Firebase Storage Integration**: Automatic conversion of Firebase URLs to base64
+2. **Image Proxy Handling**: Built-in CORS handling via `/api/image-proxy`
+3. **SSR Safety**: Proper font loading without SSR errors
+4. **Consistent Behavior**: All PDFs handle images the same way
+5. **Single Maintenance Point**: Fix bugs once, not per component
+
+### Usage Pattern
+```typescript
+// ✅ CORRECT - Use centralized service
+import { pdfService } from '@/lib/pdf/pdf.service';
+
+// For custom document types, add methods to PDFService class
+await pdfService.generateStatementPDF(statement, options);
+await pdfService.downloadPdf(docDefinition, filename);
+```
+
+```typescript
+// ❌ WRONG - Don't create separate PDF services
+import pdfMake from 'pdfmake/build/pdfmake'; // Avoid direct import
+// Don't duplicate image conversion logic
+// Don't create component-specific PDF generators
+```
+
+### Adding New PDF Types
+When adding new PDF generation (invoices, reports, etc.):
+1. Add method to `/src/lib/pdf/pdf.service.ts` PDFService class
+2. Add document builder as private method (e.g., `buildStatementDocument`)
+3. Use existing `generatePdf()`, `downloadPdf()`, `getPdfBlob()` methods
+4. Re-export from relevant module (e.g., `/src/lib/accounting/index.ts`)
+
+### Features Available
+- `generatePdf()` - Returns pdfMake PDF object
+- `downloadPdf()` - Triggers browser download
+- `openPdf()` - Opens in new window
+- `getPdfBlob()` - Returns Blob for storage/upload
+- `getPdfBase64()` - Returns base64 string
+- `generateStatementPDF()` - Customer statement (Phase 7)
+- Automatic Firebase Storage URL → base64 conversion
+- Recursive image processing in nested structures
+
+### History
+- **2025-10-15**: Consolidated Phase 7 statement PDF generation into centralized service
+- **Previous**: Originally built for quotes, invoices, contracts with Firebase image handling
 
 ## Commands
 

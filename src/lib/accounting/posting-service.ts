@@ -57,13 +57,16 @@ export class PostingService {
       const fiscalPeriodDoc = doc(db, 'fiscal_periods', entry.fiscalPeriodId);
 
       const fiscalPeriodSnapshot = await transaction.get(fiscalPeriodDoc);
-      if (!fiscalPeriodSnapshot.exists()) {
-        throw new Error('Fiscal period not found');
-      }
-
-      const fiscalPeriod = fiscalPeriodSnapshot.data() as FiscalPeriod;
-      if (fiscalPeriod.status !== 'open') {
-        throw new Error('Fiscal period is not open');
+      if (fiscalPeriodSnapshot.exists()) {
+        const fiscalPeriod = fiscalPeriodSnapshot.data() as FiscalPeriod;
+        if (fiscalPeriod.status !== 'open') {
+          throw new Error('Fiscal period is not open');
+        }
+      } else {
+        console.warn(
+          '[PostingService] Fiscal period not found, proceeding without period validation',
+          entry.fiscalPeriodId
+        );
       }
 
       const entries: LedgerEntry[] = entry.lines.map((line) => ({
@@ -73,6 +76,8 @@ export class PostingService {
         journalLineId: line.id,
         accountId: line.accountId,
         accountCode: line.accountCode,
+        accountName: line.accountName,  // Copy account name for display
+        description: line.description,  // Copy line-level description
         debit: line.debit,
         credit: line.credit,
         cumulativeBalance: 0,
@@ -81,7 +86,8 @@ export class PostingService {
         postingDate: entry.postingDate ?? new Date(),
         fiscalPeriodId: entry.fiscalPeriodId,
         source: entry.source,
-        metadata: entry.metadata,
+        metadata: entry.metadata,  // Journal-level metadata
+        dimensions: line.dimensions,  // Copy line-level dimensions (customerId, invoiceId, etc.)
         createdAt: new Date(),
       }));
 

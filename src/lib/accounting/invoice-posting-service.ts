@@ -7,6 +7,7 @@ import {
 import { db } from '@/lib/firebase/config';
 import { PostingService } from './posting-service';
 import { DebtorService } from '@/lib/firebase/debtor-service';
+import { ChartOfAccountsService } from './chart-of-accounts-service';
 import { Invoice, InvoicePayment } from '@/types/accounting/invoice';
 import {
   JournalEntry,
@@ -25,6 +26,7 @@ interface InvoicePostingOptions {
 export class InvoicePostingService {
   private postingService: PostingService;
   private debtorService: DebtorService;
+  private chartService: ChartOfAccountsService;
 
   constructor(private readonly options: InvoicePostingOptions) {
     this.postingService = new PostingService({
@@ -32,6 +34,7 @@ export class InvoicePostingService {
       allowBackdatedPosting: true
     });
     this.debtorService = new DebtorService();
+    this.chartService = new ChartOfAccountsService();
   }
 
   /**
@@ -175,24 +178,65 @@ export class InvoicePostingService {
   private async createInvoiceJournalEntry(invoice: Invoice): Promise<JournalEntry> {
     const lines: JournalLine[] = [];
 
+    // Collect all account IDs we need to fetch
+    const accountIds = new Set<string>([this.options.defaultARAccountId]);
+    invoice.lineItems.forEach(item => accountIds.add(item.glAccountId));
+    if (this.options.defaultTaxPayableAccountId) {
+      accountIds.add(this.options.defaultTaxPayableAccountId);
+    }
+    if (invoice.taxLines) {
+      invoice.taxLines.forEach(taxLine => {
+        if (taxLine.glAccountId) accountIds.add(taxLine.glAccountId);
+      });
+    }
+
+    // Fetch all accounts at once
+    const accountMap = new Map<string, { code: string; name: string }>();
+    await Promise.all(
+      Array.from(accountIds).map(async (accountId) => {
+        const account = await this.chartService.getAccount(accountId);
+        if (account) {
+          accountMap.set(accountId, { code: account.code, name: account.name });
+        }
+      })
+    );
+
+    // Helper to get account info with fallback
+    const getAccountInfo = (accountId: string, fallbackCode: string, fallbackName: string) => {
+      const account = accountMap.get(accountId);
+      return {
+        code: account?.code || fallbackCode,
+        name: account?.name || fallbackName
+      };
+    };
+
     // Create Accounts Receivable debit line
+    const arAccount = getAccountInfo(this.options.defaultARAccountId, 'AR', 'Accounts Receivable');
     lines.push({
       id: 'ar-line',
       accountId: this.options.defaultARAccountId,
-      accountCode: 'AR', // This should come from chart of accounts
+      accountCode: arAccount.code,
+      accountName: arAccount.name,
       description: `Invoice ${invoice.invoiceNumber} - ${invoice.customerName}`,
       debit: invoice.totalAmount,
       credit: 0,
       currency: invoice.currency,
-      exchangeRate: invoice.exchangeRate
+      exchangeRate: invoice.exchangeRate,
+      dimensions: {
+        customerId: invoice.customerId,
+        invoiceId: invoice.id
+      }
     });
 
     // Create revenue credit lines for each line item
-    invoice.lineItems.forEach((lineItem, index) => {
+    for (let index = 0; index < invoice.lineItems.length; index++) {
+      const lineItem = invoice.lineItems[index];
+      const revenueAccount = getAccountInfo(lineItem.glAccountId, lineItem.accountCode || 'REV', 'Revenue');
       lines.push({
         id: `revenue-line-${index + 1}`,
         accountId: lineItem.glAccountId,
-        accountCode: lineItem.accountCode || '',
+        accountCode: revenueAccount.code,
+        accountName: revenueAccount.name,
         description: lineItem.description,
         debit: 0,
         credit: lineItem.amount,
@@ -204,35 +248,51 @@ export class InvoicePostingService {
           lineItemId: lineItem.id
         }
       });
-    });
+    }
 
     // Create tax payable credit lines if there are taxes
     if (invoice.taxAmount > 0 && this.options.defaultTaxPayableAccountId) {
-      // Group tax lines by tax rate/account
-      const taxGroups = new Map<string, { amount: number; rate: number }>();
-
-      invoice.lineItems.forEach(lineItem => {
-        if (lineItem.taxAmount && lineItem.taxAmount > 0) {
-          const key = `${lineItem.taxRate || 0}`;
-          const existing = taxGroups.get(key) || { amount: 0, rate: lineItem.taxRate || 0 };
-          existing.amount += lineItem.taxAmount;
-          taxGroups.set(key, existing);
+      // Use taxLines if available, otherwise create single tax line
+      if (invoice.taxLines && invoice.taxLines.length > 0) {
+        for (let index = 0; index < invoice.taxLines.length; index++) {
+          const taxLine = invoice.taxLines[index];
+          const taxAccountId = taxLine.glAccountId || this.options.defaultTaxPayableAccountId;
+          const taxAccount = getAccountInfo(taxAccountId, 'TAX', 'Sales Tax Payable');
+          lines.push({
+            id: `tax-line-${index + 1}`,
+            accountId: taxAccountId,
+            accountCode: taxAccount.code,
+            accountName: taxAccount.name,
+            description: `${taxLine.taxName} ${taxLine.taxRate}% - Invoice ${invoice.invoiceNumber}`,
+            debit: 0,
+            credit: taxLine.taxAmount,
+            currency: invoice.currency,
+            exchangeRate: invoice.exchangeRate,
+            dimensions: {
+              customerId: invoice.customerId,
+              invoiceId: invoice.id
+            }
+          });
         }
-      });
-
-      // Create tax lines
-      Array.from(taxGroups.entries()).forEach(([key, taxGroup], index) => {
+      } else {
+        // Fallback: single tax line with document-level tax
+        const taxAccount = getAccountInfo(this.options.defaultTaxPayableAccountId, 'TAX', 'Sales Tax Payable');
         lines.push({
-          id: `tax-line-${index + 1}`,
-          accountId: this.options.defaultTaxPayableAccountId!,
-          accountCode: 'TAX',
-          description: `Sales Tax ${taxGroup.rate}% - Invoice ${invoice.invoiceNumber}`,
+          id: 'tax-line-1',
+          accountId: this.options.defaultTaxPayableAccountId,
+          accountCode: taxAccount.code,
+          accountName: taxAccount.name,
+          description: `Sales Tax ${invoice.taxRate}% - Invoice ${invoice.invoiceNumber}`,
           debit: 0,
-          credit: taxGroup.amount,
+          credit: invoice.taxAmount,
           currency: invoice.currency,
-          exchangeRate: invoice.exchangeRate
+          exchangeRate: invoice.exchangeRate,
+          dimensions: {
+            customerId: invoice.customerId,
+            invoiceId: invoice.id
+          }
         });
-      });
+      }
     }
 
     const journalEntry: JournalEntry = {

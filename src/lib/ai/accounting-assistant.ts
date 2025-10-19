@@ -91,6 +91,20 @@ export class AccountingAssistant {
     suggestion: MappingSuggestion | null;
     createAccount: AccountCreationSuggestion | null;
     needsMoreInfo: boolean;
+    // Phase 4: Additional suggestions
+    multiInvoiceSuggestions?: Array<{
+      invoices: Array<{ id: string; invoiceNumber: string; amount: number }>;
+      totalAmount: number;
+      confidence: number;
+      matchReasons: string[];
+    }>;
+    partialPaymentSuggestions?: Array<{
+      invoice: { id: string; invoiceNumber: string; amount: number };
+      percentage: number;
+      remainingAmount: number;
+      confidence: number;
+      matchReasons: string[];
+    }>;
   }> {
     try {
       console.log('[AI Assistant] Analyzing transaction:', transaction.description);
@@ -128,8 +142,13 @@ export class AccountingAssistant {
           } else {
             console.log('[AI Assistant] No customer match found or confidence too low');
           }
-        } catch (error) {
-          console.error('[AI Assistant] Error matching debtor:', error);
+        } catch (error: any) {
+          // Gracefully handle permissions errors - entity matching is optional
+          if (error?.message?.includes('permission-denied') || error?.message?.includes('permissions')) {
+            console.log('[AI Assistant] ⚠️ Skipping debtor matching (permissions not available in server context)');
+          } else {
+            console.error('[AI Assistant] Error matching debtor:', error);
+          }
         }
       }
 
@@ -154,10 +173,96 @@ export class AccountingAssistant {
           } else {
             console.log('[AI Assistant] No supplier match found or confidence too low');
           }
-        } catch (error) {
-          console.error('[AI Assistant] Error matching creditor:', error);
+        } catch (error: any) {
+          // Gracefully handle permissions errors - entity matching is optional
+          if (error?.message?.includes('permission-denied') || error?.message?.includes('permissions')) {
+            console.log('[AI Assistant] ⚠️ Skipping creditor matching (permissions not available in server context)');
+          } else {
+            console.error('[AI Assistant] Error matching creditor:', error);
+          }
         }
       }
+
+      // STEP 1.5: Phase 3 - Detect multi-invoice and partial payment scenarios
+      let multiInvoiceSuggestions: Array<{
+        invoices: Array<{ id: string; invoiceNumber: string; amount: number }>;
+        totalAmount: number;
+        confidence: number;
+        matchReasons: string[];
+      }> = [];
+
+      let partialPaymentSuggestions: Array<{
+        invoice: { id: string; invoiceNumber: string; amount: number };
+        percentage: number;
+        remainingAmount: number;
+        confidence: number;
+        matchReasons: string[];
+      }> = [];
+
+      // Only run advanced detection if we have an entity match
+      if (entityMatch && entityType === 'debtor') {
+        const debtorMatch = entityMatch as DebtorMatch;
+
+        console.log('[AI Assistant] Running Phase 3 advanced detection...');
+
+        // Detect multi-invoice scenarios
+        if (debtorMatch.outstandingInvoices && debtorMatch.outstandingInvoices.length >= 2) {
+          console.log('[AI Assistant] Checking for multi-invoice payment...');
+          try {
+            const multiInvoiceResults = await this.debtorMatcher.detectMultiInvoicePayment(
+              debtorMatch.outstandingInvoices,
+              amount
+            );
+
+            if (multiInvoiceResults.length > 0) {
+              console.log(`[AI Assistant] ✅ Found ${multiInvoiceResults.length} multi-invoice options`);
+              multiInvoiceSuggestions = multiInvoiceResults.map(result => ({
+                invoices: result.invoices.map(inv => ({
+                  id: inv.id,
+                  invoiceNumber: inv.invoiceNumber || '',
+                  amount: inv.amountDue || 0
+                })),
+                totalAmount: result.totalAmount,
+                confidence: result.confidence,
+                matchReasons: result.matchReasons
+              }));
+            }
+          } catch (error) {
+            console.error('[AI Assistant] Error detecting multi-invoice payment:', error);
+          }
+        }
+
+        // Detect partial payment scenarios
+        if (debtorMatch.outstandingInvoices && debtorMatch.outstandingInvoices.length > 0) {
+          console.log('[AI Assistant] Checking for partial payment...');
+          try {
+            const partialPaymentResults = await this.debtorMatcher.detectPartialPayment(
+              debtorMatch.outstandingInvoices,
+              amount
+            );
+
+            if (partialPaymentResults.length > 0) {
+              console.log(`[AI Assistant] ✅ Found ${partialPaymentResults.length} partial payment options`);
+              partialPaymentSuggestions = partialPaymentResults.map(result => ({
+                invoice: {
+                  id: result.invoice.id,
+                  invoiceNumber: result.invoice.invoiceNumber || '',
+                  amount: result.invoice.amountDue || 0
+                },
+                percentage: result.percentage,
+                remainingAmount: result.remainingAmount,
+                confidence: result.confidence,
+                matchReasons: result.matchReasons
+              }));
+            }
+          } catch (error) {
+            console.error('[AI Assistant] Error detecting partial payment:', error);
+          }
+        }
+      }
+
+      // TODO: Add similar logic for creditor (bill matching)
+      // For now, focusing on debtor/invoice scenarios
 
       // STEP 2: Build enhanced prompt with entity context
       const systemPrompt = this.buildSystemPrompt(availableAccounts);
@@ -252,7 +357,10 @@ export class AccountingAssistant {
         message: assistantMessage,
         suggestion,
         createAccount,
-        needsMoreInfo: !suggestion && !createAccount && assistantMessage.includes('?')
+        needsMoreInfo: !suggestion && !createAccount && assistantMessage.includes('?'),
+        // Phase 4: Return advanced suggestions
+        multiInvoiceSuggestions: multiInvoiceSuggestions.length > 0 ? multiInvoiceSuggestions : undefined,
+        partialPaymentSuggestions: partialPaymentSuggestions.length > 0 ? partialPaymentSuggestions : undefined
       };
 
     } catch (error: any) {
@@ -263,7 +371,9 @@ export class AccountingAssistant {
         message: `I encountered an error analyzing this transaction. ${error?.message || 'Please try again or map this transaction manually.'}`,
         suggestion: null,
         createAccount: null,
-        needsMoreInfo: false
+        needsMoreInfo: false,
+        multiInvoiceSuggestions: undefined,
+        partialPaymentSuggestions: undefined
       };
     }
   }

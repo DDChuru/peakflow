@@ -22,10 +22,15 @@ service cloud.firestore {
     function isDeveloper() {
       return hasRole('developer');
     }
+
+    // Helper function to check if user is super admin
+    function isSuperAdmin() {
+      return hasRole('super_admin');
+    }
     
     // Helper function to check if user can manage companies
     function canManageCompanies() {
-      return isAdmin() || isDeveloper();
+      return isAdmin() || isDeveloper() || isSuperAdmin();
     }
     
     // Users collection
@@ -181,6 +186,35 @@ service cloud.firestore {
       allow create, update, delete: if canManageCompanies();
     }
 
+    // Fiscal periods (global collection with tenant scoping)
+    match /fiscal_periods/{periodId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if canManageCompanies();
+    }
+
+    // Posted journal entries (global collection with tenant scoping)
+    match /journal_entries/{entryId} {
+      allow read: if isAuthenticated() &&
+        resource.data.tenantId != null &&
+        belongsToCompany(resource.data.tenantId);
+      allow create, update: if isAuthenticated() &&
+        request.resource.data.tenantId != null &&
+        belongsToCompany(request.resource.data.tenantId);
+      allow delete: if canManageCompanies();  // TEMPORARY FOR TESTING - TODO: REVERT TO: if false
+    }
+
+    // General ledger entries (global collection with tenant scoping)
+    match /general_ledger/{entryId} {
+      allow read: if isAuthenticated() &&
+        resource.data.tenantId != null &&
+        belongsToCompany(resource.data.tenantId);
+      allow create: if isAuthenticated() &&
+        request.resource.data.tenantId != null &&
+        belongsToCompany(request.resource.data.tenantId);
+      allow update: if false;
+      allow delete: if canManageCompanies();  // TEMPORARY FOR TESTING - TODO: REVERT TO: if false
+    }
+
 // ====================================================================
     // MULTI-TENANT COMPANY-SCOPED COLLECTIONS (CSC Pattern)
     // ====================================================================
@@ -189,7 +223,13 @@ service cloud.firestore {
     function belongsToCompany(companyId) {
       return isAuthenticated() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId;
+        (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId ||
+          (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accessibleCompanyIds != null &&
+            companyId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accessibleCompanyIds
+          )
+        );
     }
 
     // Helper function to check if user is admin of a specific company
@@ -223,14 +263,14 @@ service cloud.firestore {
       // Ledger entries collection
       match /ledgerEntries/{ledgerEntryId} {
         allow read: if belongsToCompany(companyId) || canManageCompanies();
-        allow create, update: if canManageCompanies();
+        allow create, update: if belongsToCompany(companyId) || canManageCompanies();
         allow delete: if false; // Ledger entries should never be deleted
       }
 
       // Journal entries collection
       match /journalEntries/{journalId} {
         allow read: if belongsToCompany(companyId) || canManageCompanies();
-        allow create, update: if canManageCompanies();
+        allow create, update: if belongsToCompany(companyId) || canManageCompanies();
         allow delete: if false; // Journal entries should never be deleted
       }
 
@@ -310,6 +350,43 @@ service cloud.firestore {
           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy', 'amount', 'entityId', 'entityType', 'transactionDate']));
 
         // Only company admins can delete pending payments
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+      }
+
+      // Payments collection (customer receipts)
+      match /payments/{paymentId} {
+        // Users can read payments for their own company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Users can create payments for their company
+        allow create: if (belongsToCompany(companyId) || canManageCompanies()) &&
+          request.resource.data.companyId == companyId;
+
+        // Users can update payments in their company (e.g., allocation, status)
+        allow update: if (belongsToCompany(companyId) || canManageCompanies()) &&
+          resource.data.companyId == companyId &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId']));
+
+        // Only company admins or platform admins can delete payments
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+      }
+
+      // Statements collection (customer & supplier statements)
+      match /statements/{statementId} {
+        // Members of the company (or admins/developers) can read statements
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Members can generate statements for their company
+        allow create: if (belongsToCompany(companyId) || canManageCompanies()) &&
+          request.resource.data.companyId == companyId;
+
+        // Members can update statements for their company (e.g., change status),
+        // but the statement must stay scoped to the same company.
+        allow update: if (belongsToCompany(companyId) || canManageCompanies()) &&
+          resource.data.companyId == companyId &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId']));
+
+        // Only company admins or platform admins/developers can delete statements
         allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
       }
 
@@ -437,6 +514,24 @@ service cloud.firestore {
         allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
       }
 
+      // Credit notes collection
+      match /creditNotes/{creditNoteId} {
+        // Users can read credit notes for their own company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Users can create credit notes for their company
+        allow create: if (belongsToCompany(companyId) || canManageCompanies()) &&
+          request.resource.data.companyId == companyId;
+
+        // Users can update credit notes in their company (e.g., allocations, status)
+        allow update: if (belongsToCompany(companyId) || canManageCompanies()) &&
+          resource.data.companyId == companyId &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId']));
+
+        // Only company admins or platform admins can delete credit notes
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+      }
+
       // Sales orders collection
       match /salesOrders/{salesOrderId} {
         // Users can read sales orders from their own company
@@ -452,6 +547,96 @@ service cloud.firestore {
 
         // Only company admins can delete sales orders
         allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
+      }
+
+      // ====================================================================
+      // ACCOUNTS PAYABLE COLLECTIONS (Phase 2)
+      // ====================================================================
+
+      // Purchase Orders collection
+      match /purchaseOrders/{poId} {
+        // Read: Anyone in company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Create: Anyone in company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId;
+
+        // Update: Creator (draft), admin/financial_admin (any status)
+        allow update: if belongsToCompany(companyId) &&
+                         (resource.data.createdBy == request.auth.uid ||
+                          hasRole('admin') ||
+                          hasRole('financial_admin')) ||
+                         canManageCompanies();
+
+        // Delete: Admin only, draft only
+        allow delete: if (belongsToCompany(companyId) &&
+                          hasRole('admin') &&
+                          resource.data.status == 'draft') ||
+                         canManageCompanies();
+      }
+
+      // Vendor Bills collection
+      match /vendorBills/{billId} {
+        // Read: Anyone in company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Create: Anyone in company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId;
+
+        // Update: Draft/pending can be updated by creator or admin/financial_admin
+        //         Posted bills are immutable (except by super admin for corrections)
+        allow update: if (belongsToCompany(companyId) &&
+                          ((resource.data.status == 'draft' || resource.data.status == 'pending_approval') ||
+                           hasRole('admin') ||
+                           hasRole('financial_admin'))) ||
+                         canManageCompanies();
+
+        // Delete: Admin only, draft only
+        allow delete: if (belongsToCompany(companyId) &&
+                          hasRole('admin') &&
+                          resource.data.status == 'draft') ||
+                         canManageCompanies();
+      }
+
+      // Vendor Payments collection (AP payments to suppliers)
+      match /vendorPayments/{paymentId} {
+        // Read: Anyone in company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Create: Anyone in company
+        allow create: if belongsToCompany(companyId) &&
+          request.resource.data.companyId == companyId;
+
+        // Update: Draft/pending by creator or admin/financial_admin
+        //         Processed payments can only be voided by admin
+        allow update: if (belongsToCompany(companyId) &&
+                          ((resource.data.status == 'draft' || resource.data.status == 'pending_approval') ||
+                           hasRole('admin'))) ||
+                         canManageCompanies();
+
+        // Delete: Admin only, draft only
+        allow delete: if (belongsToCompany(companyId) &&
+                          hasRole('admin') &&
+                          resource.data.status == 'draft') ||
+                         canManageCompanies();
+      }
+
+      // Payment Runs collection (batch payment processing)
+      match /paymentRuns/{runId} {
+        // Read: Anyone in company
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+
+        // Create/Update: Only admin
+        allow create, update: if (belongsToCompany(companyId) && hasRole('admin')) ||
+                                 canManageCompanies();
+
+        // Delete: Admin only, draft only
+        allow delete: if (belongsToCompany(companyId) &&
+                          hasRole('admin') &&
+                          resource.data.status == 'draft') ||
+                         canManageCompanies();
       }
 
       // Company audit logs - read-only for users

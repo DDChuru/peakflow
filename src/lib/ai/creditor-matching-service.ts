@@ -167,7 +167,7 @@ export class CreditorMatchingService {
 
   /**
    * Suggest best bill match based on amount and date proximity
-   * NOTE: Placeholder implementation - bills module to be implemented
+   * Enhanced with multi-bill detection and partial payment scenarios
    *
    * @param bills - Array of outstanding bills
    * @param amount - Payment amount
@@ -196,7 +196,9 @@ export class CreditorMatchingService {
 
       // Calculate date proximity in days
       const billDate = bill.date ? new Date(bill.date) : null;
-      const daysProximity = billDate
+      const dueDate = bill.dueDate ? new Date(bill.dueDate) : null;
+
+      const daysFromBill = billDate
         ? Math.abs(
             Math.floor(
               (transactionDate.getTime() - billDate.getTime()) /
@@ -205,39 +207,91 @@ export class CreditorMatchingService {
           )
         : 999;
 
-      // Calculate match score
+      const daysFromDue = dueDate
+        ? Math.floor(
+            (transactionDate.getTime() - dueDate.getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        : 999;
+
+      // Calculate match score with weighted factors
       let matchScore = 0;
       const matchReasons: string[] = [];
 
-      // Amount scoring
+      // 1. Amount scoring (weighted: 40 points max)
       if (exactAmountMatch) {
-        matchScore += 50;
-        matchReasons.push(`Exact amount match: R${amountDue.toFixed(2)}`);
+        matchScore += 40;
+        matchReasons.push(`✓ Exact amount match: R${amountDue.toFixed(2)}`);
+      } else if (amountDiff <= amount * 0.02) {
+        // Within 2%
+        matchScore += 35;
+        matchReasons.push(`≈ Very close amount: R${amountDue.toFixed(2)} (±2%)`);
       } else if (amountDiff <= amount * 0.05) {
         // Within 5%
         matchScore += 25;
-        matchReasons.push(`Close amount match: R${amountDue.toFixed(2)}`);
-      }
-
-      // Date proximity scoring
-      if (daysProximity <= 7) {
-        matchScore += 30;
-        matchReasons.push(`Recent bill (${daysProximity} days ago)`);
-      } else if (daysProximity <= 30) {
+        matchReasons.push(`≈ Close amount: R${amountDue.toFixed(2)} (±5%)`);
+      } else if (amountDiff <= amount * 0.10) {
+        // Within 10%
         matchScore += 15;
-        matchReasons.push(`Within 30 days (${daysProximity} days ago)`);
+        matchReasons.push(`~ Similar amount: R${amountDue.toFixed(2)} (±10%)`);
+      } else if (amount < amountDue && (amount / amountDue) >= 0.25) {
+        // Partial payment scenario (at least 25% of bill)
+        const percentage = Math.round((amount / amountDue) * 100);
+        matchScore += 20;
+        matchReasons.push(`⚡ Possible partial payment: ${percentage}% of R${amountDue.toFixed(2)}`);
       }
 
-      // Overdue bonus (more likely to be paid)
+      // 2. Date proximity scoring (weighted: 25 points max)
+      if (daysFromBill <= 3) {
+        matchScore += 25;
+        matchReasons.push(`📅 Very recent bill (${daysFromBill} days)`);
+      } else if (daysFromBill <= 7) {
+        matchScore += 20;
+        matchReasons.push(`📅 Recent bill (${daysFromBill} days)`);
+      } else if (daysFromBill <= 30) {
+        matchScore += 12;
+        matchReasons.push(`📅 Within 30 days (${daysFromBill} days)`);
+      } else if (daysFromBill <= 60) {
+        matchScore += 5;
+        matchReasons.push(`📅 Within 60 days (${daysFromBill} days)`);
+      }
+
+      // 3. Due date proximity (weighted: 15 points max)
+      if (dueDate) {
+        if (daysFromDue >= -7 && daysFromDue <= 7) {
+          // Paid within a week of due date (before or after)
+          matchScore += 15;
+          if (daysFromDue >= 0) {
+            matchReasons.push(`⏰ Paid ${daysFromDue} days after due date`);
+          } else {
+            matchReasons.push(`⏰ Paid ${Math.abs(daysFromDue)} days before due date`);
+          }
+        } else if (daysFromDue > 7 && daysFromDue <= 30) {
+          matchScore += 8;
+          matchReasons.push(`⏰ Paid ${daysFromDue} days late`);
+        }
+      }
+
+      // 4. Bill status scoring (weighted: 15 points max)
       if (bill.status === 'overdue') {
+        matchScore += 15;
+        matchReasons.push('🔴 Overdue bill (high priority)');
+      } else if (bill.status === 'sent') {
         matchScore += 10;
-        matchReasons.push('Overdue bill');
+        matchReasons.push('🟡 Sent bill (awaiting payment)');
+      } else if (bill.status === 'partially-paid') {
+        matchScore += 12;
+        matchReasons.push('🟠 Partially paid (expecting remainder)');
       }
 
-      // Oldest bill bonus
-      if (bill === bills[0]) {
-        matchScore += 10;
-        matchReasons.push('Oldest outstanding bill');
+      // 5. Age priority (weighted: 5 points max)
+      const billIndex = bills.indexOf(bill);
+      if (billIndex === 0) {
+        matchScore += 5;
+        matchReasons.push('⏳ Oldest outstanding bill');
+      } else if (billIndex < 3) {
+        matchScore += 3;
+        matchReasons.push('⏳ One of the oldest bills');
       }
 
       // Confidence calculation (0-100)
@@ -249,7 +303,7 @@ export class CreditorMatchingService {
           matchScore,
           matchReasons,
           exactAmountMatch,
-          dateProximityDays: daysProximity,
+          dateProximityDays: daysFromBill,
           confidence,
         };
         highestScore = matchScore;
@@ -257,6 +311,210 @@ export class CreditorMatchingService {
     }
 
     return bestSuggestion;
+  }
+
+  /**
+   * Detect multi-bill payment scenarios
+   * Returns combinations of bills that together match the payment amount
+   *
+   * @param bills - Array of outstanding bills
+   * @param amount - Payment amount
+   * @returns Array of multi-bill suggestions
+   */
+  async detectMultiBillPayment(
+    bills: Bill[],
+    amount: number
+  ): Promise<{
+    bills: Bill[];
+    totalAmount: number;
+    confidence: number;
+    matchReasons: string[];
+  }[]> {
+    if (bills.length < 2) {
+      return [];
+    }
+
+    const tolerance = amount * this.config.amountTolerancePercent;
+    const suggestions: {
+      bills: Bill[];
+      totalAmount: number;
+      confidence: number;
+      matchReasons: string[];
+    }[] = [];
+
+    // Try combinations of 2-5 bills
+    const maxCombinations = Math.min(bills.length, 5);
+
+    for (let size = 2; size <= maxCombinations; size++) {
+      const combinations = this.getCombinations(bills, size);
+
+      for (const combo of combinations) {
+        const totalAmount = combo.reduce((sum, bill) => sum + (bill.amountDue ?? 0), 0);
+        const amountDiff = Math.abs(amount - totalAmount);
+
+        if (amountDiff <= tolerance) {
+          const matchReasons: string[] = [];
+          let confidence = 0;
+
+          // Exact match bonus
+          if (amountDiff <= amount * 0.01) {
+            confidence = 95;
+            matchReasons.push(`✓ Exact match for ${combo.length} bills`);
+          } else if (amountDiff <= tolerance) {
+            confidence = 85;
+            matchReasons.push(`≈ Close match for ${combo.length} bills (±${((amountDiff / amount) * 100).toFixed(1)}%)`);
+          }
+
+          // Add bill details
+          matchReasons.push(
+            `Bills: ${combo.map(b => b.billNumber).join(', ')}`
+          );
+          matchReasons.push(
+            `Total: R${totalAmount.toFixed(2)}`
+          );
+
+          suggestions.push({
+            bills: combo,
+            totalAmount,
+            confidence,
+            matchReasons,
+          });
+        }
+      }
+    }
+
+    // Sort by confidence (highest first)
+    suggestions.sort((a, b) => b.confidence - a.confidence);
+
+    // Return top 3 suggestions
+    return suggestions.slice(0, 3);
+  }
+
+  /**
+   * Detect partial payment scenarios
+   * Suggests bills where payment could be a partial payment
+   *
+   * @param bills - Array of outstanding bills
+   * @param amount - Payment amount
+   * @returns Array of partial payment suggestions
+   */
+  async detectPartialPayment(
+    bills: Bill[],
+    amount: number
+  ): Promise<{
+    bill: Bill;
+    percentage: number;
+    remainingAmount: number;
+    confidence: number;
+    matchReasons: string[];
+  }[]> {
+    const suggestions: {
+      bill: Bill;
+      percentage: number;
+      remainingAmount: number;
+      confidence: number;
+      matchReasons: string[];
+    }[] = [];
+
+    for (const bill of bills) {
+      const amountDue = bill.amountDue ?? 0;
+
+      // Only consider if payment is less than amount due
+      if (amount < amountDue) {
+        const percentage = (amount / amountDue) * 100;
+        const remainingAmount = amountDue - amount;
+
+        // Only suggest if payment is at least 10% of bill
+        if (percentage >= 10) {
+          const matchReasons: string[] = [];
+          let confidence = 0;
+
+          // Round percentage scenarios (50%, 25%, 75%, 33%, 66%)
+          if (Math.abs(percentage - 50) <= 2) {
+            confidence = 90;
+            matchReasons.push('💰 Likely half payment (50%)');
+          } else if (Math.abs(percentage - 25) <= 2) {
+            confidence = 85;
+            matchReasons.push('💰 Likely quarter payment (25%)');
+          } else if (Math.abs(percentage - 75) <= 2) {
+            confidence = 85;
+            matchReasons.push('💰 Likely three-quarters payment (75%)');
+          } else if (Math.abs(percentage - 33.33) <= 2) {
+            confidence = 80;
+            matchReasons.push('💰 Likely one-third payment (33%)');
+          } else if (Math.abs(percentage - 66.67) <= 2) {
+            confidence = 80;
+            matchReasons.push('💰 Likely two-thirds payment (67%)');
+          } else if (percentage >= 80) {
+            confidence = 70;
+            matchReasons.push('💰 Large partial payment (>80%)');
+          } else if (percentage >= 50) {
+            confidence = 65;
+            matchReasons.push('💰 Substantial partial payment (50-80%)');
+          } else if (percentage >= 25) {
+            confidence = 55;
+            matchReasons.push('💰 Moderate partial payment (25-50%)');
+          } else {
+            confidence = 45;
+            matchReasons.push('💰 Small partial payment (10-25%)');
+          }
+
+          matchReasons.push(
+            `Bill: ${bill.billNumber} - R${amountDue.toFixed(2)}`
+          );
+          matchReasons.push(
+            `Payment covers ${percentage.toFixed(1)}% (R${amount.toFixed(2)})`
+          );
+          matchReasons.push(
+            `Remaining: R${remainingAmount.toFixed(2)}`
+          );
+
+          suggestions.push({
+            bill,
+            percentage,
+            remainingAmount,
+            confidence,
+            matchReasons,
+          });
+        }
+      }
+    }
+
+    // Sort by confidence (highest first)
+    suggestions.sort((a, b) => b.confidence - a.confidence);
+
+    // Return top 5 suggestions
+    return suggestions.slice(0, 5);
+  }
+
+  // ============================================================================
+  // Helper Methods
+  // ============================================================================
+
+  /**
+   * Generate combinations of bills
+   *
+   * @param array - Array of bills
+   * @param size - Combination size
+   * @returns Array of bill combinations
+   */
+  private getCombinations<T>(array: T[], size: number): T[][] {
+    if (size === 1) {
+      return array.map(item => [item]);
+    }
+
+    const combinations: T[][] = [];
+
+    for (let i = 0; i <= array.length - size; i++) {
+      const head = array[i];
+      const tailCombinations = this.getCombinations(array.slice(i + 1), size - 1);
+
+      for (const tailCombination of tailCombinations) {
+        combinations.push([head, ...tailCombination]);
+      }
+    }
+
+    return combinations;
   }
 
   // ============================================================================

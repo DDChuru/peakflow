@@ -67,7 +67,10 @@ export async function POST(request: NextRequest) {
       message: result.message,
       suggestion: result.suggestion, // Now includes entityMatch!
       createAccount: result.createAccount,
-      needsMoreInfo: result.needsMoreInfo
+      needsMoreInfo: result.needsMoreInfo,
+      // Phase 4: Advanced suggestions
+      multiInvoiceSuggestions: result.multiInvoiceSuggestions,
+      partialPaymentSuggestions: result.partialPaymentSuggestions
     });
 
   } catch (error: any) {

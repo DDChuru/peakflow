@@ -13,6 +13,7 @@ export interface JournalLine {
   id: string;
   accountId: string;
   accountCode: string;
+  accountName: string;  // Full account name for display
   description?: string;
   debit: number;
   credit: number;

@@ -754,6 +754,53 @@ export class InvoiceService {
     }
   }
 
+  // Helper method to safely convert Timestamp or string to ISO string
+  private convertToISOString(value: any): string {
+    if (!value) return new Date().toISOString();
+
+    // If it's already a string, return it
+    if (typeof value === 'string') return value;
+
+    // If it's a Firestore Timestamp, convert it
+    if (value.toDate && typeof value.toDate === 'function') {
+      return value.toDate().toISOString();
+    }
+
+    // If it's a Date object
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    // Fallback: try to create a Date from it
+    try {
+      return new Date(value).toISOString();
+    } catch (error) {
+      console.warn('Could not convert date value:', value);
+      return new Date().toISOString();
+    }
+  }
+
+  // Helper method to safely convert Timestamp or string to Date
+  private convertToDate(value: any): Date {
+    if (!value) return new Date();
+
+    // If it's already a Date, return it
+    if (value instanceof Date) return value;
+
+    // If it's a Firestore Timestamp, convert it
+    if (value.toDate && typeof value.toDate === 'function') {
+      return value.toDate();
+    }
+
+    // If it's a string or number, parse it
+    try {
+      return new Date(value);
+    } catch (error) {
+      console.warn('Could not convert to Date:', value);
+      return new Date();
+    }
+  }
+
   // Helper method to convert Firestore document to Invoice type
   private convertFirestoreToInvoice(id: string, data: DocumentData): Invoice {
     return {
@@ -766,8 +813,8 @@ export class InvoiceService {
       customerTaxId: data.customerTaxId,
       customerEmail: data.customerEmail,
       customerPhone: data.customerPhone,
-      invoiceDate: data.invoiceDate?.toDate()?.toISOString() || data.invoiceDate,
-      dueDate: data.dueDate?.toDate()?.toISOString() || data.dueDate,
+      invoiceDate: this.convertToISOString(data.invoiceDate),
+      dueDate: this.convertToISOString(data.dueDate),
       paymentTerms: data.paymentTerms || 30,
       status: data.status || 'draft',
       source: data.source || 'manual',
@@ -785,18 +832,18 @@ export class InvoiceService {
       lineItems: data.lineItems || [],
       taxLines: data.taxLines,
       journalEntryId: data.journalEntryId,
-      postedDate: data.postedDate?.toDate()?.toISOString() || data.postedDate,
+      postedDate: this.convertToISOString(data.postedDate),
       fiscalPeriodId: data.fiscalPeriodId,
       paymentHistory: (data.paymentHistory || []).map((payment: any) => ({
         ...payment,
-        createdAt: payment.createdAt?.toDate() || new Date()
+        createdAt: this.convertToDate(payment.createdAt)
       })),
       notes: data.notes,
       termsAndConditions: data.termsAndConditions,
       footerText: data.footerText,
       metadata: data.metadata || {},
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
+      createdAt: this.convertToDate(data.createdAt),
+      updatedAt: this.convertToDate(data.updatedAt),
       createdBy: data.createdBy,
       modifiedBy: data.modifiedBy
     };

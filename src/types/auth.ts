@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'developer' | 'client';
+export type UserRole = 'super_admin' | 'admin' | 'financial_admin' | 'developer' | 'client';
 
 // Supported currencies in the system
 export type SupportedCurrency = 'USD' | 'ZAR' | 'EUR' | 'ZWD' | 'ZIG';
@@ -16,9 +16,7 @@ export interface User {
   updatedAt: Date;
   lastLoginAt?: Date;
   isActive: boolean;
-  // TODO (Phase 6): Add for multi-company access
-  // primaryCompanyId?: string;
-  // accessibleCompanyIds?: string[];
+  accessibleCompanyIds?: string[];
 }
 
 export type CompanyType = 'client' | 'peakflow' | 'manageAccounts';

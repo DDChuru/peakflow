@@ -1,4 +1,4 @@
-const { onCall, onRequest } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
@@ -339,7 +339,7 @@ exports.extractPDFContent = onCall({
     // Check authentication
     if (!request.auth) {
       logger.error('Authentication failed - no auth context');
-      throw new Error('Authentication required');
+      throw new HttpsError('unauthenticated', 'Authentication required');
     }
 
     const { pdfBase64, documentType = 'generic', saveToFirestore = false } = data;
@@ -512,14 +512,15 @@ exports.createUser = onCall({
     const callerDoc = await db.collection('users').doc(request.auth.uid).get();
 
     if (!callerDoc.exists) {
-      throw new Error('Caller user not found');
+      throw new HttpsError('permission-denied', 'Caller user not found');
     }
 
     const callerData = callerDoc.data();
-    const isAdmin = callerData.roles && callerData.roles.includes('admin');
+    const callerRoles = Array.isArray(callerData.roles) ? callerData.roles : [];
+    const isAdmin = callerRoles.includes('admin') || callerRoles.includes('super_admin');
 
     if (!isAdmin) {
-      throw new Error('Only administrators can create users');
+      throw new HttpsError('permission-denied', 'Only administrators can create users');
     }
 
     // Extract user data from request
@@ -527,18 +528,18 @@ exports.createUser = onCall({
 
     // Validate required fields
     if (!email || !password || !fullName) {
-      throw new Error('Email, password, and full name are required');
+      throw new HttpsError('invalid-argument', 'Email, password, and full name are required');
     }
 
     if (!roles || !Array.isArray(roles) || roles.length === 0) {
-      throw new Error('At least one role is required');
+      throw new HttpsError('invalid-argument', 'At least one role is required');
     }
 
     // Validate roles
-    const validRoles = ['admin', 'developer', 'client'];
+    const validRoles = ['super_admin', 'admin', 'financial_admin', 'developer', 'client'];
     const invalidRoles = roles.filter(role => !validRoles.includes(role));
     if (invalidRoles.length > 0) {
-      throw new Error(`Invalid roles: ${invalidRoles.join(', ')}`);
+      throw new HttpsError('invalid-argument', `Invalid roles: ${invalidRoles.join(', ')}`);
     }
 
     logger.info('Creating new user', {
@@ -597,13 +598,13 @@ exports.createUser = onCall({
 
     // Provide more specific error messages
     if (error.code === 'auth/email-already-exists') {
-      throw new Error('A user with this email already exists');
+      throw new HttpsError('already-exists', 'A user with this email already exists');
     } else if (error.code === 'auth/invalid-email') {
-      throw new Error('Invalid email address');
+      throw new HttpsError('invalid-argument', 'Invalid email address');
     } else if (error.code === 'auth/weak-password') {
-      throw new Error('Password is too weak. It should be at least 6 characters');
+      throw new HttpsError('invalid-argument', 'Password is too weak. It should be at least 6 characters');
     }
 
-    throw new Error(`Failed to create user: ${error.message}`);
+    throw new HttpsError('internal', `Failed to create user: ${error.message}`);
   }
 });

@@ -112,6 +112,18 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
           href: `/workspace/${companyId || user?.companyId}/contracts`,
           icon: FileCheck,
         },
+        {
+          name: 'Statements',
+          href: `/workspace/${companyId || user?.companyId}/statements`,
+          icon: FileText,
+          badge: 'NEW'
+        },
+        {
+          name: 'Credit Notes',
+          href: `/workspace/${companyId || user?.companyId}/credit-notes`,
+          icon: CreditCard,
+          badge: 'NEW'
+        },
       ] : [],
     },
     {
@@ -145,6 +157,11 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
           name: 'Journal Entries',
           href: `/workspace/${companyId || user?.companyId}/journal`,
           icon: FileText,
+        },
+        {
+          name: 'Settings',
+          href: `/workspace/${companyId || user?.companyId}/settings`,
+          icon: Settings,
         },
       ] : [],
     },

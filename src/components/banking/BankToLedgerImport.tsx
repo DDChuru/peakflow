@@ -66,6 +66,11 @@ import { RuleLearningService } from '@/lib/ai/rule-learning-service';
 import { AIMappingArtifact } from '@/components/banking/AIMappingArtifact';
 import { MappingSuggestion, AccountCreationSuggestion } from '@/lib/ai/accounting-assistant';
 import { fuzzyMatch, normalizeForMatching } from '@/lib/utils/string-matching';
+import {
+  createPaymentAllocationService,
+  type MultiInvoiceAllocation,
+  type PartialPaymentAllocation
+} from '@/lib/accounting/payment-allocation-service';
 
 interface BankToLedgerImportProps {
   companyId: string;
@@ -123,6 +128,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
   const [currentAISuggestion, setCurrentAISuggestion] = useState<MappingSuggestion | null>(null);
   const [currentAccountCreation, setCurrentAccountCreation] = useState<AccountCreationSuggestion | null>(null);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
+  // Phase 4: Advanced suggestions state
+  const [currentMultiInvoiceSuggestions, setCurrentMultiInvoiceSuggestions] = useState<any[]>([]);
+  const [currentPartialPaymentSuggestions, setCurrentPartialPaymentSuggestions] = useState<any[]>([]);
 
   // Services
   const [bankToLedgerService, setBankToLedgerService] = useState<BankToLedgerService | null>(null);
@@ -805,7 +813,19 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       if (data.success && data.suggestion) {
         setCurrentAISuggestion(data.suggestion);
         setCurrentAccountCreation(data.createAccount || null);
-        toast.success('AI analysis complete!');
+        // Phase 4: Capture advanced suggestions
+        setCurrentMultiInvoiceSuggestions(data.multiInvoiceSuggestions || []);
+        setCurrentPartialPaymentSuggestions(data.partialPaymentSuggestions || []);
+
+        // Enhanced toast message
+        let message = 'AI analysis complete!';
+        if (data.multiInvoiceSuggestions && data.multiInvoiceSuggestions.length > 0) {
+          message += ` Found ${data.multiInvoiceSuggestions.length} multi-invoice option(s).`;
+        }
+        if (data.partialPaymentSuggestions && data.partialPaymentSuggestions.length > 0) {
+          message += ` Found ${data.partialPaymentSuggestions.length} partial payment option(s).`;
+        }
+        toast.success(message);
       } else if (data.fallback || !data.success) {
         // AI encountered an error or returned fallback mode
         const errorMessage = data.message || data.details || 'Could not generate suggestion';
@@ -1430,9 +1450,33 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                                 confidence: suggestedMapping.confidence / 100,
                                 manuallyMapped: false
                               };
+
+                              // Save the mapping
                               saveMapping(transaction.id, mapping);
                               setSelectedTransactions(new Set([...selectedTransactions, transaction.id]));
-                              toast.success('Mapping applied!');
+
+                              // Remove from needsReview bucket
+                              setNeedsReview(needsReview.filter(item => item.transaction.id !== transaction.id));
+
+                              // Optionally apply to similar transactions
+                              const tx = transactions.find(t => t.id === transaction.id);
+                              if (tx) {
+                                const similarCount = applyMappingToSimilar(tx, mapping, 80);
+                                if (similarCount > 0) {
+                                  toast.success(`✅ Mapping applied to ${similarCount + 1} similar transactions!`, { duration: 5000 });
+
+                                  // Remove all newly mapped transactions from needsReview
+                                  const newlyMappedIds = new Set([transaction.id]);
+                                  transactions.forEach(t => {
+                                    if (mappings.has(t.id)) newlyMappedIds.add(t.id);
+                                  });
+                                  setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
+                                } else {
+                                  toast.success('✅ Mapping applied!');
+                                }
+                              } else {
+                                toast.success('✅ Mapping applied!');
+                              }
                             }}>
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Approve
@@ -1475,6 +1519,125 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                   onSelectAlternative={handleSelectAlternative}
                   onCreateAndApply={handleCreateAndApply}
                   isLoading={isProcessingAI}
+                  // Phase 4: Advanced suggestions
+                  multiInvoiceSuggestions={currentMultiInvoiceSuggestions}
+                  partialPaymentSuggestions={currentPartialPaymentSuggestions}
+                  onApplyMultiInvoice={async (suggestion) => {
+                    console.log('[Phase 5] Apply multi-invoice:', suggestion);
+
+                    if (!user || !bankAccountId) {
+                      toast.error('Missing user or bank account information');
+                      return;
+                    }
+
+                    const currentTransaction = needsAI[currentAIIndex].transaction;
+                    setIsProcessingAI(true);
+
+                    try {
+                      // Create payment allocation service
+                      const allocationService = createPaymentAllocationService({
+                        companyId,
+                        userId: user.uid,
+                        fiscalPeriodId: 'current', // TODO: Get from company settings
+                        arAccountId: 'ar-account-id', // TODO: Get from company settings
+                        bankAccountId: bankAccountId
+                      });
+
+                      // Convert suggestion to allocation format
+                      const allocations: MultiInvoiceAllocation[] = suggestion.invoices.map(inv => ({
+                        invoiceId: inv.id,
+                        invoiceNumber: inv.invoiceNumber,
+                        amount: inv.amount
+                      }));
+
+                      // Allocate payment
+                      const result = await allocationService.allocateMultiInvoicePayment(
+                        currentTransaction,
+                        allocations
+                      );
+
+                      if (result.success) {
+                        toast.success(result.message, { duration: 5000 });
+
+                        // Remove from needs AI and move to next
+                        setNeedsAI(needsAI.filter((_, idx) => idx !== currentAIIndex));
+                        setCurrentAISuggestion(null);
+                        setCurrentMultiInvoiceSuggestions([]);
+                        setCurrentPartialPaymentSuggestions([]);
+
+                        if (needsAI.length > 1) {
+                          // Keep currentAIIndex the same since we removed one item
+                        } else {
+                          setCurrentAIIndex(0);
+                        }
+                      } else {
+                        toast.error(result.message);
+                      }
+                    } catch (error: any) {
+                      console.error('Multi-invoice allocation error:', error);
+                      toast.error(`Failed to allocate payment: ${error.message}`);
+                    } finally {
+                      setIsProcessingAI(false);
+                    }
+                  }}
+                  onApplyPartialPayment={async (suggestion) => {
+                    console.log('[Phase 5] Apply partial payment:', suggestion);
+
+                    if (!user || !bankAccountId) {
+                      toast.error('Missing user or bank account information');
+                      return;
+                    }
+
+                    const currentTransaction = needsAI[currentAIIndex].transaction;
+                    setIsProcessingAI(true);
+
+                    try {
+                      // Create payment allocation service
+                      const allocationService = createPaymentAllocationService({
+                        companyId,
+                        userId: user.uid,
+                        fiscalPeriodId: 'current', // TODO: Get from company settings
+                        arAccountId: 'ar-account-id', // TODO: Get from company settings
+                        bankAccountId: bankAccountId
+                      });
+
+                      // Convert suggestion to allocation format
+                      const allocation: PartialPaymentAllocation = {
+                        invoiceId: suggestion.invoice.id,
+                        amount: currentTransaction.credit || 0,
+                        remainingAmount: suggestion.remainingAmount
+                      };
+
+                      // Allocate partial payment
+                      const result = await allocationService.allocatePartialPayment(
+                        currentTransaction,
+                        allocation
+                      );
+
+                      if (result.success) {
+                        toast.success(result.message, { duration: 5000 });
+
+                        // Remove from needs AI and move to next
+                        setNeedsAI(needsAI.filter((_, idx) => idx !== currentAIIndex));
+                        setCurrentAISuggestion(null);
+                        setCurrentMultiInvoiceSuggestions([]);
+                        setCurrentPartialPaymentSuggestions([]);
+
+                        if (needsAI.length > 1) {
+                          // Keep currentAIIndex the same since we removed one item
+                        } else {
+                          setCurrentAIIndex(0);
+                        }
+                      } else {
+                        toast.error(result.message);
+                      }
+                    } catch (error: any) {
+                      console.error('Partial payment allocation error:', error);
+                      toast.error(`Failed to allocate partial payment: ${error.message}`);
+                    } finally {
+                      setIsProcessingAI(false);
+                    }
+                  }}
                 />
               ) : (
                 <>

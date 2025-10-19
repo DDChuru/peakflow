@@ -79,14 +79,13 @@ export function useWorkspaceAccess(companyId: string | undefined): WorkspaceAcce
         };
       }
 
-      // TODO (Phase 6): Check user.accessibleCompanyIds for multi-company access
-      // if (user.accessibleCompanyIds?.includes(companyId)) {
-      //   return {
-      //     canAccess: true,
-      //     loading: false,
-      //     accessReason: 'Team member access',
-      //   };
-      // }
+      if (user.accessibleCompanyIds?.includes(companyId)) {
+        return {
+          canAccess: true,
+          loading: false,
+          accessReason: 'Delegated company access',
+        };
+      }
 
       // No access
       return {

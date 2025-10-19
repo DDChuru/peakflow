@@ -41,6 +41,8 @@ import { Plus, FileText, Search, Filter, MoreHorizontal, Calendar, AlertCircle, 
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoiceService } from '@/lib/accounting/invoice-service';
+import { InvoicePostingService } from '@/lib/accounting/invoice-posting-service';
+import { fiscalPeriodService } from '@/lib/accounting';
 import { DebtorService } from '@/lib/firebase/debtor-service';
 import { BankAccountService } from '@/lib/firebase/bank-account-service';
 import { db } from '@/lib/firebase/config';
@@ -520,12 +522,45 @@ export default function InvoicesPage() {
     if (!user) return;
 
     try {
-      await invoiceService.postToGL(companyId, invoice.id, user.uid);
-      toast.success('Invoice posted to general ledger');
+      toast.loading('Posting invoice to GL...', { id: 'post-to-gl' });
+
+      // Get fiscal period for invoice date
+      const fiscalPeriod = await fiscalPeriodService.getPeriodForDate(
+        companyId,
+        new Date(invoice.invoiceDate)
+      );
+
+      if (!fiscalPeriod) {
+        toast.error('No fiscal period found for invoice date. Please create fiscal periods in Accounting Settings.', { id: 'post-to-gl' });
+        return;
+      }
+
+      if (fiscalPeriod.status !== 'open') {
+        toast.error(`Cannot post to ${fiscalPeriod.status} period: ${fiscalPeriod.name}`, { id: 'post-to-gl' });
+        return;
+      }
+
+      // Get financial settings from company
+      const financialSettings = (company as any)?.financialSettings || {};
+      const defaultARAccountId = financialSettings.defaultARAccountId || '1200';
+      const defaultTaxPayableAccountId = financialSettings.defaultTaxPayableAccountId || '2200';
+
+      // Use InvoicePostingService to post to GL
+      const postingService = new InvoicePostingService({
+        tenantId: companyId,
+        fiscalPeriodId: fiscalPeriod.id,
+        autoPost: true,
+        defaultARAccountId,
+        defaultTaxPayableAccountId
+      });
+
+      const journalEntryId = await postingService.postInvoiceToGL(invoice);
+
+      toast.success(`Invoice posted to GL (Journal Entry: ${journalEntryId})`, { id: 'post-to-gl' });
       await loadInvoices();
     } catch (error: any) {
       console.error('Error posting to GL:', error);
-      toast.error(error.message || 'Failed to post to general ledger');
+      toast.error(error.message || 'Failed to post to general ledger', { id: 'post-to-gl' });
     }
   };
 

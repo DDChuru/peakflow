@@ -11,7 +11,8 @@
     "seed:charts": "node scripts/seed-chart-of-accounts.js",
     "seed:ledger": "node scripts/seed-ledger-entries.js",
     "seed:industry-templates": "tsx scripts/seed-industry-templates-client.ts",
-    "seed:industry-templates-admin": "tsx scripts/seed-industry-templates.ts"
+    "seed:industry-templates-admin": "tsx scripts/seed-industry-templates.ts",
+    "reset:posted-invoices": "tsx scripts/reset-posted-invoices.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
@@ -31,6 +32,7 @@
     "@radix-ui/react-toast": "^1.2.15",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "firebase": "^12.2.1",
     "firebase-admin": "^12.7.0",
     "framer-motion": "^12.23.18",

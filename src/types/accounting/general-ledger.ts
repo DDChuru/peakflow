@@ -5,6 +5,8 @@ export interface LedgerEntry {
   journalLineId: string;
   accountId: string;
   accountCode: string;
+  accountName: string;  // Full account name for display
+  description?: string;  // Line-level transaction description
   debit: number;
   credit: number;
   cumulativeBalance: number;
@@ -13,7 +15,8 @@ export interface LedgerEntry {
   postingDate: Date;
   fiscalPeriodId: string;
   source: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;  // Journal-level metadata
+  dimensions?: Record<string, string>;  // Line-level dimensions (customerId, invoiceId, etc.)
   createdAt: Date;
 }
 

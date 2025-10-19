@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Sparkles, AlertCircle, ChevronRight, Check, X, Edit2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, AlertCircle, ChevronRight, Check, X, Edit2, FileText, Percent, CreditCard, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,30 @@ import {
   AccountCreationSuggestion
 } from '@/lib/ai/accounting-assistant';
 import { BankTransaction } from '@/types/bank-statement';
+
+// Enhanced types for Phase 4
+interface MultiInvoiceSuggestion {
+  invoices: Array<{
+    id: string;
+    invoiceNumber: string;
+    amount: number;
+  }>;
+  totalAmount: number;
+  confidence: number;
+  matchReasons: string[];
+}
+
+interface PartialPaymentSuggestion {
+  invoice: {
+    id: string;
+    invoiceNumber: string;
+    amount: number;
+  };
+  percentage: number;
+  remainingAmount: number;
+  confidence: number;
+  matchReasons: string[];
+}
 
 interface AIMappingArtifactProps {
   transaction: BankTransaction;
@@ -26,6 +50,11 @@ interface AIMappingArtifactProps {
   onSelectAlternative?: (index: number) => void;
   onCreateAndApply?: () => void;
   isLoading?: boolean;
+  // Phase 4 additions
+  multiInvoiceSuggestions?: MultiInvoiceSuggestion[];
+  partialPaymentSuggestions?: PartialPaymentSuggestion[];
+  onApplyMultiInvoice?: (suggestion: MultiInvoiceSuggestion) => void;
+  onApplyPartialPayment?: (suggestion: PartialPaymentSuggestion) => void;
 }
 
 export function AIMappingArtifact({
@@ -41,8 +70,19 @@ export function AIMappingArtifact({
   onNext,
   onSelectAlternative,
   onCreateAndApply,
-  isLoading = false
+  isLoading = false,
+  // Phase 4 additions
+  multiInvoiceSuggestions,
+  partialPaymentSuggestions,
+  onApplyMultiInvoice,
+  onApplyPartialPayment
 }: AIMappingArtifactProps) {
+
+  // Phase 4: Expandable sections state
+  const [showMultiInvoice, setShowMultiInvoice] = useState(false);
+  const [showPartialPayment, setShowPartialPayment] = useState(false);
+  const [selectedMultiInvoice, setSelectedMultiInvoice] = useState<number | null>(null);
+  const [selectedPartialPayment, setSelectedPartialPayment] = useState<number | null>(null);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -218,6 +258,242 @@ export function AIMappingArtifact({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Phase 4: Multi-Invoice Payment Suggestions */}
+      {multiInvoiceSuggestions && multiInvoiceSuggestions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="rounded-lg border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 p-4 shadow-md"
+        >
+          <button
+            onClick={() => setShowMultiInvoice(!showMultiInvoice)}
+            className="w-full flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                <Layers className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-left">
+                <h4 className="text-base font-semibold text-gray-900">
+                  {multiInvoiceSuggestions.length} Multi-Invoice Option{multiInvoiceSuggestions.length > 1 ? 's' : ''} Detected
+                </h4>
+                <p className="text-xs text-gray-600">
+                  Payment may cover multiple invoices
+                </p>
+              </div>
+            </div>
+            {showMultiInvoice ? (
+              <ChevronUp className="h-5 w-5 text-gray-500 group-hover:text-purple-600" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gray-500 group-hover:text-purple-600" />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showMultiInvoice && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 space-y-3"
+              >
+                {multiInvoiceSuggestions.map((suggestion, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "rounded-lg border-2 p-4 cursor-pointer transition-all",
+                      selectedMultiInvoice === idx
+                        ? "border-purple-600 bg-purple-100"
+                        : "border-purple-200 bg-white hover:border-purple-400 hover:bg-purple-50"
+                    )}
+                    onClick={() => setSelectedMultiInvoice(idx)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-purple-600 text-white">
+                          Option {idx + 1}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs border-purple-600 text-purple-700">
+                          {suggestion.confidence}% Match
+                        </Badge>
+                      </div>
+                      {selectedMultiInvoice === idx && (
+                        <Check className="h-5 w-5 text-purple-600" />
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-sm font-semibold text-gray-900">
+                        {suggestion.invoices.length} Invoices: R{suggestion.totalAmount.toFixed(2)}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {suggestion.invoices.map((invoice) => (
+                          <div
+                            key={invoice.id}
+                            className="flex items-center justify-between text-xs bg-purple-50 rounded px-2 py-1 border border-purple-200"
+                          >
+                            <span className="font-medium text-gray-700">{invoice.invoiceNumber}</span>
+                            <span className="font-semibold text-gray-900">R{invoice.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Match Reasons */}
+                      {suggestion.matchReasons.length > 0 && (
+                        <ul className="mt-2 space-y-0.5 text-xs text-gray-600">
+                          {suggestion.matchReasons.map((reason, i) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <span className="text-purple-600 mt-0.5">•</span>
+                              <span>{reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {selectedMultiInvoice === idx && onApplyMultiInvoice && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onApplyMultiInvoice(suggestion);
+                        }}
+                        disabled={isLoading}
+                        className="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white"
+                        size="sm"
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Apply to {suggestion.invoices.length} Invoices
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
+
+      {/* Phase 4: Partial Payment Suggestions */}
+      {partialPaymentSuggestions && partialPaymentSuggestions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="rounded-lg border-2 border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 shadow-md"
+        >
+          <button
+            onClick={() => setShowPartialPayment(!showPartialPayment)}
+            className="w-full flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-600 flex items-center justify-center">
+                <Percent className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-left">
+                <h4 className="text-base font-semibold text-gray-900">
+                  {partialPaymentSuggestions.length} Partial Payment Option{partialPaymentSuggestions.length > 1 ? 's' : ''} Detected
+                </h4>
+                <p className="text-xs text-gray-600">
+                  Payment may be a partial amount for an invoice
+                </p>
+              </div>
+            </div>
+            {showPartialPayment ? (
+              <ChevronUp className="h-5 w-5 text-gray-500 group-hover:text-amber-600" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-gray-500 group-hover:text-amber-600" />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showPartialPayment && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 space-y-3"
+              >
+                {partialPaymentSuggestions.map((suggestion, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "rounded-lg border-2 p-4 cursor-pointer transition-all",
+                      selectedPartialPayment === idx
+                        ? "border-amber-600 bg-amber-100"
+                        : "border-amber-200 bg-white hover:border-amber-400 hover:bg-amber-50"
+                    )}
+                    onClick={() => setSelectedPartialPayment(idx)}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-amber-600 text-white">
+                          {suggestion.percentage.toFixed(1)}%
+                        </Badge>
+                        <Badge variant="outline" className="text-xs border-amber-600 text-amber-700">
+                          {suggestion.confidence}% Match
+                        </Badge>
+                      </div>
+                      {selectedPartialPayment === idx && (
+                        <Check className="h-5 w-5 text-amber-600" />
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700">Invoice:</span>
+                        <span className="font-semibold text-gray-900">{suggestion.invoice.invoiceNumber}</span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-amber-50 rounded px-2 py-1.5 border border-amber-200">
+                          <div className="text-gray-600">Total</div>
+                          <div className="font-semibold text-gray-900">R{suggestion.invoice.amount.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-green-50 rounded px-2 py-1.5 border border-green-200">
+                          <div className="text-gray-600">Paying</div>
+                          <div className="font-semibold text-green-700">R{amount?.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-red-50 rounded px-2 py-1.5 border border-red-200">
+                          <div className="text-gray-600">Remaining</div>
+                          <div className="font-semibold text-red-700">R{suggestion.remainingAmount.toFixed(2)}</div>
+                        </div>
+                      </div>
+
+                      {/* Match Reasons */}
+                      {suggestion.matchReasons.length > 0 && (
+                        <ul className="mt-2 space-y-0.5 text-xs text-gray-600">
+                          {suggestion.matchReasons.map((reason, i) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <span className="text-amber-600 mt-0.5">•</span>
+                              <span>{reason}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {selectedPartialPayment === idx && onApplyPartialPayment && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onApplyPartialPayment(suggestion);
+                        }}
+                        disabled={isLoading}
+                        className="mt-3 w-full bg-amber-600 hover:bg-amber-700 text-white"
+                        size="sm"
+                      >
+                        <Percent className="h-4 w-4 mr-2" />
+                        Apply Partial Payment ({suggestion.percentage.toFixed(1)}%)
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {/* Main Artifact Card */}
