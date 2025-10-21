@@ -28,6 +28,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { BankToLedgerImport } from '@/components/banking/BankToLedgerImport';
+import { StagingReview } from '@/components/banking/StagingReview';
 import BankStatementUpload from '@/components/bank-statement/BankStatementUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
@@ -60,7 +61,7 @@ export default function BankImportPage() {
 
   const [loading, setLoading] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
-  const [activeTab, setActiveTab] = useState<'import' | 'upload' | 'history' | 'rules'>('import');
+  const [activeTab, setActiveTab] = useState<'import' | 'upload' | 'staging' | 'history' | 'rules'>('import');
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedBankAccount, setSelectedBankAccount] = useState<string>('');
   const [importHistory, setImportHistory] = useState<ImportSession[]>([]);
@@ -171,12 +172,14 @@ export default function BankImportPage() {
   };
 
   const handleImportComplete = () => {
-    toast({
-      title: 'Import Complete',
-      description: 'Bank transactions have been successfully posted to the general ledger'
-    });
+    toast.success('Import complete! Bank transactions have been staged for review.');
     loadImportHistory();
-    setActiveTab('history');
+    setActiveTab('staging'); // Switch to staging tab to review
+  };
+
+  const handlePostComplete = () => {
+    toast.success('Staged transactions have been posted to the general ledger!');
+    loadImportHistory();
   };
 
   const renderImportTab = () => (
@@ -237,6 +240,15 @@ export default function BankImportPage() {
           />
         </CardContent>
       </Card>
+    </div>
+  );
+
+  const renderStagingTab = () => (
+    <div className="space-y-6">
+      <StagingReview
+        companyId={companyId}
+        onPostComplete={handlePostComplete}
+      />
     </div>
   );
 
@@ -672,6 +684,13 @@ export default function BankImportPage() {
                   Upload Statement
                 </TabsTrigger>
                 <TabsTrigger
+                  value="staging"
+                  className="rounded-none border-b-2 border-transparent px-4 pb-3 pt-2 font-semibold text-muted-foreground transition-none data-[state=active]:border-primary data-[state=active]:text-foreground"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Staging Review
+                </TabsTrigger>
+                <TabsTrigger
                   value="history"
                   className="rounded-none border-b-2 border-transparent px-4 pb-3 pt-2 font-semibold text-muted-foreground transition-none data-[state=active]:border-primary data-[state=active]:text-foreground"
                 >
@@ -694,6 +713,10 @@ export default function BankImportPage() {
 
                 <TabsContent value="upload" className="m-0">
                   {renderUploadTab()}
+                </TabsContent>
+
+                <TabsContent value="staging" className="m-0">
+                  {renderStagingTab()}
                 </TabsContent>
 
                 <TabsContent value="history" className="m-0">

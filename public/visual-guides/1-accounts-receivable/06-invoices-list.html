@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice List - PeakFlow Visual Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .annotation-badge { position: absolute; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9); z-index: 1000; cursor: help; transition: all 0.2s ease; }
+        .annotation-badge:hover { transform: scale(1.15); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1); }
+        .annotation-panel { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 3px solid #4f46e5; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1); max-height: 45vh; overflow-y: auto; transition: transform 0.3s ease; z-index: 999; }
+        .annotation-panel.collapsed { transform: translateY(calc(100% - 48px)); }
+        .annotation-item { border-left: 4px solid #e0e7ff; padding-left: 16px; transition: all 0.2s ease; }
+        .annotation-item:hover { border-left-color: #4f46e5; background-color: #f8fafc; }
+        .annotation-item .number { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; margin-right: 8px; flex-shrink: 0; }
+        .screen-container { margin-bottom: 50vh; }
+        .mock-data-indicator { position: fixed; top: 16px; right: 16px; background: rgba(168, 85, 247, 0.95); color: white; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 1001; display: flex; align-items: center; gap: 6px; }
+        .screen-info { background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-left: 4px solid #4f46e5; padding: 16px; margin: 16px; border-radius: 8px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="mock-data-indicator"><i data-lucide="sparkles" style="width: 16px; height: 16px;"></i><span>Visual Guide - Mock Data</span></div>
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2"><i data-lucide="book-open" style="width: 20px; height: 20px;"></i></div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Invoice List with Summary</h2>
+                <p class="text-gray-700 text-sm mb-2">Comprehensive invoice management with KPIs, filtering, and quick actions</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200"><strong>Journey:</strong> AR - Quote to Cash</span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200"><strong>Step:</strong> 3 of 7</span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200"><strong>Component:</strong> <code>/app/workspace/[companyId]/invoices/page.tsx</code></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen-container" id="screenContent">
+        <div class="p-8 space-y-6">
+            <!-- Header -->
+            <div class="flex justify-between items-start">
+                <div><h1 class="text-3xl font-bold">Invoices</h1><p class="text-gray-600 mt-1">Manage customer invoices and track payments</p></div>
+                <div style="position: relative;"><div class="annotation-badge" style="top: -10px; right: -10px;">1</div>
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>Create Invoice
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4" style="position: relative;">
+                <div class="annotation-badge" style="top: -10px; left: -10px;">2</div>
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Total Invoices</h3>
+                        <i data-lucide="file-text" class="h-5 w-5 text-gray-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold">R47,200.00</div>
+                    <p class="text-xs text-gray-500 mt-1">6 invoices</p>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Outstanding</h3>
+                        <i data-lucide="trending-up" class="h-5 w-5 text-blue-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-blue-600">R25,000.00</div>
+                    <p class="text-xs text-gray-500 mt-1">4 unpaid</p>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Overdue</h3>
+                        <i data-lucide="alert-circle" class="h-5 w-5 text-red-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-red-600">R12,500.00</div>
+                    <p class="text-xs text-gray-500 mt-1">2 overdue</p>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Paid This Month</h3>
+                        <i data-lucide="check-circle" class="h-5 w-5 text-green-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-green-600">R17,250.00</div>
+                    <p class="text-xs text-gray-500 mt-1">1 payment</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div class="flex gap-4">
+                    <div class="flex-1" style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">3</div>
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"></i>
+                            <input type="text" placeholder="Search invoices..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; right: -10px;">4</div>
+                        <select class="border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                            <option>All Statuses</option><option>Draft</option><option>Sent</option><option>Partial</option><option>Paid</option><option>Overdue</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Table -->
+            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200"><tr style="position: relative;"><div class="annotation-badge" style="top: 10px; left: -10px;">5</div>
+                        <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Invoice #</th>
+                        <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Customer</th>
+                        <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Date</th>
+                        <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Due Date</th>
+                        <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Status</th>
+                        <th class="text-right py-3 px-6 text-sm font-medium text-gray-700">Amount Due</th>
+                        <th class="text-center py-3 px-6 text-sm font-medium text-gray-700">Actions</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr class="hover:bg-gray-50"><td class="py-4 px-6"><div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">6</div><span class="text-sm font-medium text-indigo-600 hover:underline cursor-pointer">INV-2025-0001</span></div></td>
+                            <td class="py-4 px-6 text-sm">AVI Products Ltd</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2025-01-15</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2025-02-14</td>
+                            <td class="py-4 px-6"><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Sent</span></td>
+                            <td class="py-4 px-6 text-sm font-medium text-right">R11,500.00</td>
+                            <td class="py-4 px-6 text-center"><div style="position: relative;"><div class="annotation-badge" style="top: -10px; right: -10px;">9</div>
+                                <button class="p-1 hover:bg-gray-100 rounded"><i data-lucide="more-horizontal" style="width: 16px; height: 16px;" class="text-gray-500"></i></button>
+                            </div></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50"><td class="py-4 px-6 text-sm font-medium text-indigo-600">INV-2025-0002</td>
+                            <td class="py-4 px-6 text-sm">Digital Solutions SA</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2024-12-10</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2025-01-09</td>
+                            <td class="py-4 px-6"><div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">8</div><span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Overdue</span></div></td>
+                            <td class="py-4 px-6 text-sm font-medium text-right"><div style="position: relative;"><div class="annotation-badge" style="top: -10px; right: -10px;">10</div><span class="text-red-600">R8,300.00</span></div></td>
+                            <td class="py-4 px-6 text-center"><button class="p-1 hover:bg-gray-100 rounded"><i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2"><i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i><span id="panelTitle">Guide & Annotations</span></button>
+        </div>
+        <div id="panelContent" class="p-6">
+            <div class="mb-6"><h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2"><i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>Screen Guide</h3></div>
+            <div class="space-y-4">
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">1</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Create Invoice Button</h4><p class="text-gray-700 text-sm mt-1">Opens dialog to create a new invoice manually or from an accepted quote. Includes customer selection, line items, tax, and payment terms.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">2</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Summary Cards</h4><p class="text-gray-700 text-sm mt-1">Real-time KPIs showing total invoices amount, outstanding AR, overdue amounts, and payments received this month.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">3</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Search Bar</h4><p class="text-gray-700 text-sm mt-1">Search by invoice number, customer name, or amount. Real-time filtering.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">4</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Status Filter</h4><p class="text-gray-700 text-sm mt-1">Filter invoices by status: Draft, Sent, Partial, Paid, Overdue, or All.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">5</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Invoice Table Headers</h4><p class="text-gray-700 text-sm mt-1">Columns: Invoice #, Customer, Date, Due Date, Status, Amount Due, Actions.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">6</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Invoice Number (Clickable)</h4><p class="text-gray-700 text-sm mt-1">Click invoice number to view full invoice details dialog.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">8</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Status Badge</h4><p class="text-gray-700 text-sm mt-1">Color-coded: Blue=Sent, Green=Paid, Yellow=Partial, Red=Overdue, Gray=Draft.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">9</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Actions Dropdown</h4><p class="text-gray-700 text-sm mt-1">Actions: View, Edit, Send, Record Payment, Post to GL, Download PDF.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">10</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Amount Due Highlighting</h4><p class="text-gray-700 text-sm mt-1">Overdue amounts shown in red to draw attention.</p></div></div></div>
+            </div>
+            <div class="mt-8 pt-6 border-t border-gray-200"><h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2"><i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>Related Resources</h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">← All Screens</a>
+                    <a href="05-quote-create.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">← Previous</a>
+                    <a href="07-invoice-create.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">Next: Create Invoice →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        function togglePanel() { const panel = document.getElementById('annotationPanel'); const icon = document.getElementById('panelIcon'); const title = document.getElementById('panelTitle'); panel.classList.toggle('collapsed'); if (panel.classList.contains('collapsed')) { icon.setAttribute('data-lucide', 'chevron-up'); title.textContent = 'Guide & Annotations'; } else { icon.setAttribute('data-lucide', 'chevron-down'); title.textContent = 'Hide Guide'; } lucide.createIcons(); }
+        window.addEventListener('load', function() { lucide.createIcons(); });
+    </script>
+</body>
+</html>

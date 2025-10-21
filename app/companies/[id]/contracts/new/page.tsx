@@ -212,7 +212,7 @@ export default function NewContractPage() {
         setDebtors(companyDebtors);
 
         if (companyDebtors.length === 0) {
-          toast.info('No customers found. Please add customers first.');
+          toast('No customers found. Please add customers first.');
         }
       } catch (error) {
         console.error('Error fetching debtors:', error);

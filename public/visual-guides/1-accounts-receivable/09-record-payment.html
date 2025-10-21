@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Payment Dialog - PeakFlow Visual Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .annotation-badge { position: absolute; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9); z-index: 1000; cursor: help; }
+        .annotation-panel { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 3px solid #4f46e5; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1); max-height: 45vh; overflow-y: auto; z-index: 999; }
+        .annotation-panel.collapsed { transform: translateY(calc(100% - 48px)); }
+        .annotation-item { border-left: 4px solid #e0e7ff; padding-left: 16px; }
+        .annotation-item .number { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; margin-right: 8px; }
+        .screen-container { margin-bottom: 50vh; }
+        .mock-data-indicator { position: fixed; top: 16px; right: 16px; background: rgba(168, 85, 247, 0.95); color: white; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; z-index: 1001; display: flex; align-items: center; gap: 6px; }
+        .screen-info { background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-left: 4px solid #4f46e5; padding: 16px; margin: 16px; border-radius: 8px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="mock-data-indicator"><i data-lucide="sparkles" style="width: 16px; height: 16px;"></i><span>Visual Guide</span></div>
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2"><i data-lucide="book-open" style="width: 20px; height: 20px;"></i></div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Record Payment Dialog</h2>
+                <p class="text-gray-700 text-sm mb-2">Record customer payment against an invoice</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border"><strong>Journey:</strong> AR - Quote to Cash</span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border"><strong>Step:</strong> 6 of 7</span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border"><strong>Component:</strong> <code>/app/.../invoices/page.tsx (lines 1857-1921)</code></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen-container">
+        <div class="p-8">
+            <div class="max-w-2xl mx-auto bg-white rounded-lg border shadow-lg">
+                <div class="p-6 border-b"><h2 class="text-2xl font-bold">Record Payment</h2><p class="text-gray-600 mt-1">Record payment for Invoice INV-2025-0001</p></div>
+                
+                <div class="p-6 space-y-6">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex justify-between items-center">
+                            <div><p class="text-sm text-gray-600">Invoice Amount</p><p class="text-xl font-bold">R11,500.00</p></div>
+                            <div><p class="text-sm text-gray-600">Amount Due</p><p class="text-xl font-bold text-blue-600">R11,500.00</p></div>
+                        </div>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">1</div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
+                        <input type="date" value="2025-01-22" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">2</div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
+                        <input type="number" value="11500.00" step="0.01" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                        <p class="text-xs text-gray-500 mt-1">Pre-filled with amount due. Adjust for partial payments.</p>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">3</div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
+                        <select class="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                            <option>Select payment method...</option>
+                            <option>Bank Transfer (EFT)</option>
+                            <option>Credit Card</option>
+                            <option>Debit Order</option>
+                            <option>Cash</option>
+                            <option>Cheque</option>
+                        </select>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">4</div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Reference / Transaction ID</label>
+                        <input type="text" placeholder="e.g., EFT123456, Cheque #789" class="w-full border border-gray-300 rounded-lg px-4 py-2">
+                        <p class="text-xs text-gray-500 mt-1">Bank reference, transaction ID, or cheque number for tracking</p>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">5</div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                        <textarea rows="3" placeholder="Add any notes about this payment..." class="w-full border border-gray-300 rounded-lg px-4 py-2"></textarea>
+                    </div>
+                </div>
+
+                <div class="p-6 border-t flex justify-end gap-3" style="position: relative;"><div class="annotation-badge" style="top: -10px; right: 60px;">6</div>
+                    <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Record Payment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2"><i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i><span id="panelTitle">Guide</span></button>
+        </div>
+        <div id="panelContent" class="p-6">
+            <div class="space-y-4">
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">1</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Payment Date Picker</h4><p class="text-gray-700 text-sm mt-1">Date payment was received. Defaults to today but can be backdated for historical payments.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">2</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Amount Field</h4><p class="text-gray-700 text-sm mt-1">Payment amount pre-filled with full amount due. Can be adjusted for partial payments. Invoice status updates to "Partial" if less than full amount.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">3</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Payment Method Dropdown</h4><p class="text-gray-700 text-sm mt-1">Select how payment was received: EFT, Credit Card, Debit Order, Cash, or Cheque. Used for reconciliation and reporting.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">4</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Reference Field</h4><p class="text-gray-700 text-sm mt-1">Optional transaction reference, bank reference number, or cheque number. Helps with bank reconciliation and audit trail.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">5</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Notes Field</h4><p class="text-gray-700 text-sm mt-1">Optional notes about the payment (e.g., "Partial payment - customer paying balance next week").</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">6</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Record Payment Button</h4><p class="text-gray-700 text-sm mt-1">Validates and records payment. Updates invoice status and amountPaid/amountDue. Can optionally post journal entry to GL (debit Bank, credit AR).</p></div></div></div>
+            </div>
+            <div class="mt-8 pt-6 border-t">
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border px-4 py-2 rounded-lg hover:bg-gray-50">← All</a>
+                    <a href="08-invoice-detail.html" class="text-sm bg-white border px-4 py-2 rounded-lg hover:bg-gray-50">← Prev</a>
+                    <a href="10-customer-statements.html" class="text-sm bg-white border px-4 py-2 rounded-lg hover:bg-gray-50">Next →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        function togglePanel() { const p = document.getElementById('annotationPanel'); p.classList.toggle('collapsed'); lucide.createIcons(); }
+        window.addEventListener('load', () => lucide.createIcons());
+    </script>
+</body>
+</html>

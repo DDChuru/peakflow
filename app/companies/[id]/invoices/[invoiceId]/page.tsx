@@ -135,17 +135,17 @@ export default function InvoiceDetailPage() {
 
   const duplicateInvoice = () => {
     // TODO: Implement duplicate functionality
-    toast.info('Duplicate functionality coming soon');
+    toast('Duplicate functionality coming soon');
   };
 
   const downloadPDF = () => {
     // TODO: Implement PDF download
-    toast.info('PDF download coming soon');
+    toast('PDF download coming soon');
   };
 
   const sendInvoice = () => {
     // TODO: Implement email sending
-    toast.info('Email sending coming soon');
+    toast('Email sending coming soon');
   };
 
   if (loading) {

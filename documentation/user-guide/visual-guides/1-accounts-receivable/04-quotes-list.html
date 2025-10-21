@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quote Management Page - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px 24px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 -2px 8px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            box-shadow: 0 -4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .screen-container {
+            margin-bottom: 50vh;
+        }
+
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Quote Management Page</h2>
+                <p class="text-gray-700 text-sm mb-2">Manage customer quotes, track quote statuses, and convert accepted quotes to invoices</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> Accounts Receivable - Quote to Cash
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 1 of 7
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/app/workspace/[companyId]/quotes/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="p-8 space-y-6">
+            <!-- Header -->
+            <div class="flex justify-between items-start">
+                <div style="position: relative;">
+                    <h1 class="text-3xl font-bold">Quotes</h1>
+                    <p class="text-gray-600 mt-1">Create and manage customer quotes</p>
+                </div>
+                <div style="position: relative;">
+                    <div class="annotation-badge" style="top: -10px; right: -10px;">1</div>
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2">
+                        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                        Create Quote
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div class="flex gap-4">
+                    <div class="flex-1" style="position: relative;">
+                        <div class="annotation-badge" style="top: -10px; left: -10px;">2</div>
+                        <div class="relative">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"></i>
+                            <input type="text" placeholder="Search quotes..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div style="position: relative;">
+                        <div class="annotation-badge" style="top: -10px; right: -10px;">3</div>
+                        <select class="border border-gray-300 rounded-lg px-4 py-2 bg-white">
+                            <option>All Statuses</option>
+                            <option>Draft</option>
+                            <option>Sent</option>
+                            <option>Accepted</option>
+                            <option>Rejected</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quotes Table -->
+            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden" style="position: relative;">
+                <div class="annotation-badge" style="top: 20px; left: -10px;">4</div>
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Quote Number</th>
+                            <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Customer</th>
+                            <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Date</th>
+                            <th class="text-left py-3 px-6 text-sm font-medium text-gray-700">Valid Until</th>
+                            <th class="text-left py-3 px-6 text-sm font-medium text-gray-700" style="position: relative;">
+                                <div class="annotation-badge" style="top: -10px; right: -10px;">5</div>
+                                Status
+                            </th>
+                            <th class="text-right py-3 px-6 text-sm font-medium text-gray-700">Amount</th>
+                            <th class="text-center py-3 px-6 text-sm font-medium text-gray-700" style="position: relative;">
+                                <div class="annotation-badge" style="top: -10px; right: -10px;">6</div>
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6 text-sm font-medium text-indigo-600">QUO-2025-0001</td>
+                            <td class="py-4 px-6 text-sm text-gray-900">Digital Solutions SA</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2025-01-20</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2025-02-19</td>
+                            <td class="py-4 px-6">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Sent</span>
+                            </td>
+                            <td class="py-4 px-6 text-sm font-medium text-right">R13,800.00</td>
+                            <td class="py-4 px-6 text-center">
+                                <button class="p-1 hover:bg-gray-100 rounded">
+                                    <i data-lucide="more-horizontal" style="width: 16px; height: 16px;" class="text-gray-500"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="py-4 px-6 text-sm font-medium text-indigo-600">QUO-2025-0002</td>
+                            <td class="py-4 px-6 text-sm text-gray-900">CloudBurst Inc</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2025-01-18</td>
+                            <td class="py-4 px-6 text-sm text-gray-600">2025-02-17</td>
+                            <td class="py-4 px-6">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Accepted</span>
+                            </td>
+                            <td class="py-4 px-6 text-sm font-medium text-right">R28,750.00</td>
+                            <td class="py-4 px-6 text-center">
+                                <button class="p-1 hover:bg-gray-100 rounded">
+                                    <i data-lucide="more-horizontal" style="width: 16px; height: 16px;" class="text-gray-500"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Create Quote Button</h4>
+                            <p class="text-gray-700 text-sm mt-1">Opens the Create Quote dialog to generate a new quote for a customer. Allows you to select customer, add line items, set pricing, tax rates, and validity period.</p>
+
+                            <div class="technical-details hidden" id="tech-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Button</code> component</li>
+                                    <li><strong>Action:</strong> Opens <code>isCreateDialogOpen</code> dialog</li>
+                                    <li><strong>Service:</strong> <code>QuoteService.createQuote()</code></li>
+                                    <li><strong>Validation:</strong> React Hook Form + Zod schema</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(1)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-1">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Search Bar</h4>
+                            <p class="text-gray-700 text-sm mt-1">Search quotes by quote number, customer name, or other details. Real-time filtering updates the table as you type.</p>
+
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>State:</strong> <code>searchTerm</code> useState hook</li>
+                                    <li><strong>Filtering:</strong> Client-side filtering on quote data</li>
+                                    <li><strong>Debouncing:</strong> No debouncing - instant search</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Status Filter</h4>
+                            <p class="text-gray-700 text-sm mt-1">Filter quotes by status: Draft, Sent, Accepted, Rejected, or All. Helps focus on quotes in specific stages of the sales cycle.</p>
+
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>State:</strong> <code>statusFilter</code> - QuoteStatus | 'all'</li>
+                                    <li><strong>Type:</strong> <code>QuoteStatus</code> enum from types</li>
+                                    <li><strong>Options:</strong> all, draft, sent, accepted, rejected</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Quotes Table</h4>
+                            <p class="text-gray-700 text-sm mt-1">Displays all quotes with key information: quote number, customer, dates, status, and total amount. Sortable columns allow easy organization.</p>
+
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Data Source:</strong> <code>QuoteService.getQuotes(companyId)</code></li>
+                                    <li><strong>Type:</strong> <code>Quote[]</code> from accounting types</li>
+                                    <li><strong>Columns:</strong> quoteNumber, customer, dates, status, amount</li>
+                                    <li><strong>Hover:</strong> Row highlighting on hover</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Status Badges</h4>
+                            <p class="text-gray-700 text-sm mt-1">Color-coded badges indicating quote status: Blue for Sent, Green for Accepted, Gray for Draft, Red for Rejected. Visual cues for quick status recognition.</p>
+
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Badge</code> component</li>
+                                    <li><strong>Statuses:</strong> draft, sent, accepted, rejected</li>
+                                    <li><strong>Colors:</strong> Tailwind conditional classes</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Actions Menu</h4>
+                            <p class="text-gray-700 text-sm mt-1">Dropdown menu for quote actions: View, Edit, Send to Customer, Convert to Invoice, Download PDF, or Delete. Context-aware actions based on quote status.</p>
+
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>DropdownMenu</code> from Radix UI</li>
+                                    <li><strong>Actions:</strong> View, Edit, Send, Convert, PDF, Delete</li>
+                                    <li><strong>Convert:</strong> Creates invoice from accepted quote</li>
+                                    <li><strong>PDF:</strong> <code>pdfService.generateQuotePDF()</code></li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="05-quote-create.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        Next: Create Quote →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        lucide.createIcons();
+
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

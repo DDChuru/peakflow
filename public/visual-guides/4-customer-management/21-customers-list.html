@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Master Data List - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px 24px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 -2px 8px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            box-shadow: 0 -4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .screen-container {
+            margin-bottom: 50vh; /* Space for annotation panel */
+        }
+
+        /* Prevent body scroll when panel is open */
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Customer Master Data List</h2>
+                <p class="text-gray-700 text-sm mb-2">Comprehensive customer directory with AR balances, credit limits, and contact information</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> Customer Relationship Management
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 21
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/workspace/[companyId]/customers/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6 relative">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Customers</h1>
+                    <p class="text-gray-600">Manage your customer relationships and accounts receivable</p>
+                </div>
+                <div class="relative">
+                    <span class="annotation-badge" style="top: -10px; right: -10px;">1</span>
+                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium">
+                        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                        Add Customer
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                    <div class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Total Customers</h3>
+                        <i data-lucide="users" style="width: 16px; height: 16px;" class="text-gray-400"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold">5</div>
+                        <p class="text-xs text-gray-500">Debtors in system</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+                    <div class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Active</h3>
+                        <div class="h-2 w-2 rounded-full bg-green-500"></div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold">5</div>
+                        <p class="text-xs text-gray-500">Currently active</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 border border-gray-200 relative">
+                    <span class="annotation-badge" style="top: 10px; right: 10px;">5</span>
+                    <div class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Outstanding (AR)</h3>
+                        <span class="text-green-600 font-bold">R</span>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold">R40,000.00</div>
+                        <p class="text-xs text-gray-500">Accounts receivable</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow p-6 border border-gray-200 relative">
+                    <span class="annotation-badge" style="top: 10px; right: 10px;">9</span>
+                    <div class="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <h3 class="text-sm font-medium text-gray-600">Overdue</h3>
+                        <span class="text-orange-600 font-bold">!</span>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold">R12,500.00</div>
+                        <p class="text-xs text-gray-500">Requires attention</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="flex gap-4 mb-6 relative">
+                <div class="relative flex-1">
+                    <span class="annotation-badge" style="top: -10px; left: 40px;">2</span>
+                    <i data-lucide="search" style="width: 16px; height: 16px;" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input
+                        type="text"
+                        placeholder="Search customers by name, email, or phone..."
+                        class="w-full pl-10 pr-20 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <kbd class="hidden sm:inline-block px-2 py-1 text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded">
+                            ⌘K
+                        </kbd>
+                    </div>
+                </div>
+                <div class="relative">
+                    <span class="annotation-badge" style="top: -10px; right: -10px;">3</span>
+                    <button class="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2">
+                        <i data-lucide="filter" style="width: 16px; height: 16px;"></i>
+                        Filter
+                    </button>
+                </div>
+            </div>
+
+            <!-- Customers Table -->
+            <div class="bg-white rounded-lg shadow border border-gray-200 flex flex-col h-[calc(100vh-28rem)]">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Customer Directory</h3>
+                            <p class="text-sm text-gray-600">Complete list of customers with their account details</p>
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            Showing <span class="font-medium text-gray-900">5</span> of <span class="font-medium text-gray-900">5</span> customers
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-auto">
+                    <table class="w-full">
+                        <thead class="sticky top-0 bg-gray-50 z-10 border-b border-gray-200">
+                            <tr>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 text-sm relative">
+                                    <span class="annotation-badge" style="top: 8px; left: 8px;">4</span>
+                                    Customer
+                                </th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 text-sm">Contact</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 text-sm relative">
+                                    <span class="annotation-badge" style="top: 8px; left: 8px;">7</span>
+                                    Status
+                                </th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 text-sm relative">
+                                    <span class="annotation-badge" style="top: 8px; left: 8px;">6</span>
+                                    Balance (AR)
+                                </th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 text-sm">Overdue</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 text-sm">Payment Terms</th>
+                                <th class="text-left py-3 px-4 font-medium text-gray-500 text-sm relative">
+                                    <span class="annotation-badge" style="top: 8px; left: 8px;">8</span>
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <!-- Customer 1: AVI Products Ltd -->
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="cursor-pointer">
+                                        <p class="font-medium text-gray-900 hover:text-indigo-600">AVI Products Ltd</p>
+                                        <p class="text-xs text-gray-500">cust_001</p>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            <span class="truncate max-w-[200px]">accounts@aviproducts.co.za</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            +27 21 555 1234
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                                </td>
+                                <td class="py-3 px-4 font-medium">R12,500.00</td>
+                                <td class="py-3 px-4">
+                                    <span class="text-gray-600">R0.00</span>
+                                </td>
+                                <td class="py-3 px-4 text-gray-600">30 days</td>
+                                <td class="py-3 px-4">
+                                    <button class="hover:bg-gray-100 rounded p-1">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Customer 2: Digital Solutions SA (OVERDUE) -->
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="cursor-pointer">
+                                        <p class="font-medium text-gray-900 hover:text-indigo-600">Digital Solutions SA</p>
+                                        <p class="text-xs text-gray-500">cust_002</p>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            <span class="truncate max-w-[200px]">finance@digitalsolutions.co.za</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            +27 11 444 5678
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                                </td>
+                                <td class="py-3 px-4 font-medium">R8,300.00</td>
+                                <td class="py-3 px-4">
+                                    <span class="text-orange-600 font-medium">R8,300.00</span>
+                                </td>
+                                <td class="py-3 px-4 text-gray-600">30 days</td>
+                                <td class="py-3 px-4">
+                                    <button class="hover:bg-gray-100 rounded p-1">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Customer 3: CloudBurst Inc (OVERDUE) -->
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="cursor-pointer">
+                                        <p class="font-medium text-gray-900 hover:text-indigo-600">CloudBurst Inc</p>
+                                        <p class="text-xs text-gray-500">cust_003</p>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            <span class="truncate max-w-[200px]">billing@cloudburst.com</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            +27 31 777 8899
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                                </td>
+                                <td class="py-3 px-4 font-medium">R4,200.00</td>
+                                <td class="py-3 px-4">
+                                    <span class="text-orange-600 font-medium">R4,200.00</span>
+                                </td>
+                                <td class="py-3 px-4 text-gray-600">60 days</td>
+                                <td class="py-3 px-4">
+                                    <button class="hover:bg-gray-100 rounded p-1">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Customer 4: StartupHub (Pty) Ltd -->
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="cursor-pointer">
+                                        <p class="font-medium text-gray-900 hover:text-indigo-600">StartupHub (Pty) Ltd</p>
+                                        <p class="text-xs text-gray-500">cust_004</p>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            <span class="truncate max-w-[200px]">accounts@startuphub.co.za</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            +27 11 888 9900
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                                </td>
+                                <td class="py-3 px-4 font-medium">R0.00</td>
+                                <td class="py-3 px-4">
+                                    <span class="text-gray-600">R0.00</span>
+                                </td>
+                                <td class="py-3 px-4 text-gray-600">30 days</td>
+                                <td class="py-3 px-4">
+                                    <button class="hover:bg-gray-100 rounded p-1">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Customer 5: WebWorks Ltd -->
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="py-3 px-4">
+                                    <div class="cursor-pointer">
+                                        <p class="font-medium text-gray-900 hover:text-indigo-600">WebWorks Ltd</p>
+                                        <p class="text-xs text-gray-500">cust_005</p>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            <span class="truncate max-w-[200px]">finance@webworks.co.za</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" style="width: 12px; height: 12px;" class="mr-1"></i>
+                                            +27 21 666 7777
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                                </td>
+                                <td class="py-3 px-4 font-medium">R15,000.00</td>
+                                <td class="py-3 px-4">
+                                    <span class="text-gray-600">R0.00</span>
+                                </td>
+                                <td class="py-3 px-4 text-gray-600">30 days</td>
+                                <td class="py-3 px-4">
+                                    <button class="hover:bg-gray-100 rounded p-1">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Overdue Accounts Alert -->
+            <div class="bg-white rounded-lg shadow border border-gray-200 mt-6 relative">
+                <span class="annotation-badge" style="top: 20px; right: 20px;">10</span>
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Overdue Accounts</h3>
+                    <p class="text-sm text-gray-600">Customers with overdue payments requiring attention</p>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 border border-orange-200 rounded-lg bg-orange-50">
+                            <div class="flex items-center space-x-3">
+                                <div class="h-2 w-2 rounded-full bg-orange-500"></div>
+                                <div>
+                                    <p class="font-medium">Digital Solutions SA</p>
+                                    <p class="text-sm text-gray-600">30 days payment terms</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-medium text-orange-600">R8,300.00</p>
+                                <p class="text-sm text-gray-500">Overdue</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between p-4 border border-orange-200 rounded-lg bg-orange-50">
+                            <div class="flex items-center space-x-3">
+                                <div class="h-2 w-2 rounded-full bg-orange-500"></div>
+                                <div>
+                                    <p class="font-medium">CloudBurst Inc</p>
+                                    <p class="text-sm text-gray-600">60 days payment terms</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-medium text-orange-600">R4,200.00</p>
+                                <p class="text-sm text-gray-500">Overdue</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel (Fixed Bottom) -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <!-- Annotation 1 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Add Customer Button</h4>
+                            <p class="text-gray-700 text-sm mt-1">Creates a new customer account with master data including contact info, credit limits, and payment terms. Opens a dialog with a comprehensive form for entering all customer details.</p>
+
+                            <div class="technical-details hidden" id="tech-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Button</code> with onClick handler</li>
+                                    <li><strong>Action:</strong> Opens Create Customer Dialog with React Hook Form</li>
+                                    <li><strong>Service:</strong> <code>DebtorService.createDebtor()</code></li>
+                                    <li><strong>Validation:</strong> Zod schema with email, credit limit validation</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(1)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-1">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 2 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Search Bar</h4>
+                            <p class="text-gray-700 text-sm mt-1">Real-time search filtering across customer name, email, and phone number. Includes keyboard shortcut (⌘K or Ctrl+K) for quick access.</p>
+
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>State:</strong> <code>searchTerm</code> with controlled input</li>
+                                    <li><strong>Filter Logic:</strong> Case-insensitive substring matching</li>
+                                    <li><strong>Keyboard:</strong> Global listener for Cmd/Ctrl+K</li>
+                                    <li><strong>Fields:</strong> Searches name, email, phone simultaneously</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 3 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Filter by Status</h4>
+                            <p class="text-gray-700 text-sm mt-1">Filters customers by status (Active, Inactive, Blocked) to quickly find customers needing attention or review.</p>
+
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Button:</strong> Opens filter dropdown menu</li>
+                                    <li><strong>Status Options:</strong> active, inactive, blocked</li>
+                                    <li><strong>Integration:</strong> Works alongside search filter</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 4 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Customer Table Columns</h4>
+                            <p class="text-gray-700 text-sm mt-1">Comprehensive customer data including Name (clickable to view details), Contact Info (email/phone), Status, Current Balance (AR), Overdue Amount, Payment Terms, and Actions menu.</p>
+
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Columns:</strong> Customer, Contact, Status, Balance, Overdue, Terms, Actions</li>
+                                    <li><strong>Data Source:</strong> <code>filteredCustomers</code> array from state</li>
+                                    <li><strong>Row Click:</strong> Opens view dialog with customer details</li>
+                                    <li><strong>Styling:</strong> Sticky header, hover effects, responsive layout</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 5 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Current Balance (AR) Highlighting</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows total outstanding accounts receivable. The Outstanding (AR) KPI card displays the sum of all customer balances, giving instant visibility into total receivables.</p>
+
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Calculation:</strong> <code>customers.reduce((sum, c) => sum + c.currentBalance, 0)</code></li>
+                                    <li><strong>Format:</strong> ZAR currency with 2 decimals</li>
+                                    <li><strong>Real-time:</strong> Updates when customer balances change</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 6 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Credit Limit vs Balance Indicator</h4>
+                            <p class="text-gray-700 text-sm mt-1">The Balance (AR) column shows current outstanding balance. When combined with credit limit data (visible in detail view), this helps monitor customer credit utilization.</p>
+
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>customer.currentBalance</code></li>
+                                    <li><strong>Credit Check:</strong> Compare with <code>customer.creditLimit</code></li>
+                                    <li><strong>Warning:</strong> Visual indicator when balance exceeds limit</li>
+                                    <li><strong>Format:</strong> ZAR currency formatting</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 7 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">7</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Status Badges</h4>
+                            <p class="text-gray-700 text-sm mt-1">Visual indicators for customer account status. Active (green) means normal operations, Inactive (gray) for dormant accounts, Blocked (red) for suspended customers.</p>
+
+                            <div class="technical-details hidden" id="tech-7">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Badge</code> with dynamic className</li>
+                                    <li><strong>Status Values:</strong> active, inactive, blocked</li>
+                                    <li><strong>Colors:</strong> Green (active), Gray (inactive), Red (blocked)</li>
+                                    <li><strong>Function:</strong> <code>getStatusColor(status)</code></li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(7)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-7">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 8 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">8</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Actions Menu</h4>
+                            <p class="text-gray-700 text-sm mt-1">Dropdown menu with customer actions: View Details (see full profile), Edit (update customer data), Create Invoice, View Statements, and Delete customer.</p>
+
+                            <div class="technical-details hidden" id="tech-8">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>DropdownMenu</code> with trigger button</li>
+                                    <li><strong>Actions:</strong> View, Edit, Delete</li>
+                                    <li><strong>Navigation:</strong> Opens respective dialogs or pages</li>
+                                    <li><strong>Permissions:</strong> Some actions may be role-restricted</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(8)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-8">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 9 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">9</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Overdue Amount Display</h4>
+                            <p class="text-gray-700 text-sm mt-1">Highlights customers with overdue invoices in orange/red. The Overdue KPI card shows total overdue across all customers, helping prioritize collections.</p>
+
+                            <div class="technical-details hidden" id="tech-9">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Calculation:</strong> <code>customers.reduce((sum, c) => sum + c.overdueAmount, 0)</code></li>
+                                    <li><strong>Conditional Styling:</strong> Orange text when overdueAmount > 0</li>
+                                    <li><strong>Source:</strong> Calculated from invoice due dates vs current date</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(9)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-9">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 10 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">10</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">AR Aging Quick View</h4>
+                            <p class="text-gray-700 text-sm mt-1">Dedicated section showing customers with overdue balances. Each row displays customer name, payment terms, and overdue amount for quick collections prioritization.</p>
+
+                            <div class="technical-details hidden" id="tech-10">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Filter:</strong> <code>customers.filter(c => c.overdueAmount > 0)</code></li>
+                                    <li><strong>Display:</strong> Orange-themed cards with overdue amounts</li>
+                                    <li><strong>Purpose:</strong> Quick identification of collection priorities</li>
+                                    <li><strong>Conditional:</strong> Only shows if overdue customers exist</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(10)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-10">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="../../USER-MANUAL.md" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        📖 User Manual
+                    </a>
+                    <a href="22-customer-detail.html" class="text-sm bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                        Next: Customer Detail →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Toggle annotation panel
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        // Toggle technical details
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        // Highlight annotation on badge hover
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                // Scroll to relevant annotation
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Start with panel expanded
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

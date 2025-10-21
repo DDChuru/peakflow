@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { WorkspaceLayout } from '@/components/layout/WorkspaceLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -8,14 +9,88 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
+import { useAuth } from '@/contexts/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+import { SupportedCurrency } from '@/types/auth';
+import { bankAccountService } from '@/lib/firebase';
+import { formatCurrency } from '@/lib/utils';
+import toast from 'react-hot-toast';
+
+interface CashFlowMetrics {
+  currentCash: number;
+  monthlyInflows: number;
+  monthlyOutflows: number;
+  inflowChange: number;
+  outflowChange: number;
+}
 
 export default function CashFlowPage() {
   const params = useParams();
   const companyId = params.companyId as string;
   const router = useRouter();
+  const { user } = useAuth();
   const { canAccess, loading: accessLoading, error: accessError } = useWorkspaceAccess(companyId);
 
-  if (accessLoading) {
+  const [companyCurrency, setCompanyCurrency] = useState<SupportedCurrency>('USD');
+  const [metrics, setMetrics] = useState<CashFlowMetrics>({
+    currentCash: 0,
+    monthlyInflows: 0,
+    monthlyOutflows: 0,
+    inflowChange: 0,
+    outflowChange: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (companyId && user) {
+      loadCashFlowData();
+    }
+  }, [companyId, user]);
+
+  const loadCashFlowData = async () => {
+    try {
+      setLoading(true);
+
+      // Load company currency
+      const companyRef = doc(db, 'companies', companyId);
+      const companySnap = await getDoc(companyRef);
+      if (companySnap.exists()) {
+        setCompanyCurrency(companySnap.data().defaultCurrency || 'USD');
+      }
+
+      // Load current cash from bank accounts
+      let currentCash = 0;
+      try {
+        const bankBalances = await bankAccountService.getAccountBalanceSummary(companyId);
+        currentCash = bankBalances.totalBalance || 0;
+      } catch (error) {
+        console.error('Error loading bank balances:', error);
+      }
+
+      // For now, inflows/outflows are placeholders
+      // TODO: Implement by querying journal entries for cash accounts in last 30 days
+      const monthlyInflows = 0;
+      const monthlyOutflows = 0;
+      const inflowChange = 0;
+      const outflowChange = 0;
+
+      setMetrics({
+        currentCash,
+        monthlyInflows,
+        monthlyOutflows,
+        inflowChange,
+        outflowChange
+      });
+    } catch (error) {
+      console.error('Error loading cash flow data:', error);
+      toast.error('Failed to load cash flow data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (accessLoading || loading) {
     return (
       <WorkspaceLayout companyId={companyId}>
         <div className="container mx-auto p-6 max-w-7xl">
@@ -76,9 +151,9 @@ export default function CashFlowPage() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$45,231.89</div>
+                <div className="text-2xl font-bold">{formatCurrency(metrics.currentCash, companyCurrency)}</div>
                 <p className="text-xs text-muted-foreground">
-                  +20.1% from last month
+                  Total bank account balances
                 </p>
               </CardContent>
             </Card>
@@ -89,9 +164,11 @@ export default function CashFlowPage() {
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">$12,234.56</div>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(metrics.monthlyInflows, companyCurrency)}</div>
                 <p className="text-xs text-muted-foreground">
-                  +15.2% from last period
+                  {metrics.inflowChange !== 0
+                    ? `${metrics.inflowChange > 0 ? '+' : ''}${metrics.inflowChange.toFixed(1)}% from last period`
+                    : 'Data not yet available'}
                 </p>
               </CardContent>
             </Card>
@@ -102,9 +179,11 @@ export default function CashFlowPage() {
                 <TrendingDown className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">$8,765.43</div>
+                <div className="text-2xl font-bold text-red-600">{formatCurrency(metrics.monthlyOutflows, companyCurrency)}</div>
                 <p className="text-xs text-muted-foreground">
-                  -5.4% from last period
+                  {metrics.outflowChange !== 0
+                    ? `${metrics.outflowChange > 0 ? '+' : ''}${metrics.outflowChange.toFixed(1)}% from last period`
+                    : 'Data not yet available'}
                 </p>
               </CardContent>
             </Card>
@@ -138,29 +217,12 @@ export default function CashFlowPage() {
                 <CardDescription>Latest inflows and outflows</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { type: 'inflow', amount: 2500, description: 'Customer Payment', date: '2024-01-15' },
-                    { type: 'outflow', amount: -800, description: 'Office Rent', date: '2024-01-14' },
-                    { type: 'inflow', amount: 1200, description: 'Invoice Payment', date: '2024-01-13' },
-                  ].map((transaction, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`h-2 w-2 rounded-full ${
-                          transaction.type === 'inflow' ? 'bg-green-500' : 'bg-red-500'
-                        }`} />
-                        <div>
-                          <p className="text-sm font-medium">{transaction.description}</p>
-                          <p className="text-xs text-gray-500">{transaction.date}</p>
-                        </div>
-                      </div>
-                      <span className={`text-sm font-medium ${
-                        transaction.type === 'inflow' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.type === 'inflow' ? '+' : ''}${Math.abs(transaction.amount).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
+                <div className="h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
+                  <div className="text-center">
+                    <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Recent transactions will be displayed here</p>
+                    <p className="text-sm text-gray-400">Coming soon: Real-time cash movement tracking</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -172,23 +234,11 @@ export default function CashFlowPage() {
                 <CardDescription>Projected cash position</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Expected Inflows</span>
-                    <span className="text-sm font-medium text-green-600">$8,450</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Expected Outflows</span>
-                    <span className="text-sm font-medium text-red-600">$6,200</span>
-                  </div>
-                  <hr />
-                  <div className="flex justify-between items-center font-medium">
-                    <span>Net Cash Flow</span>
-                    <span className="text-green-600">+$2,250</span>
-                  </div>
-                  <div className="flex justify-between items-center font-medium">
-                    <span>Projected Balance</span>
-                    <span className="text-lg">$47,481.89</span>
+                <div className="h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
+                  <div className="text-center">
+                    <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">Cash flow forecast will be displayed here</p>
+                    <p className="text-sm text-gray-400">Coming soon: AI-powered cash flow predictions</p>
                   </div>
                 </div>
               </CardContent>

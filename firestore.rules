@@ -215,6 +215,28 @@ service cloud.firestore {
       allow delete: if canManageCompanies();  // TEMPORARY FOR TESTING - TODO: REVERT TO: if false
     }
 
+    // Staging journal entries (global collection with tenant scoping)
+    match /staging_journal_entries/{entryId} {
+      // Allow read if authenticated - tenant check will happen at query level
+      // since we query by bankImportSessionId which is already company-scoped
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        request.resource.data.tenantId != null &&
+        belongsToCompany(request.resource.data.tenantId);
+      allow delete: if canManageCompanies();
+    }
+
+    // Staging general ledger entries (global collection with tenant scoping)
+    match /staging_general_ledger/{entryId} {
+      // Allow read if authenticated - tenant check will happen at query level
+      // since we query by bankImportSessionId which is already company-scoped
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+        request.resource.data.tenantId != null &&
+        belongsToCompany(request.resource.data.tenantId);
+      allow delete: if canManageCompanies();
+    }
+
 // ====================================================================
     // MULTI-TENANT COMPANY-SCOPED COLLECTIONS (CSC Pattern)
     // ====================================================================
@@ -426,6 +448,14 @@ service cloud.firestore {
       match /glMappingRules/{ruleId} {
         allow read: if belongsToCompany(companyId) || canManageCompanies();
         allow create, update, delete: if canManageCompanies();
+      }
+
+      // Bank Import Sessions for tracking statement imports
+      match /bankImportSessions/{sessionId} {
+        allow read: if belongsToCompany(companyId) || canManageCompanies();
+        allow create: if belongsToCompany(companyId);
+        allow update: if belongsToCompany(companyId) || canManageCompanies();
+        allow delete: if canManageCompanies();
       }
 
       // Configuration subcollection (industry settings, feature flags, etc.)

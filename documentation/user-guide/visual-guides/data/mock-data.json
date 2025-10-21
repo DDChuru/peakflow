@@ -1,0 +1,813 @@
+{
+  "company": {
+    "id": "comp_techventures_001",
+    "name": "TechVentures Ltd",
+    "type": "corporate",
+    "industry": "technology_software",
+    "industryTemplate": "Technology & Software",
+    "logoUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Crect fill='%234f46e5' width='96' height='96' rx='12'/%3E%3Ctext x='48' y='65' font-family='Arial' font-size='48' fill='white' text-anchor='middle' font-weight='bold'%3ET%3C/text%3E%3C/svg%3E",
+    "address": "123 Innovation Drive, Sandton, Johannesburg, 2196",
+    "email": "finance@techventures.co.za",
+    "phone": "+27 11 234 5678",
+    "vatNumber": "4123456789",
+    "vatPercentage": 15,
+    "registrationNumber": "2018/123456/07",
+    "baseCurrency": "ZAR",
+    "fiscalYearEnd": "2025-12-31",
+    "isActive": true
+  },
+
+  "bankAccounts": [
+    {
+      "id": "bank_001",
+      "name": "TechVentures Main Account",
+      "accountNumber": "1234567890",
+      "bankName": "Standard Bank",
+      "branch": "Sandton City",
+      "branchCode": "051001",
+      "accountType": "checking",
+      "currency": "ZAR",
+      "currentBalance": 245230.50,
+      "isPrimary": true,
+      "status": "active",
+      "glAccountCode": "1100"
+    },
+    {
+      "id": "bank_002",
+      "name": "Savings Account",
+      "accountNumber": "9876543210",
+      "bankName": "FNB Business",
+      "branch": "Rosebank",
+      "branchCode": "250655",
+      "accountType": "savings",
+      "currency": "ZAR",
+      "currentBalance": 500000.00,
+      "isPrimary": false,
+      "status": "active",
+      "glAccountCode": "1150"
+    },
+    {
+      "id": "bank_003",
+      "name": "USD Account",
+      "accountNumber": "5555666677",
+      "bankName": "Standard Bank",
+      "branch": "Sandton City",
+      "branchCode": "051001",
+      "accountType": "foreign_currency",
+      "currency": "USD",
+      "currentBalance": 15750.00,
+      "isPrimary": false,
+      "status": "active",
+      "glAccountCode": "1120"
+    }
+  ],
+
+  "customers": [
+    {
+      "id": "cust_001",
+      "name": "AVI Products Ltd",
+      "email": "accounts@aviproducts.co.za",
+      "phone": "+27 21 555 1234",
+      "address": "45 Marine Drive, Cape Town, 8001",
+      "vatNumber": "4111222333",
+      "paymentTerms": 30,
+      "creditLimit": 50000,
+      "currentBalance": 12500.00,
+      "status": "active"
+    },
+    {
+      "id": "cust_002",
+      "name": "Digital Solutions SA",
+      "email": "finance@digitalsolutions.co.za",
+      "phone": "+27 11 444 5678",
+      "address": "78 Rivonia Road, Sandton, 2196",
+      "vatNumber": "4222333444",
+      "paymentTerms": 30,
+      "creditLimit": 75000,
+      "currentBalance": 8300.00,
+      "agingDays": 35,
+      "status": "active"
+    },
+    {
+      "id": "cust_003",
+      "name": "CloudBurst Inc",
+      "email": "billing@cloudburst.com",
+      "phone": "+27 31 777 8899",
+      "address": "12 Umhlanga Rocks Drive, Durban, 4320",
+      "vatNumber": "4333444555",
+      "paymentTerms": 60,
+      "creditLimit": 100000,
+      "currentBalance": 4200.00,
+      "agingDays": 62,
+      "status": "active"
+    },
+    {
+      "id": "cust_004",
+      "name": "StartupHub (Pty) Ltd",
+      "email": "accounts@startuphub.co.za",
+      "phone": "+27 11 888 9900",
+      "address": "90 Bryanston Drive, Bryanston, 2191",
+      "vatNumber": "4444555666",
+      "paymentTerms": 30,
+      "creditLimit": 30000,
+      "currentBalance": 0,
+      "status": "active"
+    },
+    {
+      "id": "cust_005",
+      "name": "WebWorks Ltd",
+      "email": "finance@webworks.co.za",
+      "phone": "+27 21 666 7777",
+      "address": "156 Main Road, Sea Point, Cape Town, 8005",
+      "vatNumber": "4555666777",
+      "paymentTerms": 30,
+      "creditLimit": 60000,
+      "currentBalance": 15000.00,
+      "status": "active"
+    }
+  ],
+
+  "suppliers": [
+    {
+      "id": "supp_001",
+      "name": "AWS Cloud Services",
+      "email": "billing@aws.amazon.com",
+      "phone": "+1 206 266 1000",
+      "address": "Amazon Web Services, Seattle, WA, USA",
+      "vatNumber": "US12345678",
+      "paymentTerms": 30,
+      "category": "Cloud Services",
+      "currentBalance": 12450.00,
+      "status": "active"
+    },
+    {
+      "id": "supp_002",
+      "name": "Office Depot SA",
+      "email": "accounts@officedepot.co.za",
+      "phone": "+27 11 345 6789",
+      "address": "67 Industrial Road, Midrand, 1685",
+      "vatNumber": "4666777888",
+      "paymentTerms": 30,
+      "category": "Office Supplies",
+      "currentBalance": 4200.00,
+      "status": "active"
+    },
+    {
+      "id": "supp_003",
+      "name": "Microsoft Azure",
+      "email": "billing@microsoft.com",
+      "phone": "+1 425 882 8080",
+      "address": "Microsoft Corporation, Redmond, WA, USA",
+      "vatNumber": "US87654321",
+      "paymentTerms": 30,
+      "category": "Cloud Services",
+      "currentBalance": 8750.00,
+      "status": "active"
+    },
+    {
+      "id": "supp_004",
+      "name": "Telkom Business",
+      "email": "business@telkom.co.za",
+      "phone": "+27 12 311 9111",
+      "address": "Telkom Towers, Pretoria, 0001",
+      "vatNumber": "4777888999",
+      "paymentTerms": 7,
+      "category": "Telecommunications",
+      "currentBalance": 3100.00,
+      "status": "active"
+    }
+  ],
+
+  "invoices": [
+    {
+      "id": "inv_001",
+      "invoiceNumber": "INV-2025-0001",
+      "customerId": "cust_001",
+      "customerName": "AVI Products Ltd",
+      "invoiceDate": "2025-01-15",
+      "dueDate": "2025-02-14",
+      "paymentTerms": 30,
+      "status": "sent",
+      "currency": "ZAR",
+      "subtotal": 10000.00,
+      "taxRate": 15,
+      "taxAmount": 1500.00,
+      "totalAmount": 11500.00,
+      "amountPaid": 0,
+      "amountDue": 11500.00,
+      "source": "manual",
+      "lineItems": [
+        {
+          "id": "line_001",
+          "description": "Software Development - Custom CRM Module",
+          "quantity": 40,
+          "unitPrice": 250.00,
+          "amount": 10000.00,
+          "glAccountId": "gl_4100",
+          "glAccountCode": "4100",
+          "glAccountName": "Software Development Revenue"
+        }
+      ],
+      "notes": "Payment due within 30 days. Late payments subject to interest charges."
+    },
+    {
+      "id": "inv_002",
+      "invoiceNumber": "INV-2025-0002",
+      "customerId": "cust_002",
+      "customerName": "Digital Solutions SA",
+      "invoiceDate": "2024-12-10",
+      "dueDate": "2025-01-09",
+      "paymentTerms": 30,
+      "status": "overdue",
+      "currency": "ZAR",
+      "subtotal": 7217.39,
+      "taxRate": 15,
+      "taxAmount": 1082.61,
+      "totalAmount": 8300.00,
+      "amountPaid": 0,
+      "amountDue": 8300.00,
+      "source": "quote",
+      "purchaseOrderNumber": "PO-2024-789",
+      "lineItems": [
+        {
+          "id": "line_002",
+          "description": "Cloud Infrastructure Consulting",
+          "quantity": 20,
+          "unitPrice": 350.00,
+          "amount": 7000.00,
+          "glAccountId": "gl_4200",
+          "glAccountCode": "4200",
+          "glAccountName": "Consulting Revenue"
+        },
+        {
+          "id": "line_003",
+          "description": "Travel Expenses - Reimbursable",
+          "quantity": 1,
+          "unitPrice": 217.39,
+          "amount": 217.39,
+          "glAccountId": "gl_4900",
+          "glAccountCode": "4900",
+          "glAccountName": "Other Revenue"
+        }
+      ]
+    },
+    {
+      "id": "inv_003",
+      "invoiceNumber": "INV-2025-0003",
+      "customerId": "cust_005",
+      "customerName": "WebWorks Ltd",
+      "invoiceDate": "2025-01-20",
+      "dueDate": "2025-02-19",
+      "paymentTerms": 30,
+      "status": "paid",
+      "currency": "ZAR",
+      "subtotal": 15000.00,
+      "taxRate": 15,
+      "taxAmount": 2250.00,
+      "totalAmount": 17250.00,
+      "amountPaid": 17250.00,
+      "amountDue": 0,
+      "source": "sla",
+      "lineItems": [
+        {
+          "id": "line_004",
+          "description": "Monthly Managed Services - January 2025",
+          "quantity": 1,
+          "unitPrice": 15000.00,
+          "amount": 15000.00,
+          "glAccountId": "gl_4300",
+          "glAccountCode": "4300",
+          "glAccountName": "Recurring Services Revenue"
+        }
+      ],
+      "journalEntryId": "je_003"
+    },
+    {
+      "id": "inv_004",
+      "invoiceNumber": "INV-2025-0004",
+      "customerId": "cust_003",
+      "customerName": "CloudBurst Inc",
+      "invoiceDate": "2024-11-18",
+      "dueDate": "2025-01-17",
+      "paymentTerms": 60,
+      "status": "overdue",
+      "currency": "ZAR",
+      "subtotal": 3652.17,
+      "taxRate": 15,
+      "taxAmount": 547.83,
+      "totalAmount": 4200.00,
+      "amountPaid": 0,
+      "amountDue": 4200.00,
+      "source": "manual",
+      "lineItems": [
+        {
+          "id": "line_005",
+          "description": "API Integration Services",
+          "quantity": 12,
+          "unitPrice": 304.35,
+          "amount": 3652.17,
+          "glAccountId": "gl_4100",
+          "glAccountCode": "4100",
+          "glAccountName": "Software Development Revenue"
+        }
+      ]
+    },
+    {
+      "id": "inv_005",
+      "invoiceNumber": "INV-2025-0005",
+      "customerId": "cust_001",
+      "customerName": "AVI Products Ltd",
+      "invoiceDate": "2025-01-05",
+      "dueDate": "2025-02-04",
+      "paymentTerms": 30,
+      "status": "partial",
+      "currency": "ZAR",
+      "subtotal": 5000.00,
+      "taxRate": 15,
+      "taxAmount": 750.00,
+      "totalAmount": 5750.00,
+      "amountPaid": 2875.00,
+      "amountDue": 2875.00,
+      "source": "manual",
+      "lineItems": [
+        {
+          "id": "line_006",
+          "description": "Support Services - 10 hours",
+          "quantity": 10,
+          "unitPrice": 500.00,
+          "amount": 5000.00,
+          "glAccountId": "gl_4400",
+          "glAccountCode": "4400",
+          "glAccountName": "Support Services Revenue"
+        }
+      ]
+    },
+    {
+      "id": "inv_006",
+      "invoiceNumber": "INV-2025-0006",
+      "customerId": "cust_004",
+      "customerName": "StartupHub (Pty) Ltd",
+      "invoiceDate": "2025-01-22",
+      "dueDate": "2025-01-22",
+      "paymentTerms": 30,
+      "status": "draft",
+      "currency": "ZAR",
+      "subtotal": 8000.00,
+      "taxRate": 15,
+      "taxAmount": 1200.00,
+      "totalAmount": 9200.00,
+      "amountPaid": 0,
+      "amountDue": 9200.00,
+      "source": "manual",
+      "lineItems": [
+        {
+          "id": "line_007",
+          "description": "Website Development - Landing Page",
+          "quantity": 1,
+          "unitPrice": 8000.00,
+          "amount": 8000.00,
+          "glAccountId": "gl_4100",
+          "glAccountCode": "4100",
+          "glAccountName": "Software Development Revenue"
+        }
+      ]
+    }
+  ],
+
+  "quotes": [
+    {
+      "id": "quote_001",
+      "quoteNumber": "QUO-2025-0001",
+      "customerId": "cust_002",
+      "customerName": "Digital Solutions SA",
+      "quoteDate": "2025-01-20",
+      "expiryDate": "2025-02-19",
+      "status": "sent",
+      "currency": "ZAR",
+      "subtotal": 12000.00,
+      "taxRate": 15,
+      "taxAmount": 1800.00,
+      "totalAmount": 13800.00,
+      "lineItems": [
+        {
+          "description": "Database Migration Services",
+          "quantity": 30,
+          "unitPrice": 400.00,
+          "amount": 12000.00
+        }
+      ]
+    },
+    {
+      "id": "quote_002",
+      "quoteNumber": "QUO-2025-0002",
+      "customerId": "cust_003",
+      "customerName": "CloudBurst Inc",
+      "quoteDate": "2025-01-18",
+      "expiryDate": "2025-02-17",
+      "status": "accepted",
+      "currency": "ZAR",
+      "subtotal": 25000.00,
+      "taxRate": 15,
+      "taxAmount": 3750.00,
+      "totalAmount": 28750.00,
+      "lineItems": [
+        {
+          "description": "Full Stack Application Development",
+          "quantity": 100,
+          "unitPrice": 250.00,
+          "amount": 25000.00
+        }
+      ]
+    }
+  ],
+
+  "vendorBills": [
+    {
+      "id": "bill_001",
+      "billNumber": "AWS-2025-001",
+      "supplierId": "supp_001",
+      "supplierName": "AWS Cloud Services",
+      "billDate": "2025-01-01",
+      "dueDate": "2025-01-31",
+      "status": "unpaid",
+      "currency": "ZAR",
+      "subtotal": 10826.09,
+      "taxRate": 15,
+      "taxAmount": 1623.91,
+      "totalAmount": 12450.00,
+      "amountPaid": 0,
+      "amountDue": 12450.00,
+      "lineItems": [
+        {
+          "description": "EC2 Instances - Production",
+          "quantity": 1,
+          "unitPrice": 8500.00,
+          "amount": 8500.00,
+          "glAccountCode": "5300",
+          "glAccountName": "Cloud Infrastructure Costs"
+        },
+        {
+          "description": "S3 Storage",
+          "quantity": 1,
+          "unitPrice": 1200.00,
+          "amount": 1200.00,
+          "glAccountCode": "5300",
+          "glAccountName": "Cloud Infrastructure Costs"
+        },
+        {
+          "description": "Data Transfer",
+          "quantity": 1,
+          "unitPrice": 1126.09,
+          "amount": 1126.09,
+          "glAccountCode": "5300",
+          "glAccountName": "Cloud Infrastructure Costs"
+        }
+      ]
+    },
+    {
+      "id": "bill_002",
+      "billNumber": "OD-2025-042",
+      "supplierId": "supp_002",
+      "supplierName": "Office Depot SA",
+      "billDate": "2025-01-10",
+      "dueDate": "2025-02-09",
+      "status": "unpaid",
+      "currency": "ZAR",
+      "subtotal": 3652.17,
+      "taxRate": 15,
+      "taxAmount": 547.83,
+      "totalAmount": 4200.00,
+      "amountPaid": 0,
+      "amountDue": 4200.00,
+      "lineItems": [
+        {
+          "description": "Office Supplies - January",
+          "quantity": 1,
+          "unitPrice": 3652.17,
+          "amount": 3652.17,
+          "glAccountCode": "5100",
+          "glAccountName": "Office Supplies"
+        }
+      ]
+    },
+    {
+      "id": "bill_003",
+      "billNumber": "AZURE-2025-001",
+      "supplierId": "supp_003",
+      "supplierName": "Microsoft Azure",
+      "billDate": "2025-01-01",
+      "dueDate": "2025-01-31",
+      "status": "paid",
+      "currency": "ZAR",
+      "subtotal": 7608.70,
+      "taxRate": 15,
+      "taxAmount": 1141.30,
+      "totalAmount": 8750.00,
+      "amountPaid": 8750.00,
+      "amountDue": 0,
+      "lineItems": [
+        {
+          "description": "Azure DevOps License - 10 users",
+          "quantity": 10,
+          "unitPrice": 760.87,
+          "amount": 7608.70,
+          "glAccountCode": "5400",
+          "glAccountName": "Software Licenses"
+        }
+      ]
+    }
+  ],
+
+  "journalEntries": [
+    {
+      "id": "je_001",
+      "journalNumber": "JE-2025-0001",
+      "entryDate": "2025-01-15",
+      "description": "Invoice INV-2025-0001 - AVI Products Ltd",
+      "source": "invoice",
+      "status": "posted",
+      "fiscalPeriodId": "period_2025_01",
+      "totalDebit": 11500.00,
+      "totalCredit": 11500.00,
+      "lines": [
+        {
+          "accountCode": "1200",
+          "accountName": "Accounts Receivable",
+          "description": "Invoice INV-2025-0001 - AVI Products Ltd",
+          "debit": 11500.00,
+          "credit": 0,
+          "dimensions": {
+            "customerId": "cust_001",
+            "invoiceId": "inv_001"
+          }
+        },
+        {
+          "accountCode": "4100",
+          "accountName": "Software Development Revenue",
+          "description": "Software Development - Custom CRM Module",
+          "debit": 0,
+          "credit": 10000.00,
+          "dimensions": {
+            "customerId": "cust_001",
+            "invoiceId": "inv_001"
+          }
+        },
+        {
+          "accountCode": "2200",
+          "accountName": "Sales Tax Payable",
+          "description": "VAT @ 15%",
+          "debit": 0,
+          "credit": 1500.00,
+          "dimensions": {
+            "invoiceId": "inv_001"
+          }
+        }
+      ]
+    },
+    {
+      "id": "je_002",
+      "journalNumber": "JE-2025-0002",
+      "entryDate": "2025-01-20",
+      "description": "Payment received - INV-2025-0003",
+      "source": "payment",
+      "status": "posted",
+      "fiscalPeriodId": "period_2025_01",
+      "totalDebit": 17250.00,
+      "totalCredit": 17250.00,
+      "lines": [
+        {
+          "accountCode": "1100",
+          "accountName": "Bank Account - Main",
+          "description": "Payment received - INV-2025-0003",
+          "debit": 17250.00,
+          "credit": 0
+        },
+        {
+          "accountCode": "1200",
+          "accountName": "Accounts Receivable",
+          "description": "Payment - WebWorks Ltd",
+          "debit": 0,
+          "credit": 17250.00,
+          "dimensions": {
+            "customerId": "cust_005",
+            "invoiceId": "inv_003"
+          }
+        }
+      ]
+    },
+    {
+      "id": "je_003",
+      "journalNumber": "JE-2025-0003",
+      "entryDate": "2025-01-10",
+      "description": "Manual adjustment - Depreciation",
+      "source": "manual",
+      "status": "posted",
+      "fiscalPeriodId": "period_2025_01",
+      "totalDebit": 5000.00,
+      "totalCredit": 5000.00,
+      "lines": [
+        {
+          "accountCode": "5800",
+          "accountName": "Depreciation Expense",
+          "description": "Monthly depreciation - Computer Equipment",
+          "debit": 5000.00,
+          "credit": 0
+        },
+        {
+          "accountCode": "1520",
+          "accountName": "Accumulated Depreciation",
+          "description": "Monthly depreciation - Computer Equipment",
+          "debit": 0,
+          "credit": 5000.00
+        }
+      ]
+    }
+  ],
+
+  "chartOfAccounts": [
+    {
+      "id": "gl_1100",
+      "code": "1100",
+      "name": "Bank Account - Main",
+      "type": "asset",
+      "subType": "current_asset",
+      "normalBalance": "debit",
+      "isActive": true
+    },
+    {
+      "id": "gl_1200",
+      "code": "1200",
+      "name": "Accounts Receivable",
+      "type": "asset",
+      "subType": "current_asset",
+      "normalBalance": "debit",
+      "isActive": true
+    },
+    {
+      "id": "gl_1500",
+      "code": "1500",
+      "name": "Computer Equipment",
+      "type": "asset",
+      "subType": "fixed_asset",
+      "normalBalance": "debit",
+      "isActive": true
+    },
+    {
+      "id": "gl_1520",
+      "code": "1520",
+      "name": "Accumulated Depreciation",
+      "type": "asset",
+      "subType": "fixed_asset",
+      "normalBalance": "credit",
+      "isActive": true
+    },
+    {
+      "id": "gl_2100",
+      "code": "2100",
+      "name": "Accounts Payable",
+      "type": "liability",
+      "subType": "current_liability",
+      "normalBalance": "credit",
+      "isActive": true
+    },
+    {
+      "id": "gl_2200",
+      "code": "2200",
+      "name": "Sales Tax Payable",
+      "type": "liability",
+      "subType": "current_liability",
+      "normalBalance": "credit",
+      "isActive": true
+    },
+    {
+      "id": "gl_4100",
+      "code": "4100",
+      "name": "Software Development Revenue",
+      "type": "revenue",
+      "subType": "operating_revenue",
+      "normalBalance": "credit",
+      "isActive": true
+    },
+    {
+      "id": "gl_4200",
+      "code": "4200",
+      "name": "Consulting Revenue",
+      "type": "revenue",
+      "subType": "operating_revenue",
+      "normalBalance": "credit",
+      "isActive": true
+    },
+    {
+      "id": "gl_4300",
+      "code": "4300",
+      "name": "Recurring Services Revenue",
+      "type": "revenue",
+      "subType": "operating_revenue",
+      "normalBalance": "credit",
+      "isActive": true
+    },
+    {
+      "id": "gl_5100",
+      "code": "5100",
+      "name": "Office Supplies",
+      "type": "expense",
+      "subType": "operating_expense",
+      "normalBalance": "debit",
+      "isActive": true
+    },
+    {
+      "id": "gl_5300",
+      "code": "5300",
+      "name": "Cloud Infrastructure Costs",
+      "type": "expense",
+      "subType": "operating_expense",
+      "normalBalance": "debit",
+      "isActive": true
+    },
+    {
+      "id": "gl_5400",
+      "code": "5400",
+      "name": "Software Licenses",
+      "type": "expense",
+      "subType": "operating_expense",
+      "normalBalance": "debit",
+      "isActive": true
+    },
+    {
+      "id": "gl_5800",
+      "code": "5800",
+      "name": "Depreciation Expense",
+      "type": "expense",
+      "subType": "operating_expense",
+      "normalBalance": "debit",
+      "isActive": true
+    }
+  ],
+
+  "bankTransactions": [
+    {
+      "id": "btxn_001",
+      "date": "2025-01-20",
+      "description": "EFT from WebWorks Ltd - Invoice Payment",
+      "debit": 17250.00,
+      "credit": 0,
+      "balance": 245230.50,
+      "type": "deposit",
+      "matched": true,
+      "matchedWith": "je_002"
+    },
+    {
+      "id": "btxn_002",
+      "date": "2025-01-15",
+      "description": "Microsoft Azure - Monthly Subscription",
+      "debit": 0,
+      "credit": 8750.00,
+      "balance": 227980.50,
+      "type": "payment",
+      "matched": true
+    },
+    {
+      "id": "btxn_003",
+      "date": "2025-01-10",
+      "description": "Bank Charges - January",
+      "debit": 0,
+      "credit": 125.50,
+      "balance": 236855.00,
+      "type": "fee",
+      "matched": false
+    },
+    {
+      "id": "btxn_004",
+      "date": "2025-01-08",
+      "description": "Payroll - January 2025",
+      "debit": 0,
+      "credit": 95000.00,
+      "balance": 236980.50,
+      "type": "payment",
+      "matched": true
+    },
+    {
+      "id": "btxn_005",
+      "date": "2025-01-05",
+      "description": "EFT from AVI Products - Partial Payment",
+      "debit": 2875.00,
+      "credit": 0,
+      "balance": 331980.50,
+      "type": "deposit",
+      "matched": true,
+      "matchedWith": "inv_005"
+    }
+  ],
+
+  "kpis": {
+    "cashBalance": 245230.50,
+    "revenueMTD": 128450.00,
+    "outstandingAR": 40000.00,
+    "outstandingAP": 28500.00,
+    "pendingReconciliations": 23,
+    "overdueInvoices": 2,
+    "totalInvoices": 6,
+    "totalCustomers": 5,
+    "totalSuppliers": 4
+  }
+}

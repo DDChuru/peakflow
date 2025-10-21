@@ -7,7 +7,8 @@ export type JournalSource =
   | 'accounts_payable'
   | 'accrual'
   | 'revaluation'
-  | 'adjustment';
+  | 'adjustment'
+  | 'opening_balance';
 
 export interface JournalLine {
   id: string;

@@ -59,6 +59,143 @@ function parseCount(value: unknown): number {
   return 0;
 }
 
+/**
+ * Parse FNB date format: "21 Nov" (no year) using statement period
+ * FNB shows dates as "DD MMM" and the year is only in the statement period
+ */
+function parseFNBDate(dateStr: string, statementPeriod: { from?: string; to?: string }): string {
+  if (!dateStr || !dateStr.trim()) return '';
+
+  const trimmed = dateStr.trim();
+
+  // Extract year from statement period
+  let periodYear: number | null = null;
+
+  if (statementPeriod.from) {
+    const fromDate = new Date(statementPeriod.from);
+    if (!isNaN(fromDate.getTime())) {
+      periodYear = fromDate.getFullYear();
+    }
+  }
+
+  if (!periodYear && statementPeriod.to) {
+    const toDate = new Date(statementPeriod.to);
+    if (!isNaN(toDate.getTime())) {
+      periodYear = toDate.getFullYear();
+    }
+  }
+
+  // Fallback to current year if we couldn't extract from period
+  if (!periodYear) {
+    periodYear = new Date().getFullYear();
+    console.warn('[FNB Date Parser] Could not extract year from statement period, using current year');
+  }
+
+  // Try parsing with the year from statement period
+  // FNB format: "21 Nov" → "21 Nov 2024"
+  const dateWithYear = `${trimmed} ${periodYear}`;
+  const parsed = new Date(dateWithYear);
+
+  if (!isNaN(parsed.getTime())) {
+    // CRITICAL: Use local date components, NOT toISOString() which converts to UTC
+    // UTC conversion causes timezone shift (e.g., Dec 20 midnight in SA becomes Dec 19 22:00 UTC)
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    const result = `${year}-${month}-${day}`;
+
+    console.log(`[FNB Date Parser] "${trimmed}" + period year ${periodYear} → ${result}`);
+    return result;
+  }
+
+  console.warn(`[FNB Date Parser] Could not parse "${trimmed}" with year ${periodYear}`);
+  return trimmed;
+}
+
+/**
+ * Normalize and validate transaction date
+ * Fixes common date parsing issues:
+ * - 2-digit years: 01 → 2024 (not 2001)
+ * - Invalid year ranges
+ */
+function normalizeTransactionDate(
+  dateStr: string | undefined,
+  bankName?: string,
+  statementPeriod?: { from?: string; to?: string }
+): string {
+  if (!dateStr || !dateStr.trim()) return '';
+
+  // FNB-specific date parsing
+  if (bankName === 'FNB' && statementPeriod) {
+    return parseFNBDate(dateStr, statementPeriod);
+  }
+
+  try {
+    const trimmed = dateStr.trim();
+    const parsed = new Date(trimmed);
+
+    // Check if valid date
+    if (isNaN(parsed.getTime())) {
+      console.warn(`[Date Validation] Invalid date: "${trimmed}"`);
+      return trimmed; // Return original if unparseable
+    }
+
+    const year = parsed.getFullYear();
+    const currentYear = new Date().getFullYear();
+
+    // Fix 2-digit year parsing issue
+    // If year < 2000, it's likely a parsing error (e.g., "01" → 2001 instead of 2024)
+    if (year < 2000) {
+      // Assume current century
+      const correctedYear = 2000 + (year % 100);
+      parsed.setFullYear(correctedYear);
+
+      console.warn(`[Date Validation] Corrected year from ${year} to ${correctedYear} for date "${trimmed}"`);
+      return parsed.toISOString().split('T')[0];
+    }
+
+    // Warn if date is far in the future
+    if (year > currentYear + 1) {
+      console.warn(`[Date Validation] Date year seems far in future: ${year} (current: ${currentYear})`);
+    }
+
+    // Return normalized ISO format
+    return parsed.toISOString().split('T')[0];
+
+  } catch (error) {
+    console.error(`[Date Validation] Error parsing date "${dateStr}":`, error);
+    return dateStr;
+  }
+}
+
+function formatDateValue(value: unknown): string {
+  if (!value) return '';
+
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().split('T')[0];
+  }
+
+  if (value instanceof Timestamp) {
+    return value.toDate().toISOString().split('T')[0];
+  }
+
+  if (typeof value === 'object' && value !== null && 'toDate' in value && typeof value.toDate === 'function') {
+    try {
+      const dateValue = value.toDate();
+      if (dateValue instanceof Date && !Number.isNaN(dateValue.getTime())) {
+        return dateValue.toISOString().split('T')[0];
+      }
+    } catch {
+      return '';
+    }
+  }
+
+  return '';
+}
 
 function normalizeStatementPeriod(raw: unknown): BankStatementSummary['statementPeriod'] {
   if (!raw) {
@@ -66,21 +203,57 @@ function normalizeStatementPeriod(raw: unknown): BankStatementSummary['statement
   }
 
   if (typeof raw === 'string') {
-    const delimiter = raw.includes(' to ') ? ' to ' : raw.includes('-') ? '-' : null;
-    if (delimiter) {
-      const [from, to] = raw.split(delimiter).map(part => part.trim());
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return { from: '', to: '' };
+    }
+
+    const rangeSplit = normalized.split(/\s+(?:to|through|until|till)\s+/i);
+    if (rangeSplit.length === 2) {
       return {
-        from: from ?? '',
-        to: to ?? '',
+        from: formatDateValue(rangeSplit[0]),
+        to: formatDateValue(rangeSplit[1])
       };
     }
-    return { from: raw.trim(), to: '' };
+
+    const dashSplit = normalized.split(/\s*[-–—]\s*/);
+    if (dashSplit.length === 2) {
+      return {
+        from: formatDateValue(dashSplit[0]),
+        to: formatDateValue(dashSplit[1])
+      };
+    }
+
+    return { from: normalized, to: '' };
   }
 
   if (typeof raw === 'object') {
     const maybeObject = raw as Record<string, unknown>;
-    const from = typeof maybeObject.from === 'string' ? maybeObject.from : '';
-    const to = typeof maybeObject.to === 'string' ? maybeObject.to : '';
+    const periodValue = maybeObject.statementPeriod ?? maybeObject.value ?? null;
+
+    if (typeof periodValue === 'string') {
+      return normalizeStatementPeriod(periodValue);
+    }
+
+    const from = formatDateValue(
+      maybeObject.from ??
+      maybeObject.start ??
+      maybeObject.startDate ??
+      maybeObject.periodStart ??
+      (typeof periodValue === 'object' ? (periodValue as Record<string, unknown>).from : undefined)
+    );
+    const to = formatDateValue(
+      maybeObject.to ??
+      maybeObject.end ??
+      maybeObject.endDate ??
+      maybeObject.periodEnd ??
+      (typeof periodValue === 'object' ? (periodValue as Record<string, unknown>).to : undefined)
+    );
+
+    if (from || to) {
+      return { from, to };
+    }
+
     return { from, to };
   }
 
@@ -211,6 +384,10 @@ export async function processBankStatement(
       throw new Error(result.error || 'Failed to process bank statement');
     }
 
+    const rawAccountInfo = (result.data as { accountInfo?: Partial<BankAccountInfo>; accountInformation?: Partial<BankAccountInfo> }).accountInfo
+      ?? (result.data as { accountInformation?: Partial<BankAccountInfo> }).accountInformation
+      ?? {};
+
     // Parse summary data with safe number conversion
     const summary = result.data.summary || {};
     const parsedSummary: BankStatementSummary = {
@@ -223,6 +400,18 @@ export async function processBankStatement(
       transactionCount: parseCount(summary.transactionCount),
       statementPeriod: normalizeStatementPeriod(summary.statementPeriod)
     };
+    const accountStatementPeriod = (rawAccountInfo as { statementPeriod?: unknown }).statementPeriod;
+    if ((!parsedSummary.statementPeriod.from && !parsedSummary.statementPeriod.to) && accountStatementPeriod) {
+      parsedSummary.statementPeriod = normalizeStatementPeriod(accountStatementPeriod);
+    }
+
+    // CRITICAL: Detect bank BEFORE processing transactions
+    // This allows bank-specific date parsing (e.g., FNB's "DD MMM" format)
+    console.log('[Bank Parser] Detecting bank...');
+    const sanitizedAccountInfo = sanitizeAccountInfo(rawAccountInfo);
+    const detectedBankName = detectBank('', sanitizedAccountInfo);
+    console.log('[Bank Parser] Detected bank:', detectedBankName);
+    console.log('[Bank Parser] Statement period:', parsedSummary.statementPeriod);
 
     let bankStatement: BankStatement = {
       companyId,
@@ -232,18 +421,20 @@ export async function processBankStatement(
       fileName: pdfFile.name,
       fileSize: pdfFile.size,
       status: 'completed',
-      accountInfo: sanitizeAccountInfo(result.data.accountInfo),
+      accountInfo: sanitizedAccountInfo,
       summary: parsedSummary,
-      transactions: processTransactions(result.data.transactions || []),
+      transactions: processTransactions(
+        result.data.transactions || [],
+        detectedBankName,
+        parsedSummary.statementPeriod
+      ),
       extractedData: removeUndefinedDeep(result.data),
       userId: user.uid
     };
 
     // AUTO-FIX: Apply bank-specific parser to correct debit/credit amounts
     try {
-      console.log('[Bank Parser] Detecting bank...');
-      const bankName = detectBank('', bankStatement.accountInfo);
-      console.log('[Bank Parser] Detected bank:', bankName);
+      const bankName = detectedBankName;
 
       if (bankName !== 'Unknown') {
         console.log('[Bank Parser] Applying bank-specific corrections...');
@@ -330,10 +521,14 @@ export async function processBankStatement(
 }
 
 // Process and categorize transactions
-function processTransactions(rawTransactions: RawTransaction[]): BankTransaction[] {
+function processTransactions(
+  rawTransactions: RawTransaction[],
+  bankName?: string,
+  statementPeriod?: { from?: string; to?: string }
+): BankTransaction[] {
   return rawTransactions.map((rawTransaction) => {
     const transaction: BankTransaction = {
-      date: rawTransaction.date ?? '',
+      date: normalizeTransactionDate(rawTransaction.date, bankName, statementPeriod),
       description: rawTransaction.description ?? '',
       debit: parseSafeNumber(rawTransaction.debit),
       credit: parseSafeNumber(rawTransaction.credit),
@@ -418,13 +613,22 @@ export async function getCompanyBankStatements(
 
     return snapshot.docs.map((docSnapshot) => {
       const data = docSnapshot.data();
+      const { accountInfo: storedAccountInfo, accountInformation, ...rest } = data;
+
+      const accountInfoRaw = (storedAccountInfo ?? accountInformation) as Partial<BankAccountInfo> | null | undefined;
+      const accountInfo = sanitizeAccountInfo(accountInfoRaw);
+
       const summary = data.summary || {};
+      const statementPeriod = summary.statementPeriod || { from: '', to: '' };
+
+      // Detect bank for date parsing
+      const bankName = detectBank('', accountInfo);
 
       const transactionsRaw: RawTransaction[] = Array.isArray(data.transactions) ? data.transactions : [];
       const transactions = transactionsRaw.map((rawTx, index) => {
         const parsedTx: BankTransaction = {
           id: rawTx.id ?? `${docSnapshot.id}-tx-${index}`,
-          date: rawTx.date ?? '',
+          date: normalizeTransactionDate(rawTx.date, bankName, statementPeriod),
           description: rawTx.description ?? '',
           debit: parseSafeNumber(rawTx.debit),
           credit: parseSafeNumber(rawTx.credit),
@@ -443,7 +647,8 @@ export async function getCompanyBankStatements(
 
       const safeStatement: BankStatement = {
         id: docSnapshot.id,
-        ...data,
+        ...rest,
+        accountInfo,
         uploadedAt: data.uploadedAt?.toDate() || new Date(),
         processedAt: data.processedAt?.toDate(),
         transactions,
@@ -478,14 +683,23 @@ export async function getBankStatement(statementId: string): Promise<BankStateme
       return null;
     }
 
-    const data = docSnap.data();
+      const data = docSnap.data();
+      const { accountInfo: storedAccountInfo, accountInformation, ...rest } = data;
+
+      const accountInfoRaw = (storedAccountInfo ?? accountInformation) as Partial<BankAccountInfo> | null | undefined;
+      const accountInfo = sanitizeAccountInfo(accountInfoRaw);
 
     const summary = data.summary || {};
+    const statementPeriod = summary.statementPeriod || { from: '', to: '' };
+
+    // Detect bank for date parsing
+    const bankName = detectBank('', accountInfo);
+
     const transactionsRaw: RawTransaction[] = Array.isArray(data.transactions) ? data.transactions : [];
     const transactions = transactionsRaw.map((rawTx, index) => {
       const parsedTx: BankTransaction = {
         id: rawTx.id ?? `${docSnap.id}-tx-${index}`,
-        date: rawTx.date ?? '',
+        date: normalizeTransactionDate(rawTx.date, bankName, statementPeriod),
         description: rawTx.description ?? '',
         debit: parseSafeNumber(rawTx.debit),
         credit: parseSafeNumber(rawTx.credit),
@@ -504,7 +718,8 @@ export async function getBankStatement(statementId: string): Promise<BankStateme
 
     const safeStatement: BankStatement = {
       id: docSnap.id,
-      ...data,
+      ...rest,
+      accountInfo,
       uploadedAt: data.uploadedAt?.toDate() || new Date(),
       processedAt: data.processedAt?.toDate(),
       transactions,

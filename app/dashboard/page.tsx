@@ -40,8 +40,10 @@ import { motion } from 'framer-motion';
 // Import services
 import { AdminService } from '@/lib/firebase/admin-service';
 import { CompaniesService } from '@/lib/firebase/companies-service';
-import { invoiceService } from '@/lib/firebase';
-import { Company } from '@/types/auth';
+import { invoiceService, bankAccountService } from '@/lib/firebase';
+import { Company, SupportedCurrency } from '@/types/auth';
+import { VendorBillService } from '@/lib/accounting/vendor-bill-service';
+import { GLReportsService } from '@/lib/reporting/gl-reports-service';
 
 // Import components
 import { BankToLedgerImport } from '@/components/banking/BankToLedgerImport';
@@ -71,6 +73,7 @@ export default function UnifiedDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState<Company | null>(null);
+  const [companyCurrency, setCompanyCurrency] = useState<SupportedCurrency>('USD');
   const [metrics, setMetrics] = useState<FinancialMetrics>({
     cashPosition: 0,
     monthlyRevenue: 0,
@@ -101,6 +104,11 @@ export default function UnifiedDashboard() {
         const companyData = await companiesService.getCompanyById(user.companyId);
         setCompany(companyData);
 
+        // Set company currency
+        if (companyData?.defaultCurrency) {
+          setCompanyCurrency(companyData.defaultCurrency);
+        }
+
         // Load financial metrics
         await loadFinancialMetrics(user.companyId);
 
@@ -117,15 +125,52 @@ export default function UnifiedDashboard() {
 
   const loadFinancialMetrics = async (companyId: string) => {
     try {
-      // TODO: Load actual metrics from services
-      // For now, using mock data
+      // Load real financial data from services
+
+      // 1. Cash Position - from bank accounts
+      let cashPosition = 0;
+      try {
+        const bankBalances = await bankAccountService.getAccountBalanceSummary(companyId);
+        cashPosition = bankBalances.totalBalance || 0;
+      } catch (error) {
+        console.error('Error loading bank balances:', error);
+      }
+
+      // 2. Outstanding Receivables - from invoices (totalAmount - paidAmount)
+      let outstandingReceivables = 0;
+      try {
+        const invoiceSummary = await invoiceService.getInvoicesSummary(companyId);
+        outstandingReceivables = (invoiceSummary.totalAmount || 0) - (invoiceSummary.paidAmount || 0);
+      } catch (error) {
+        console.error('Error loading invoice summary:', error);
+      }
+
+      // 3. Unpaid Bills - from vendor bills (totalDue)
+      let unpaidBills = 0;
+      try {
+        if (user?.uid) {
+          const vendorBillService = new VendorBillService(companyId, user.uid);
+          const billSummary = await vendorBillService.getVendorBillSummary();
+          unpaidBills = billSummary.totalDue || 0;
+        }
+      } catch (error) {
+        console.error('Error loading vendor bills:', error);
+      }
+
+      // 4. Monthly Revenue - placeholder (would require GL entries query)
+      const monthlyRevenue = 0;
+
+      // 5. Growth percentages - placeholder (would require historical data comparison)
+      const revenueGrowth = 0;
+      const expenseGrowth = 0;
+
       setMetrics({
-        cashPosition: 125000,
-        monthlyRevenue: 85000,
-        outstandingReceivables: 42000,
-        unpaidBills: 18000,
-        revenueGrowth: 12.5,
-        expenseGrowth: 8.3
+        cashPosition,
+        monthlyRevenue,
+        outstandingReceivables,
+        unpaidBills,
+        revenueGrowth,
+        expenseGrowth
       });
     } catch (error) {
       console.error('Error loading financial metrics:', error);
@@ -134,37 +179,39 @@ export default function UnifiedDashboard() {
 
   const loadActionItems = async (companyId: string) => {
     try {
-      // TODO: Load actual action items from services
-      // For now, using mock data
-      const mockActions: ActionItem[] = [
-        {
-          id: '1',
-          type: 'overdue_invoice',
-          title: '5 Overdue Invoices',
-          description: 'Total amount: $12,500',
-          amount: 12500,
-          priority: 'high',
-          action: () => router.push(`/workspace/${companyId}/invoices?status=overdue`)
-        },
-        {
-          id: '2',
-          type: 'unreconciled',
-          title: '23 Unreconciled Transactions',
-          description: 'Bank statements need reconciliation',
-          priority: 'medium',
-          action: () => router.push(`/workspace/${companyId}/reconciliation`)
-        },
-        {
-          id: '3',
-          type: 'expiring_quote',
-          title: '3 Quotes Expiring Soon',
-          description: 'Expiring in next 7 days',
-          amount: 35000,
-          priority: 'medium',
-          action: () => router.push(`/workspace/${companyId}/quotes?status=expiring`)
+      const actions: ActionItem[] = [];
+
+      // 1. Check for overdue invoices
+      try {
+        const aging = await invoiceService.getInvoiceAging(companyId);
+        const overdueAmount = aging.days31to60 + aging.days61to90 + aging.days91to120 + aging.over120Days;
+
+        if (overdueAmount > 0) {
+          // Count how many buckets have overdue amounts (rough estimate of invoice count)
+          const overdueCount =
+            (aging.days31to60 > 0 ? 1 : 0) +
+            (aging.days61to90 > 0 ? 1 : 0) +
+            (aging.days91to120 > 0 ? 1 : 0) +
+            (aging.over120Days > 0 ? 1 : 0);
+
+          actions.push({
+            id: 'overdue-invoices',
+            type: 'overdue_invoice',
+            title: `Overdue Invoice${overdueCount > 1 ? 's' : ''}`,
+            description: `Total amount: ${formatCurrency(overdueAmount, companyCurrency)}`,
+            amount: overdueAmount,
+            priority: 'high',
+            action: () => router.push(`/workspace/${companyId}/invoices?filter=overdue`)
+          });
         }
-      ];
-      setActionItems(mockActions);
+      } catch (error) {
+        console.error('Error checking overdue invoices:', error);
+      }
+
+      // For now, no other action items are loaded (would require additional service methods)
+      // Future: Add unreconciled transactions, expiring quotes, pending approvals, etc.
+
+      setActionItems(actions);
     } catch (error) {
       console.error('Error loading action items:', error);
     }
@@ -310,7 +357,7 @@ export default function UnifiedDashboard() {
                             <div className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse" />
                           </div>
                           <p className="text-3xl font-bold text-slate-900 mb-1">
-                            {formatCurrency(metrics.cashPosition)}
+                            {formatCurrency(metrics.cashPosition, companyCurrency)}
                           </p>
                           <p className="text-xs font-medium text-slate-600">Available funds</p>
                         </div>
@@ -346,7 +393,7 @@ export default function UnifiedDashboard() {
                             <div className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-pulse" />
                           </div>
                           <p className="text-3xl font-bold text-slate-900 mb-1">
-                            {formatCurrency(metrics.monthlyRevenue)}
+                            {formatCurrency(metrics.monthlyRevenue, companyCurrency)}
                           </p>
                           <div className="flex items-center gap-1">
                             <ArrowUpRight className="h-3 w-3 text-emerald-600" />
@@ -387,7 +434,7 @@ export default function UnifiedDashboard() {
                             <div className="h-1.5 w-1.5 bg-amber-500 rounded-full animate-pulse" />
                           </div>
                           <p className="text-3xl font-bold text-slate-900 mb-1">
-                            {formatCurrency(metrics.outstandingReceivables)}
+                            {formatCurrency(metrics.outstandingReceivables, companyCurrency)}
                           </p>
                           <p className="text-xs font-medium text-slate-600">To be collected</p>
                         </div>
@@ -423,7 +470,7 @@ export default function UnifiedDashboard() {
                             <div className="h-1.5 w-1.5 bg-rose-500 rounded-full animate-pulse" />
                           </div>
                           <p className="text-3xl font-bold text-slate-900 mb-1">
-                            {formatCurrency(metrics.unpaidBills)}
+                            {formatCurrency(metrics.unpaidBills, companyCurrency)}
                           </p>
                           <p className="text-xs font-medium text-slate-600">To be paid</p>
                         </div>
@@ -556,42 +603,55 @@ export default function UnifiedDashboard() {
                     </div>
 
                     <div className="space-y-3">
-                      <Link href={`/workspace/${company?.id}/invoices/new`} className="block">
+                      {/* Opening Balances - Admin Only */}
+                      {isAdmin && (
+                        <Link href={`/workspace/${company?.id}/setup/opening-balances`} className="block">
+                          <Button className="w-full justify-start h-12 bg-white/60 hover:bg-white/80 border-white/30 hover:border-white/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
+                            <div className="h-8 w-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
+                              <Target className="h-4 w-4 text-white" />
+                            </div>
+                            Opening Balances
+                            <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </Button>
+                        </Link>
+                      )}
+
+                      <Link href={`/workspace/${company?.id}/invoices`} className="block">
                         <Button className="w-full justify-start h-12 bg-white/60 hover:bg-white/80 border-white/30 hover:border-white/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
                           <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
                             <Receipt className="h-4 w-4 text-white" />
                           </div>
-                          Create Invoice
+                          Invoices
                           <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Button>
                       </Link>
 
-                      <Link href={`/workspace/${company?.id}/quotes/new`} className="block">
+                      <Link href={`/workspace/${company?.id}/quotes`} className="block">
                         <Button className="w-full justify-start h-12 bg-white/60 hover:bg-white/80 border-white/30 hover:border-white/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
                           <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
                             <FileText className="h-4 w-4 text-white" />
                           </div>
-                          Create Quote
+                          Quotes
                           <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Button>
                       </Link>
 
-                      <Link href={`/workspace/${company?.id}/reconciliation`} className="block">
+                      <Link href={`/workspace/${company?.id}/bank-import`} className="block">
                         <Button className="w-full justify-start h-12 bg-white/60 hover:bg-white/80 border-white/30 hover:border-white/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
                           <div className="h-8 w-8 bg-gradient-to-br from-violet-500 to-purple-500 rounded-xl flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
                             <CheckCircle className="h-4 w-4 text-white" />
                           </div>
-                          Reconcile Bank
+                          Bank Import
                           <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Button>
                       </Link>
 
-                      <Link href={`/workspace/${company?.id}/payments/record`} className="block">
+                      <Link href={`/workspace/${company?.id}/statements`} className="block">
                         <Button className="w-full justify-start h-12 bg-white/60 hover:bg-white/80 border-white/30 hover:border-white/50 transition-all duration-300 hover:scale-105 hover:shadow-lg group">
                           <div className="h-8 w-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300">
-                            <DollarSign className="h-4 w-4 text-white" />
+                            <FileText className="h-4 w-4 text-white" />
                           </div>
-                          Record Payment
+                          Statements
                           <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Button>
                       </Link>

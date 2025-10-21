@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Vendor Bill - PeakFlow Visual Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>.annotation-badge{position:absolute;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 4px 12px rgba(79,70,229,0.4),0 0 0 3px rgba(255,255,255,0.9);z-index:1000}.annotation-panel{position:fixed;bottom:0;left:0;right:0;background:white;border-top:3px solid #4f46e5;max-height:45vh;overflow-y:auto;z-index:999}.annotation-panel.collapsed{transform:translateY(calc(100%-48px))}.screen-container{margin-bottom:50vh}</style>
+</head>
+<body class="bg-gray-50">
+    <div class="fixed top-4 right-4 bg-purple-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2">
+        <i data-lucide="sparkles" style="width:16px;height:16px"></i>
+        <span class="text-sm font-semibold">Visual Guide</span>
+    </div>
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-indigo-600 p-4 m-4 rounded-lg">
+        <h2 class="font-bold text-lg">Create Vendor Bill</h2>
+        <p class="text-sm text-gray-700">Upload PDF for AI extraction or manually enter bill details</p>
+    </div>
+    <div class="screen-container p-6 max-w-4xl mx-auto">
+        <div class="bg-white rounded-lg border shadow-lg p-6 space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold">Create Vendor Bill</h2>
+                <div class="relative">
+                    <button class="bg-purple-600 text-white px-4 py-2 rounded-md flex items-center gap-2">
+                        <i data-lucide="sparkles" style="width:16px;height:16px"></i>
+                        Upload PDF (AI Extract)
+                    </button>
+                    <div class="annotation-badge" style="top:-10px;right:-10px">1</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="relative">
+                    <label class="block text-sm font-medium mb-1">Supplier *</label>
+                    <select class="w-full border rounded-md p-2">
+                        <option>Select vendor...</option>
+                        <option>AWS Cloud Services</option>
+                    </select>
+                    <div class="annotation-badge" style="top:5px;right:-15px">2</div>
+                </div>
+                <div class="relative">
+                    <label class="block text-sm font-medium mb-1">Vendor Bill Number *</label>
+                    <input type="text" placeholder="AWS-2025-001" class="w-full border rounded-md p-2">
+                    <div class="annotation-badge" style="top:5px;right:-15px">3</div>
+                </div>
+                <div class="relative">
+                    <label class="block text-sm font-medium mb-1">Bill Date *</label>
+                    <input type="date" class="w-full border rounded-md p-2">
+                    <div class="annotation-badge" style="top:5px;right:-15px">4</div>
+                </div>
+                <div class="relative">
+                    <label class="block text-sm font-medium mb-1">Due Date *</label>
+                    <input type="date" class="w-full border rounded-md p-2">
+                    <div class="annotation-badge" style="top:5px;right:-15px">5</div>
+                </div>
+            </div>
+            <div class="relative">
+                <label class="block text-sm font-medium mb-2">Link to Purchase Order</label>
+                <select class="w-full border rounded-md p-2">
+                    <option>No PO link...</option>
+                    <option>PO-2025-001 - R25,500.00</option>
+                </select>
+                <div class="annotation-badge" style="top:20px;right:-15px">6</div>
+            </div>
+            <div class="border-t pt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-semibold">Line Items *</h3>
+                    <button class="border px-3 py-1 rounded-md text-sm flex items-center gap-1">
+                        <i data-lucide="plus" style="width:14px;height:14px"></i>
+                        Add Item
+                    </button>
+                </div>
+                <table class="w-full border rounded-lg overflow-hidden">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-left p-2 text-xs">Description</th>
+                            <th class="text-left p-2 text-xs">GL Account</th>
+                            <th class="text-right p-2 text-xs">Qty</th>
+                            <th class="text-right p-2 text-xs">Price</th>
+                            <th class="text-right p-2 text-xs">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-t">
+                            <td class="p-2 text-sm">EC2 Instances - Production</td>
+                            <td class="p-2 text-sm">5300 - Cloud Infrastructure</td>
+                            <td class="p-2 text-sm text-right">1</td>
+                            <td class="p-2 text-sm text-right">R8,500.00</td>
+                            <td class="p-2 text-sm text-right font-semibold">R8,500.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 relative">
+                <div class="flex justify-between mb-2">
+                    <span class="text-sm font-medium">Subtotal:</span>
+                    <span class="font-semibold">R10,826.09</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-sm font-medium">Tax:</span>
+                    <span class="font-semibold">R1,623.91</span>
+                </div>
+                <div class="flex justify-between pt-2 border-t border-indigo-300">
+                    <span class="font-bold">Total:</span>
+                    <span class="text-2xl font-bold text-indigo-600">R12,450.00</span>
+                </div>
+                <div class="annotation-badge" style="top:10px;right:-15px">7</div>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button class="border px-4 py-2 rounded-md">Cancel</button>
+                <button class="bg-indigo-600 text-white px-4 py-2 rounded-md">Create Bill</button>
+            </div>
+        </div>
+    </div>
+    <div class="annotation-panel collapsed" id="panel">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-2 text-center cursor-pointer text-white font-semibold" onclick="document.getElementById('panel').classList.toggle('collapsed')">Guide & Annotations</div>
+        <div class="p-6 space-y-3">
+            <div class="border-l-4 border-indigo-200 pl-4"><div class="flex gap-2"><span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">1</span><div><h4 class="font-semibold">Upload PDF with Gemini AI</h4><p class="text-sm">Upload vendor invoice PDFs. Google Gemini AI extracts supplier, dates, amounts, and line items automatically.</p></div></div></div>
+            <div class="border-l-4 border-indigo-200 pl-4"><div class="flex gap-2"><span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">2</span><div><h4 class="font-semibold">Supplier Selector</h4><p class="text-sm">Choose vendor from creditors master. Auto-fills payment terms and account details.</p></div></div></div>
+            <div class="border-l-4 border-indigo-200 pl-4"><div class="flex gap-2"><span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">3</span><div><h4 class="font-semibold">Vendor Bill Number</h4><p class="text-sm">Vendor's invoice/bill number for reference and matching.</p></div></div></div>
+            <div class="border-l-4 border-indigo-200 pl-4"><div class="flex gap-2"><span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">4</span><div><h4 class="font-semibold">Bill Date</h4><p class="text-sm">Invoice issue date from vendor.</p></div></div></div>
+            <div class="border-l-4 border-indigo-200 pl-4"><div class="flex gap-2"><span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">5</span><div><h4 class="font-semibold">Due Date</h4><p class="text-sm">Payment deadline. Auto-calculated from bill date + payment terms.</p></div></div></div>
+            <div class="border-l-4 border-indigo-200 pl-4"><div class="flex gap-2"><span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">6</span><div><h4 class="font-semibold">PO Link (Three-way Match)</h4><p class="text-sm">Link to purchase order for three-way matching (PO / Goods Receipt / Bill).</p></div></div></div>
+            <div class="border-l-4 border-indigo-200 pl-4"><div class="flex gap-2"><span class="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">7</span><div><h4 class="font-semibold">Totals Calculation</h4><p class="text-sm">Real-time calculation of subtotal, tax, and total amount.</p></div></div></div>
+        </div>
+    </div>
+    <script>lucide.createIcons()</script>
+</body>
+</html>

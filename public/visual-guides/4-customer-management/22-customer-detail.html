@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Profile & Transaction History - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px 24px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 -2px 8px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            box-shadow: 0 -4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .screen-container {
+            margin-bottom: 50vh; /* Space for annotation panel */
+        }
+
+        /* Prevent body scroll when panel is open */
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .tab-button {
+            padding: 0.5rem 1rem;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            border-bottom-color: #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Customer Profile & Transaction History</h2>
+                <p class="text-gray-700 text-sm mb-2">Detailed customer view with credit management, AR aging, invoices, payments, and contact management</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> Customer Relationship Management
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 22
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/workspace/[companyId]/customers/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="p-6 max-w-6xl mx-auto">
+            <!-- Dialog/Modal -->
+            <div class="bg-white rounded-lg shadow-xl border border-gray-200 max-w-4xl mx-auto">
+                <!-- Header -->
+                <div class="border-b border-gray-200 p-6 relative">
+                    <span class="annotation-badge" style="top: 20px; left: 20px;">1</span>
+                    <h2 class="text-xl font-bold text-gray-900">Customer Details</h2>
+                    <p class="text-sm text-gray-600">Complete information for AVI Products Ltd</p>
+                </div>
+
+                <!-- Content -->
+                <div class="p-6 max-h-[70vh] overflow-y-auto">
+                    <!-- Basic Info Grid -->
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div class="relative">
+                            <span class="annotation-badge" style="top: -5px; right: -5px;">1</span>
+                            <label class="text-sm font-medium text-gray-500">Customer Name</label>
+                            <p class="font-semibold mt-1 text-gray-900">AVI Products Ltd</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Status</label>
+                            <div class="mt-1">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Active</span>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <span class="annotation-badge" style="top: -5px; right: -5px;">2</span>
+                            <label class="text-sm font-medium text-gray-500">Email</label>
+                            <p class="mt-1 text-gray-900">accounts@aviproducts.co.za</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Phone</label>
+                            <p class="mt-1 text-gray-900">+27 21 555 1234</p>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-sm font-medium text-gray-500">Address</label>
+                            <p class="mt-1 text-gray-900">45 Marine Drive, Cape Town, 8001</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Tax ID / VAT Number</label>
+                            <p class="mt-1 text-gray-900">4111222333</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-500">Payment Terms</label>
+                            <p class="mt-1 text-gray-900">30 days</p>
+                        </div>
+                    </div>
+
+                    <!-- Credit Management Section -->
+                    <div class="border-t border-gray-200 pt-6 mb-6">
+                        <h3 class="font-semibold text-gray-900 mb-4">Credit Management</h3>
+                        <div class="grid grid-cols-3 gap-6">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 relative">
+                                <span class="annotation-badge" style="top: 10px; right: 10px;">3</span>
+                                <label class="text-sm font-medium text-blue-700">Credit Limit</label>
+                                <p class="text-2xl font-bold mt-1 text-blue-900">R50,000.00</p>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-200 relative">
+                                <span class="annotation-badge" style="top: 10px; right: 10px;">4</span>
+                                <label class="text-sm font-medium text-green-700">Current Balance (AR)</label>
+                                <p class="text-2xl font-bold mt-1 text-green-900">R12,500.00</p>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200 relative">
+                                <span class="annotation-badge" style="top: 10px; right: 10px;">5</span>
+                                <label class="text-sm font-medium text-purple-700">Available Credit</label>
+                                <p class="text-2xl font-bold mt-1 text-purple-900">R37,500.00</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AR Aging Section -->
+                    <div class="border-t border-gray-200 pt-6 mb-6 relative">
+                        <span class="annotation-badge" style="top: 20px; right: 10px;">6</span>
+                        <h3 class="font-semibold text-gray-900 mb-4">AR Aging Breakdown</h3>
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <label class="text-xs font-medium text-gray-600">Current</label>
+                                <p class="text-lg font-bold mt-1 text-gray-900">R11,500.00</p>
+                            </div>
+                            <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                <label class="text-xs font-medium text-yellow-700">30 Days</label>
+                                <p class="text-lg font-bold mt-1 text-yellow-800">R1,000.00</p>
+                            </div>
+                            <div class="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                <label class="text-xs font-medium text-orange-700">60 Days</label>
+                                <p class="text-lg font-bold mt-1 text-orange-800">R0.00</p>
+                            </div>
+                            <div class="bg-red-50 p-3 rounded-lg border border-red-200">
+                                <label class="text-xs font-medium text-red-700">90+ Days</label>
+                                <p class="text-lg font-bold mt-1 text-red-800">R0.00</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transaction History Tabs -->
+                    <div class="border-t border-gray-200 pt-6 relative">
+                        <span class="annotation-badge" style="top: 20px; right: 10px;">7</span>
+                        <h3 class="font-semibold text-gray-900 mb-4">Transaction History</h3>
+
+                        <!-- Tab Navigation -->
+                        <div class="flex border-b border-gray-200 mb-4">
+                            <button class="tab-button active" onclick="switchTab('invoices')">
+                                <i data-lucide="file-text" style="width: 14px; height: 14px; display: inline;"></i>
+                                Invoices
+                            </button>
+                            <button class="tab-button" onclick="switchTab('payments')">
+                                <i data-lucide="credit-card" style="width: 14px; height: 14px; display: inline;"></i>
+                                Payments
+                            </button>
+                            <button class="tab-button" onclick="switchTab('statements')">
+                                <i data-lucide="file-bar-chart" style="width: 14px; height: 14px; display: inline;"></i>
+                                Statements
+                            </button>
+                            <button class="tab-button" onclick="switchTab('notes')">
+                                <i data-lucide="message-square" style="width: 14px; height: 14px; display: inline;"></i>
+                                Notes
+                            </button>
+                        </div>
+
+                        <!-- Invoices Tab -->
+                        <div id="invoices-tab" class="tab-content active">
+                            <div class="space-y-3 relative">
+                                <span class="annotation-badge" style="top: 10px; right: 10px;">8</span>
+                                <!-- Invoice 1 -->
+                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <p class="font-medium text-gray-900">INV-2025-0001</p>
+                                            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800">Sent</span>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1">Software Development - Custom CRM Module</p>
+                                        <div class="flex gap-4 mt-2 text-xs text-gray-500">
+                                            <span>Date: 2025-01-15</span>
+                                            <span>Due: 2025-02-14</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-bold text-lg text-gray-900">R11,500.00</p>
+                                        <p class="text-xs text-gray-500">Amount Due</p>
+                                    </div>
+                                </div>
+
+                                <!-- Invoice 2 -->
+                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <p class="font-medium text-gray-900">INV-2025-0005</p>
+                                            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Partial</span>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1">Support Services - 10 hours</p>
+                                        <div class="flex gap-4 mt-2 text-xs text-gray-500">
+                                            <span>Date: 2025-01-05</span>
+                                            <span>Due: 2025-02-04</span>
+                                            <span class="text-green-600 font-medium">Paid: R2,875.00</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-bold text-lg text-gray-900">R2,875.00</p>
+                                        <p class="text-xs text-gray-500">R5,750.00 total</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payments Tab -->
+                        <div id="payments-tab" class="tab-content">
+                            <div class="space-y-3 relative">
+                                <span class="annotation-badge" style="top: 10px; right: 10px;">9</span>
+                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+                                    <div class="flex-1">
+                                        <p class="font-medium text-gray-900">Payment - INV-2025-0005</p>
+                                        <p class="text-sm text-gray-600 mt-1">Partial payment received via EFT</p>
+                                        <p class="text-xs text-gray-500 mt-2">2025-01-05</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-bold text-lg text-green-600">R2,875.00</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statements Tab -->
+                        <div id="statements-tab" class="tab-content">
+                            <div class="text-center py-8 text-gray-500">
+                                <i data-lucide="file-bar-chart" style="width: 48px; height: 48px; margin: 0 auto 1rem;"></i>
+                                <p>No statements generated yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Notes Tab -->
+                        <div id="notes-tab" class="tab-content">
+                            <div class="space-y-3 relative">
+                                <span class="annotation-badge" style="top: 10px; right: 10px;">12</span>
+                                <div class="p-4 border border-gray-200 rounded-lg bg-yellow-50">
+                                    <div class="flex items-start gap-2">
+                                        <i data-lucide="message-square" style="width: 16px; height: 16px;" class="text-gray-600 mt-1"></i>
+                                        <div class="flex-1">
+                                            <p class="text-sm text-gray-700">Long-standing customer. Prefers email communication for invoices.</p>
+                                            <p class="text-xs text-gray-500 mt-2">Added 2025-01-01</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Section -->
+                    <div class="border-t border-gray-200 pt-6 mt-6 relative">
+                        <span class="annotation-badge" style="top: 20px; right: 10px;">11</span>
+                        <h3 class="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                        <div class="flex gap-3 flex-wrap">
+                            <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
+                                <i data-lucide="file-plus" style="width: 14px; height: 14px;"></i>
+                                New Invoice
+                            </button>
+                            <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
+                                <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
+                                Record Payment
+                            </button>
+                            <button class="border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
+                                <i data-lucide="send" style="width: 14px; height: 14px;"></i>
+                                Send Statement
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Credit Hold Toggle (conditional) -->
+                    <div class="border-t border-gray-200 pt-6 mt-6 relative">
+                        <span class="annotation-badge" style="top: 20px; right: 10px;">10</span>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-gray-900">Credit Status</h4>
+                                    <p class="text-sm text-gray-600 mt-1">Customer is within credit limit</p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-700">Credit Hold</span>
+                                    <button class="w-12 h-6 bg-gray-300 rounded-full relative transition-colors">
+                                        <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="border-t border-gray-200 p-6 bg-gray-50 flex justify-between">
+                    <button class="border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium">
+                        Close
+                    </button>
+                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                        <i data-lucide="edit" style="width: 16px; height: 16px;"></i>
+                        Edit Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel (Fixed Bottom) -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <!-- Annotation 1 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Customer Name and Contact Info</h4>
+                            <p class="text-gray-700 text-sm mt-1">Displays complete customer master data including legal name, email, phone, physical address, and VAT/Tax ID. This forms the foundation of the customer profile.</p>
+
+                            <div class="technical-details hidden" id="tech-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Data Source:</strong> <code>selectedCustomer</code> state</li>
+                                    <li><strong>Fields:</strong> name, email, phone, address, taxId</li>
+                                    <li><strong>Editable:</strong> Click "Edit Customer" button to modify</li>
+                                    <li><strong>Validation:</strong> Email format, required fields enforced</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(1)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-1">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 2 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Contact Information Display</h4>
+                            <p class="text-gray-700 text-sm mt-1">Primary contact details for communication. Email is used for invoice delivery, phone for follow-ups. Supports multiple contacts via Financial Contacts Manager (shown below).</p>
+
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Primary Contact:</strong> <code>customer.email, customer.phone</code></li>
+                                    <li><strong>Additional Contacts:</strong> Managed via FinancialContactsManager</li>
+                                    <li><strong>Integration:</strong> Links to email client (mailto:) on click</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 3 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Credit Limit Section</h4>
+                            <p class="text-gray-700 text-sm mt-1">Maximum credit extended to this customer. Used to calculate available credit and trigger credit hold warnings when exceeded.</p>
+
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>customer.creditLimit</code></li>
+                                    <li><strong>Currency:</strong> ZAR with 2 decimal formatting</li>
+                                    <li><strong>Business Logic:</strong> Enforced in invoice creation workflow</li>
+                                    <li><strong>Editable:</strong> Only by financial admin or higher</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 4 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Current Balance (AR)</h4>
+                            <p class="text-gray-700 text-sm mt-1">Total outstanding accounts receivable for this customer. Sum of all unpaid and partially paid invoices. Updates in real-time as invoices are created and payments recorded.</p>
+
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>customer.currentBalance</code></li>
+                                    <li><strong>Calculation:</strong> Sum of invoice.amountDue for customer</li>
+                                    <li><strong>Updates:</strong> On invoice creation, payment recording</li>
+                                    <li><strong>GL Account:</strong> Maps to 1200 - Accounts Receivable</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 5 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Available Credit Calculation</h4>
+                            <p class="text-gray-700 text-sm mt-1">Remaining credit available to this customer. Calculated as Credit Limit minus Current Balance. Prevents over-extension of credit.</p>
+
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Formula:</strong> <code>creditLimit - currentBalance</code></li>
+                                    <li><strong>Validation:</strong> Warns if new invoice exceeds available</li>
+                                    <li><strong>Display:</strong> Negative values shown in red</li>
+                                    <li><strong>Real-time:</strong> Updates as balances change</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 6 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">AR Aging Breakdown</h4>
+                            <p class="text-gray-700 text-sm mt-1">Age analysis of outstanding receivables broken into Current (0-29 days), 30 days (30-59), 60 days (60-89), and 90+ days. Critical for collections management and bad debt provisioning.</p>
+
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Buckets:</strong> Current, 30, 60, 90+ days</li>
+                                    <li><strong>Calculation:</strong> Based on invoice.dueDate vs today</li>
+                                    <li><strong>Color Coding:</strong> Gray → Yellow → Orange → Red</li>
+                                    <li><strong>Source:</strong> Aggregated from invoice aging data</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 7 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">7</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Transaction History Tabs</h4>
+                            <p class="text-gray-700 text-sm mt-1">Organized view of all customer interactions across Invoices, Payments, Statements, and Notes. Each tab provides focused context for managing customer relationships.</p>
+
+                            <div class="technical-details hidden" id="tech-7">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Tabs:</strong> Invoices, Payments, Statements, Notes</li>
+                                    <li><strong>State Management:</strong> Tab switching via JS click handlers</li>
+                                    <li><strong>Data Loading:</strong> Lazy load per tab for performance</li>
+                                    <li><strong>Filters:</strong> Date range, status filters per tab</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(7)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-7">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 8 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">8</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Invoice List for Customer</h4>
+                            <p class="text-gray-700 text-sm mt-1">All invoices issued to this customer with status (Draft, Sent, Partial, Paid, Overdue), amounts, dates, and quick actions. Click to view/edit invoice details.</p>
+
+                            <div class="technical-details hidden" id="tech-8">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Query:</strong> <code>invoices.where('customerId', '==', customer.id)</code></li>
+                                    <li><strong>Sort:</strong> By invoiceDate descending (newest first)</li>
+                                    <li><strong>Status Badges:</strong> Color-coded by invoice status</li>
+                                    <li><strong>Actions:</strong> View PDF, Send Email, Record Payment, Edit</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(8)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-8">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 9 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">9</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Payment History</h4>
+                            <p class="text-gray-700 text-sm mt-1">Chronological record of all payments received from customer. Shows payment method, date, amount, and linked invoice. Essential for cash flow tracking and reconciliation.</p>
+
+                            <div class="technical-details hidden" id="tech-9">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Data Source:</strong> Payment records linked to customer</li>
+                                    <li><strong>Methods:</strong> EFT, Credit Card, Cash, Cheque, Other</li>
+                                    <li><strong>GL Integration:</strong> Creates DR Bank, CR AR entries</li>
+                                    <li><strong>Reconciliation:</strong> Links to bank statement matches</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(9)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-9">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 10 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">10</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Credit Hold Toggle</h4>
+                            <p class="text-gray-700 text-sm mt-1">Manual override to block new transactions when balance exceeds limit or payment issues arise. Prevents new invoices/orders until resolved. Requires financial admin permission.</p>
+
+                            <div class="technical-details hidden" id="tech-10">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>customer.status = 'blocked'</code></li>
+                                    <li><strong>Auto-trigger:</strong> When currentBalance > creditLimit</li>
+                                    <li><strong>Effects:</strong> Blocks invoice creation, shows warnings</li>
+                                    <li><strong>Permissions:</strong> financial_admin or higher to toggle</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(10)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-10">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 11 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">11</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Quick Actions</h4>
+                            <p class="text-gray-700 text-sm mt-1">Common workflows accessible without leaving customer view: Create Invoice (pre-fills customer), Record Payment (applies to customer balance), Send Statement (generates and emails AR statement).</p>
+
+                            <div class="technical-details hidden" id="tech-11">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>New Invoice:</strong> Navigates to invoice creation with customerId</li>
+                                    <li><strong>Record Payment:</strong> Opens payment dialog with customer context</li>
+                                    <li><strong>Send Statement:</strong> Generates PDF via pdfService, emails</li>
+                                    <li><strong>Integration:</strong> Uses DebtorService methods</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(11)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-11">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Annotation 12 -->
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">12</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Communication Log Section</h4>
+                            <p class="text-gray-700 text-sm mt-1">Free-form notes and communication history with customer. Records calls, emails, issues, special terms, or any relevant relationship details for future reference.</p>
+
+                            <div class="technical-details hidden" id="tech-12">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Storage:</strong> <code>customer.notes</code> field (simple text)</li>
+                                    <li><strong>Future:</strong> Planned expansion to timestamped note entries</li>
+                                    <li><strong>Display:</strong> Chronological with user attribution</li>
+                                    <li><strong>Privacy:</strong> Visible only to users with customer access</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(12)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-12">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="../../USER-MANUAL.md" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        📖 User Manual
+                    </a>
+                    <a href="21-customers-list.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← Previous: Customer List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Toggle annotation panel
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        // Toggle technical details
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            // Hide all tabs
+            const allTabs = document.querySelectorAll('.tab-content');
+            allTabs.forEach(tab => tab.classList.remove('active'));
+
+            // Deactivate all buttons
+            const allButtons = document.querySelectorAll('.tab-button');
+            allButtons.forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            // Activate corresponding button
+            event.target.closest('.tab-button').classList.add('active');
+
+            // Reinitialize icons after tab switch
+            lucide.createIcons();
+        }
+
+        // Highlight annotation on badge hover
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                // Scroll to relevant annotation
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Start with panel expanded
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

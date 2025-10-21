@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal Entries - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px 24px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 -2px 8px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            box-shadow: 0 -4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .screen-container {
+            margin-bottom: 50vh;
+        }
+
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Journal Entries with Detail Dialog</h2>
+                <p class="text-gray-700 text-sm mb-2">Complete view of all posted transactions and journal entries with drill-down capability</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> General Ledger & Reporting
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 25
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/app/workspace/[companyId]/journal/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="container mx-auto p-6 max-w-7xl space-y-6">
+            <!-- Header -->
+            <div class="flex items-center justify-between relative">
+                <span class="annotation-badge" style="top: -10px; left: -15px;">1</span>
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight">Journal Entries</h1>
+                    <p class="text-gray-600 mt-1">View all posted transactions and journal entries</p>
+                </div>
+                <div class="flex items-center gap-2 relative">
+                    <span class="annotation-badge" style="top: 5px; right: -15px;">2</span>
+                    <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 flex items-center gap-2">
+                        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                        Create Manual Journal
+                    </button>
+                    <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid gap-4 md:grid-cols-3">
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Total Entries</span>
+                        <i data-lucide="file-text" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                    </div>
+                    <div class="text-2xl font-bold">3</div>
+                    <p class="text-xs text-gray-600 mt-1">3 posted</p>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Total Debits</span>
+                        <i data-lucide="dollar-sign" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                    </div>
+                    <div class="text-2xl font-bold">R 33,750.00</div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-600">Total Credits</span>
+                        <i data-lucide="dollar-sign" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                    </div>
+                    <div class="text-2xl font-bold">R 33,750.00</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white border border-gray-200 rounded-lg p-4 relative">
+                <span class="annotation-badge" style="top: 10px; left: 10px;">3</span>
+                <div class="grid grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Date Range</label>
+                        <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                            <i data-lucide="calendar" style="width: 16px; height: 16px;" class="text-gray-400"></i>
+                            <span class="text-sm">Jan 2025</span>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <span class="annotation-badge" style="top: 25px; left: -15px;">4</span>
+                        <label class="block text-sm font-medium mb-1">Account</label>
+                        <div class="px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                            <span class="text-sm text-gray-600">All Accounts</span>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <span class="annotation-badge" style="top: 25px; left: -15px;">5</span>
+                        <label class="block text-sm font-medium mb-1">Source</label>
+                        <div class="px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                            <span class="text-sm text-gray-600">All Sources</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Status</label>
+                        <div class="px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                            <span class="text-sm text-gray-600">All</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journal Entries Table -->
+            <div class="bg-white border border-gray-200 rounded-lg relative">
+                <span class="annotation-badge" style="top: 15px; left: 15px;">6</span>
+                <div class="p-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold">Journal Entries</h3>
+                    <p class="text-sm text-gray-600">All posted transactions and adjustments</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="text-left p-3 text-sm font-medium">Date</th>
+                                <th class="text-left p-3 text-sm font-medium">JE Number</th>
+                                <th class="text-left p-3 text-sm font-medium">Source</th>
+                                <th class="text-left p-3 text-sm font-medium">Description</th>
+                                <th class="text-right p-3 text-sm font-medium">Debit</th>
+                                <th class="text-right p-3 text-sm font-medium">Credit</th>
+                                <th class="text-center p-3 text-sm font-medium">Status</th>
+                                <th class="text-right p-3 text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="p-3">
+                                    <div class="flex items-center gap-2">
+                                        <i data-lucide="calendar" style="width: 14px; height: 14px;" class="text-gray-400"></i>
+                                        <span class="text-sm">Jan 15, 2025</span>
+                                    </div>
+                                </td>
+                                <td class="p-3">
+                                    <button class="text-sm font-medium text-blue-600 hover:underline">JE-2025-0001</button>
+                                </td>
+                                <td class="p-3">
+                                    <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full border border-purple-200">Invoice</span>
+                                </td>
+                                <td class="p-3 text-sm">Invoice INV-2025-0001 - AVI Products Ltd</td>
+                                <td class="p-3 text-right font-medium text-sm">R 11,500.00</td>
+                                <td class="p-3 text-right font-medium text-sm">R 11,500.00</td>
+                                <td class="p-3 text-center">
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Posted</span>
+                                </td>
+                                <td class="p-3 text-right">
+                                    <button class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 flex items-center gap-1 ml-auto" onclick="showDetailDialog()">
+                                        <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                        View
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="p-3">
+                                    <div class="flex items-center gap-2">
+                                        <i data-lucide="calendar" style="width: 14px; height: 14px;" class="text-gray-400"></i>
+                                        <span class="text-sm">Jan 20, 2025</span>
+                                    </div>
+                                </td>
+                                <td class="p-3">
+                                    <button class="text-sm font-medium text-blue-600 hover:underline">JE-2025-0002</button>
+                                </td>
+                                <td class="p-3">
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full border border-green-200">Payment</span>
+                                </td>
+                                <td class="p-3 text-sm">Payment received - INV-2025-0003</td>
+                                <td class="p-3 text-right font-medium text-sm">R 17,250.00</td>
+                                <td class="p-3 text-right font-medium text-sm">R 17,250.00</td>
+                                <td class="p-3 text-center">
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Posted</span>
+                                </td>
+                                <td class="p-3 text-right">
+                                    <button class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 flex items-center gap-1 ml-auto">
+                                        <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                        View
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                <td class="p-3">
+                                    <div class="flex items-center gap-2">
+                                        <i data-lucide="calendar" style="width: 14px; height: 14px;" class="text-gray-400"></i>
+                                        <span class="text-sm">Jan 10, 2025</span>
+                                    </div>
+                                </td>
+                                <td class="p-3">
+                                    <button class="text-sm font-medium text-blue-600 hover:underline">JE-2025-0003</button>
+                                </td>
+                                <td class="p-3">
+                                    <span class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full border border-gray-200">Manual</span>
+                                </td>
+                                <td class="p-3 text-sm">Manual adjustment - Depreciation</td>
+                                <td class="p-3 text-right font-medium text-sm">R 5,000.00</td>
+                                <td class="p-3 text-right font-medium text-sm">R 5,000.00</td>
+                                <td class="p-3 text-center">
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Posted</span>
+                                </td>
+                                <td class="p-3 text-right">
+                                    <button class="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 flex items-center gap-1 ml-auto">
+                                        <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                                        View
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Dialog -->
+        <div id="detailDialog" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="hideDetailDialog()">
+            <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto relative" onclick="event.stopPropagation()">
+                <span class="annotation-badge" style="top: 15px; left: 15px;">7</span>
+                <div class="p-6 border-b border-gray-200">
+                    <h2 class="text-2xl font-bold">Journal Entry Details</h2>
+                    <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-600" onclick="hideDetailDialog()">
+                        <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <!-- Header Info -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Reference</label>
+                            <p class="text-sm font-medium">JE-2025-0001</p>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Date</label>
+                            <p class="text-sm">Jan 15, 2025</p>
+                        </div>
+                        <div class="relative">
+                            <span class="annotation-badge" style="top: 0; left: -15px;">11</span>
+                            <label class="text-sm font-medium text-gray-600">Source</label>
+                            <div class="mt-1">
+                                <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full border border-purple-200">Invoice</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium text-gray-600">Status</label>
+                            <div class="mt-1">
+                                <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Posted</span>
+                            </div>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-sm font-medium text-gray-600">Description</label>
+                            <p class="text-sm">Invoice INV-2025-0001 - AVI Products Ltd</p>
+                        </div>
+                    </div>
+
+                    <!-- Ledger Lines -->
+                    <div class="relative">
+                        <span class="annotation-badge" style="top: 0; left: -15px;">8</span>
+                        <h3 class="text-lg font-semibold mb-3">Ledger Lines</h3>
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th class="text-left p-3 text-sm font-medium">Account</th>
+                                        <th class="text-left p-3 text-sm font-medium">Description</th>
+                                        <th class="text-right p-3 text-sm font-medium">Debit</th>
+                                        <th class="text-right p-3 text-sm font-medium">Credit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-200">
+                                        <td class="p-3 relative">
+                                            <span class="annotation-badge" style="top: 10px; left: -15px;">9</span>
+                                            <div class="font-medium text-sm">1200</div>
+                                            <div class="text-sm text-gray-600">Accounts Receivable</div>
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600 relative">
+                                            <span class="annotation-badge" style="top: 10px; left: -15px;">10</span>
+                                            Invoice INV-2025-0001 - AVI Products Ltd
+                                        </td>
+                                        <td class="p-3 text-right text-sm font-medium">R 11,500.00</td>
+                                        <td class="p-3 text-right text-sm">-</td>
+                                    </tr>
+                                    <tr class="border-b border-gray-200">
+                                        <td class="p-3">
+                                            <div class="font-medium text-sm">4100</div>
+                                            <div class="text-sm text-gray-600">Software Development Revenue</div>
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">Software Development - Custom CRM Module</td>
+                                        <td class="p-3 text-right text-sm">-</td>
+                                        <td class="p-3 text-right text-sm font-medium">R 10,000.00</td>
+                                    </tr>
+                                    <tr class="border-b border-gray-200">
+                                        <td class="p-3">
+                                            <div class="font-medium text-sm">2200</div>
+                                            <div class="text-sm text-gray-600">Sales Tax Payable</div>
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">VAT @ 15%</td>
+                                        <td class="p-3 text-right text-sm">-</td>
+                                        <td class="p-3 text-right text-sm font-medium">R 1,500.00</td>
+                                    </tr>
+                                    <tr class="bg-gray-50 font-bold">
+                                        <td class="p-3 text-sm" colspan="2">Total</td>
+                                        <td class="p-3 text-right text-sm">R 11,500.00</td>
+                                        <td class="p-3 text-right text-sm">R 11,500.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Customer/Supplier Dimensions -->
+                    <div class="relative">
+                        <span class="annotation-badge" style="top: 0; left: -15px;">12</span>
+                        <h3 class="text-lg font-semibold mb-3">Transaction Details</h3>
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-600">Customer ID:</span>
+                                    <span class="ml-2">cust_001</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Invoice ID:</span>
+                                    <span class="ml-2">inv_001</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Trail -->
+                    <div class="relative">
+                        <span class="annotation-badge" style="top: 0; left: -15px;">13</span>
+                        <h3 class="text-lg font-semibold mb-3">Audit Trail</h3>
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div>
+                                    <span class="font-medium text-gray-600">Created By:</span>
+                                    <span class="ml-2">System (Auto-posted)</span>
+                                </div>
+                                <div>
+                                    <span class="font-medium text-gray-600">Created Date:</span>
+                                    <span class="ml-2">Jan 15, 2025 10:23 AM</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <button class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center gap-2">
+                            <i data-lucide="rotate-ccw" style="width: 16px; height: 16px;"></i>
+                            Reverse Entry
+                        </button>
+                        <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50" onclick="hideDetailDialog()">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel (Fixed Bottom) -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Journal Entries Page Header</h4>
+                            <p class="text-gray-700 text-sm mt-1">Main heading identifying this as the journal entries view where all posted transactions are displayed.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Create Manual Journal Button</h4>
+                            <p class="text-gray-700 text-sm mt-1">Allows users to create manual journal entries for adjustments, accruals, depreciation, or other GL postings not generated from source documents.</p>
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Button</code> component with onClick handler</li>
+                                    <li><strong>Action:</strong> Opens manual journal entry form</li>
+                                    <li><strong>Permissions:</strong> Requires financial_admin or admin role</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Date Range Filter</h4>
+                            <p class="text-gray-700 text-sm mt-1">Filter journal entries by posting date. Supports month, quarter, year, or custom date ranges.</p>
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> Date picker with preset ranges</li>
+                                    <li><strong>State:</strong> Filters <code>journalService.getJournalEntriesWithDetails()</code></li>
+                                    <li><strong>Default:</strong> Current month</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Account Filter</h4>
+                            <p class="text-gray-700 text-sm mt-1">Filter entries by specific GL account to see all transactions affecting that account.</p>
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>RadixSelect</code> with account search</li>
+                                    <li><strong>Data Source:</strong> Chart of accounts from industry template</li>
+                                    <li><strong>Filter Logic:</strong> Matches any ledger line with selected account</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Source Filter</h4>
+                            <p class="text-gray-700 text-sm mt-1">Filter by transaction source: Manual, Invoice, Bill, Payment, Bank, etc. Helps identify entry origin.</p>
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Options:</strong> manual, accounts_receivable, accounts_payable, cash, bank, general</li>
+                                    <li><strong>Type:</strong> <code>JournalEntrySource</code> enum</li>
+                                    <li><strong>Usage:</strong> Audit trail and troubleshooting</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Journal Entries Table</h4>
+                            <p class="text-gray-700 text-sm mt-1">Main data table showing Date, JE Number, Source, Description, Debit, Credit, Status. Sortable and clickable for details.</p>
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Data Source:</strong> <code>journalService.getJournalEntriesWithDetails(companyId)</code></li>
+                                    <li><strong>Returns:</strong> <code>Array&lt;JournalEntry & { ledgerEntries: LedgerEntry[] }&gt;</code></li>
+                                    <li><strong>Features:</strong> Row hover, click to drill down, balanced validation</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">7</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Journal Entry Detail Dialog</h4>
+                            <p class="text-gray-700 text-sm mt-1">Modal dialog showing complete journal entry details including header, ledger lines, dimensions, and audit trail.</p>
+                            <div class="technical-details hidden" id="tech-7">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Dialog</code> from shadcn/ui</li>
+                                    <li><strong>State:</strong> <code>selectedEntry</code> and <code>isDetailDialogOpen</code></li>
+                                    <li><strong>Trigger:</strong> Click "View" button on table row</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(7)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-7">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">8</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Ledger Lines in Detail View</h4>
+                            <p class="text-gray-700 text-sm mt-1">Detailed breakdown of all debit and credit lines that make up this journal entry. Shows account code, name, description, and amounts.</p>
+                            <div class="technical-details hidden" id="tech-8">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Source:</strong> <code>selectedEntry.ledgerEntries</code></li>
+                                    <li><strong>Type:</strong> <code>LedgerEntry[]</code> with accountCode, accountName, debit, credit</li>
+                                    <li><strong>Validation:</strong> Total debits must equal total credits</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(8)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-8">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">9</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Account Code AND Name Display</h4>
+                            <p class="text-gray-700 text-sm mt-1">Phase 1 enhancement - shows both GL account code (e.g., "1200") and full account name (e.g., "Accounts Receivable") for clarity.</p>
+                            <div class="technical-details hidden" id="tech-9">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Fields:</strong> <code>line.accountCode</code> and <code>line.accountName</code></li>
+                                    <li><strong>Enhancement:</strong> Phase 1 - improved readability</li>
+                                    <li><strong>Display:</strong> Code in bold, name in muted text below</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(9)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-9">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">10</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Line-Level Descriptions</h4>
+                            <p class="text-gray-700 text-sm mt-1">Each ledger line has its own description explaining the specific transaction component (e.g., "Invoice INV-2025-0001", "VAT @ 15%").</p>
+                            <div class="technical-details hidden" id="tech-10">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>line.description</code></li>
+                                    <li><strong>Usage:</strong> Provides context for each posting</li>
+                                    <li><strong>Display:</strong> Shown in muted text, optional field</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(10)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-10">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">11</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Source Document Link</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows the origin of this journal entry (Invoice, Payment, Manual, etc.) and provides link to source document when available.</p>
+                            <div class="technical-details hidden" id="tech-11">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>entry.source</code> - JournalEntrySource enum</li>
+                                    <li><strong>Navigation:</strong> <code>navigateToSource()</code> function links to invoice/bill page</li>
+                                    <li><strong>Metadata:</strong> Uses <code>entry.metadata.invoiceId</code> for routing</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(11)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-11">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">12</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Customer/Supplier Dimensions Display</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows dimensional data (Customer ID, Supplier ID, Invoice ID) associated with the transaction for detailed reporting and analysis.</p>
+                            <div class="technical-details hidden" id="tech-12">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>line.dimensions</code> object</li>
+                                    <li><strong>Common Dimensions:</strong> customerId, supplierId, invoiceId, billId</li>
+                                    <li><strong>Purpose:</strong> Enables customer/supplier-level reporting</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(12)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-12">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">13</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Audit Trail (Created by, Date)</h4>
+                            <p class="text-gray-700 text-sm mt-1">Complete audit information showing who created the entry, when it was created, and whether it was auto-posted or manual.</p>
+                            <div class="technical-details hidden" id="tech-13">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Fields:</strong> <code>createdBy</code>, <code>createdAt</code>, <code>updatedBy</code>, <code>updatedAt</code></li>
+                                    <li><strong>Auto-posted:</strong> Shows "System (Auto-posted)" for invoice/bill entries</li>
+                                    <li><strong>Compliance:</strong> Required for audit and SOX compliance</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(13)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-13">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="../../USER-MANUAL.md" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        📖 User Manual
+                    </a>
+                    <a href="26-chart-of-accounts.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        Next: Chart of Accounts →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Toggle annotation panel
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        // Toggle technical details
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        // Show/hide detail dialog
+        function showDetailDialog() {
+            document.getElementById('detailDialog').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function hideDetailDialog() {
+            document.getElementById('detailDialog').classList.add('hidden');
+        }
+
+        // Highlight annotation on badge hover
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Start with panel expanded
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

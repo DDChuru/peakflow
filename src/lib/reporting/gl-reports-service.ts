@@ -778,14 +778,17 @@ export class GLReportsService {
     if (upperCode === 'AP' || upperCode === 'PAYABLE') return 'liability';
     if (upperCode === 'EXP' || upperCode === 'EXPENSE') return 'expense';
 
-    // Handle numeric codes
+    // Handle numeric codes based on standard accounting ranges
     const code = parseInt(accountCode);
     if (!isNaN(code)) {
       if (code >= 1000 && code < 2000) return 'asset';
       if (code >= 2000 && code < 3000) return 'liability';
       if (code >= 3000 && code < 4000) return 'equity';
       if (code >= 4000 && code < 5000) return 'revenue';
-      if (code >= 5000 && code < 6000) return 'expense';
+      if (code >= 5000 && code < 6000) return 'expense';  // COGS
+      if (code >= 6000 && code < 7000) return 'expense';  // Operating Expenses
+      if (code >= 7000 && code < 8000) return 'expense';  // Other Expenses
+      if (code >= 8000 && code < 9000) return 'expense';  // Non-operating Expenses
     }
 
     throw new Error(`Unknown account type for code: ${accountCode}`);

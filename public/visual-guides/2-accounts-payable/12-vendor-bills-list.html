@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Bills List - PeakFlow Visual Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .annotation-badge { position: absolute; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9); z-index: 1000; cursor: help; transition: all 0.2s ease; }
+        .annotation-badge:hover { transform: scale(1.15); }
+        .annotation-panel { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 3px solid #4f46e5; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1); max-height: 45vh; overflow-y: auto; z-index: 999; }
+        .annotation-panel.collapsed { transform: translateY(calc(100% - 48px)); }
+        .annotation-item { border-left: 4px solid #e0e7ff; padding-left: 16px; }
+        .annotation-item .number { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; margin-right: 8px; }
+        .screen-container { margin-bottom: 50vh; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="fixed top-4 right-4 bg-purple-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span class="text-sm font-semibold">Visual Guide - Mock Data</span>
+    </div>
+
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-indigo-600 p-4 m-4 rounded-lg">
+        <div class="flex gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2 h-10 w-10 flex items-center justify-center">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg">Vendor Bills List</h2>
+                <p class="text-gray-700 text-sm">Manage vendor invoices with AI-powered PDF extraction using Google Gemini</p>
+                <div class="flex gap-2 text-xs mt-2">
+                    <span class="bg-white px-3 py-1 rounded-full border">Journey: AP</span>
+                    <span class="bg-white px-3 py-1 rounded-full border">Step: 2</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen-container p-6 max-w-7xl mx-auto space-y-6">
+        <div class="flex justify-between items-center relative">
+            <div>
+                <h1 class="text-3xl font-bold">Vendor Bills</h1>
+                <p class="text-gray-500 mt-1">Manage vendor invoices and bill payments</p>
+            </div>
+            <div class="flex gap-2">
+                <button class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2 relative">
+                    <i data-lucide="upload" style="width: 16px; height: 16px;"></i>
+                    Upload PDF
+                    <span class="absolute -top-1 -right-1 bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">AI</span>
+                    <div class="annotation-badge" style="top: -10px; right: -10px;">2</div>
+                </button>
+                <button class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center gap-2 relative">
+                    <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                    Create Bill
+                    <div class="annotation-badge" style="top: -10px; right: -10px;">1</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-5 gap-4 relative">
+            <div class="bg-white rounded-lg border shadow-sm p-4">
+                <div class="text-sm text-gray-500">Total Bills</div>
+                <div class="text-2xl font-bold">12</div>
+            </div>
+            <div class="bg-white rounded-lg border shadow-sm p-4">
+                <div class="text-sm text-gray-500">Pending Approval</div>
+                <div class="text-2xl font-bold text-yellow-600">4</div>
+            </div>
+            <div class="bg-white rounded-lg border shadow-sm p-4">
+                <div class="text-sm text-gray-500">Approved</div>
+                <div class="text-2xl font-bold text-green-600">6</div>
+            </div>
+            <div class="bg-white rounded-lg border shadow-sm p-4">
+                <div class="text-sm text-gray-500">Total Due</div>
+                <div class="text-2xl font-bold">R 28,500.00</div>
+            </div>
+            <div class="bg-white rounded-lg border shadow-sm p-4">
+                <div class="text-sm text-gray-500">Overdue</div>
+                <div class="text-2xl font-bold text-red-600">2</div>
+            </div>
+            <div class="annotation-badge" style="top: 10px; left: 10px;">3</div>
+        </div>
+
+        <div class="bg-white rounded-lg border shadow-sm overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase relative">
+                            Bill Number
+                            <div class="annotation-badge" style="top: 8px; left: 60px;">4</div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendor Bill #</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase relative">
+                            Supplier
+                            <div class="annotation-badge" style="top: 8px; left: 50px;">5</div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase relative">
+                            Due Date
+                            <div class="annotation-badge" style="top: 8px; left: 50px;">7</div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase relative">
+                            Amount
+                            <div class="annotation-badge" style="top: 8px; left: 50px;">8</div>
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase relative">
+                            Status
+                            <div class="annotation-badge" style="top: 8px; left: 40px;">9</div>
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase relative">
+                            Actions
+                            <div class="annotation-badge" style="top: 8px; right: 10px;">10</div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y">
+                    <tr class="hover:bg-gray-50 bg-red-50">
+                        <td class="px-6 py-4 text-sm font-medium">BILL-2025-001</td>
+                        <td class="px-6 py-4 text-sm">AWS-2025-001</td>
+                        <td class="px-6 py-4 text-sm">AWS Cloud Services</td>
+                        <td class="px-6 py-4 text-sm">
+                            <div>Jan 31, 2025</div>
+                            <span class="text-xs text-red-600 flex items-center gap-1">
+                                <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                                5d overdue
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm">R 12,450.00</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">pending approval</span></td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="border rounded-md p-2 hover:bg-gray-50">
+                                <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-sm font-medium">BILL-2025-002</td>
+                        <td class="px-6 py-4 text-sm">OD-2025-042</td>
+                        <td class="px-6 py-4 text-sm">Office Depot SA</td>
+                        <td class="px-6 py-4 text-sm">Feb 09, 2025</td>
+                        <td class="px-6 py-4 text-sm">R 4,200.00</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">approved</span></td>
+                        <td class="px-6 py-4 text-right">
+                            <button class="border rounded-md p-2 hover:bg-gray-50">
+                                <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="annotation-panel collapsed" id="panel">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-2 text-center cursor-pointer" onclick="togglePanel()">
+            <span class="text-white font-semibold">Guide & Annotations</span>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">1</span><div><h4 class="font-semibold">Create Bill Button</h4><p class="text-sm text-gray-700">Manual bill entry with vendor selection, line items, GL coding, and approval workflow.</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">2</span><div><h4 class="font-semibold">Upload PDF with AI Extraction</h4><p class="text-sm text-gray-700">Upload vendor invoice PDFs for automatic data extraction using Google Gemini AI. Extracts vendor, date, amount, and line items.</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">3</span><div><h4 class="font-semibold">Summary Cards</h4><p class="text-sm text-gray-700">Real-time metrics: total bills, pending approval, approved, total amount due, and overdue count.</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">4</span><div><h4 class="font-semibold">Bill Number</h4><p class="text-sm text-gray-700">System-generated unique identifier (BILL-YYYY-####).</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">5</span><div><h4 class="font-semibold">Supplier Name</h4><p class="text-sm text-gray-700">Vendor/creditor from master file, linked to purchase orders.</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">7</span><div><h4 class="font-semibold">Due Date</h4><p class="text-sm text-gray-700">Payment due date with overdue indicator showing days past due.</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">8</span><div><h4 class="font-semibold">Amount</h4><p class="text-sm text-gray-700">Total bill amount including tax (ZAR currency).</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">9</span><div><h4 class="font-semibold">Status Badge</h4><p class="text-sm text-gray-700">Workflow: Draft → Pending → Approved → Posted → Paid.</p></div></div>
+            </div>
+            <div class="annotation-item">
+                <div class="flex gap-2"><span class="number">10</span><div><h4 class="font-semibold">Actions Menu</h4><p class="text-sm text-gray-700">View, Pay, Post to GL, Three-way match (PO/Receipt/Bill), Approve/Reject.</p></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        function togglePanel() {
+            document.getElementById('panel').classList.toggle('collapsed');
+        }
+    </script>
+</body>
+</html>

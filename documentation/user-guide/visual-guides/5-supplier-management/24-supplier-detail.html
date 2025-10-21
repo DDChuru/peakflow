@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supplier Detail - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px 24px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 -2px 8px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            box-shadow: 0 -4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .screen-container {
+            margin-bottom: 50vh; /* Space for annotation panel */
+        }
+
+        /* Prevent body scroll when panel is open */
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .tab-button {
+            padding: 0.5rem 1rem;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab-button:hover {
+            border-bottom-color: #cbd5e1;
+        }
+
+        .tab-button.active {
+            border-bottom-color: #4f46e5;
+            color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Supplier Detail with Performance Metrics</h2>
+                <p class="text-gray-700 text-sm mb-2">Comprehensive supplier profile showing contact information, payment terms, AP aging, transaction history, and performance analytics.</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> 6 - Supplier Management
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 24
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/app/workspace/[companyId]/suppliers/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Back Navigation -->
+            <div class="mb-4">
+                <a href="23-suppliers-list.html" class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+                    <i data-lucide="arrow-left" class="mr-2" style="width: 16px; height: 16px;"></i>
+                    Back to Suppliers
+                </a>
+            </div>
+
+            <!-- Supplier Header -->
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-start gap-4 flex-1 relative">
+                        <div class="annotation-badge" style="top: -12px; left: -12px;">1</div>
+                        <div class="bg-indigo-100 text-indigo-600 rounded-lg p-4">
+                            <i data-lucide="building-2" style="width: 32px; height: 32px;"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <h1 class="text-2xl font-bold text-gray-900">AWS Cloud Services</h1>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Active
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mt-4">
+                                <div class="relative">
+                                    <div class="annotation-badge" style="top: -8px; left: -8px;">2</div>
+                                    <div class="flex items-center text-sm text-gray-600">
+                                        <i data-lucide="mail" class="mr-2 text-gray-400" style="width: 16px; height: 16px;"></i>
+                                        billing@aws.amazon.com
+                                    </div>
+                                </div>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <i data-lucide="phone" class="mr-2 text-gray-400" style="width: 16px; height: 16px;"></i>
+                                    +1 206 266 1000
+                                </div>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <i data-lucide="map-pin" class="mr-2 text-gray-400" style="width: 16px; height: 16px;"></i>
+                                    Amazon Web Services, Seattle, WA, USA
+                                </div>
+                                <div class="flex items-center text-sm text-gray-600">
+                                    <i data-lucide="file-text" class="mr-2 text-gray-400" style="width: 16px; height: 16px;"></i>
+                                    Tax ID: US12345678
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <div class="annotation-badge" style="top: -12px; right: -12px;">10</div>
+                        <div class="flex gap-2">
+                            <button class="inline-flex items-center px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                                <i data-lucide="file-plus" class="mr-2" style="width: 16px; height: 16px;"></i>
+                                New PO
+                            </button>
+                            <button class="inline-flex items-center px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                                <i data-lucide="receipt" class="mr-2" style="width: 16px; height: 16px;"></i>
+                                Record Bill
+                            </button>
+                            <button class="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
+                                <i data-lucide="credit-card" class="mr-2" style="width: 16px; height: 16px;"></i>
+                                Make Payment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm relative">
+                    <div class="annotation-badge" style="top: -12px; right: -12px;">3</div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">Current AP Balance</p>
+                        <span class="text-red-600 font-bold">R</span>
+                    </div>
+                    <p class="text-2xl font-bold text-red-600">R12,450.00</p>
+                    <p class="text-xs text-gray-500 mt-1">Outstanding payable</p>
+                </div>
+
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm relative">
+                    <div class="annotation-badge" style="top: -12px; right: -12px;">4</div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">Payment Terms</p>
+                        <i data-lucide="calendar" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900">Net 30</p>
+                    <p class="text-xs text-gray-500 mt-1">Standard terms</p>
+                </div>
+
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">YTD Spend</p>
+                        <i data-lucide="trending-up" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900">R149,400.00</p>
+                    <p class="text-xs text-green-600 mt-1">+8.5% from last year</p>
+                </div>
+
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">Total Bills</p>
+                        <i data-lucide="file-text" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900">12</p>
+                    <p class="text-xs text-gray-500 mt-1">This year</p>
+                </div>
+            </div>
+
+            <!-- AP Aging Breakdown -->
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6 relative">
+                <div class="annotation-badge" style="top: 12px; right: 12px;">5</div>
+                <h3 class="font-semibold text-gray-900 text-lg mb-4">AP Aging Breakdown</h3>
+                <div class="grid grid-cols-5 gap-4">
+                    <div class="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                        <p class="text-xs text-gray-600 mb-1">Current</p>
+                        <p class="text-xl font-bold text-green-700">R12,450</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-xs text-gray-600 mb-1">1-30 Days</p>
+                        <p class="text-xl font-bold text-gray-900">R0</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-xs text-gray-600 mb-1">31-60 Days</p>
+                        <p class="text-xl font-bold text-gray-900">R0</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-xs text-gray-600 mb-1">61-90 Days</p>
+                        <p class="text-xl font-bold text-gray-900">R0</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <p class="text-xs text-gray-600 mb-1">90+ Days</p>
+                        <p class="text-xl font-bold text-gray-900">R0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction History Tabs -->
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm relative">
+                <div class="annotation-badge" style="top: 12px; right: 12px;">6</div>
+                <div class="border-b border-gray-200 px-6">
+                    <div class="flex gap-6">
+                        <button class="tab-button active">
+                            Bills
+                        </button>
+                        <button class="tab-button">
+                            Purchase Orders
+                        </button>
+                        <button class="tab-button">
+                            Payments
+                        </button>
+                        <button class="tab-button">
+                            Performance
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bills List -->
+                <div class="p-6">
+                    <div class="relative mb-4">
+                        <div class="annotation-badge" style="top: -8px; left: -8px;">7</div>
+                        <h4 class="font-semibold text-gray-900">Recent Bills</h4>
+                    </div>
+                    <div class="space-y-3">
+                        <!-- Bill 1 - Unpaid -->
+                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-red-100 text-red-600 rounded-lg p-3">
+                                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">AWS-2025-001</p>
+                                    <p class="text-sm text-gray-600">Due: Jan 31, 2025</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs text-gray-500">EC2 Instances, S3 Storage, Data Transfer</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-red-600">R12,450.00</p>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-1">
+                                    Unpaid
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Bill 2 - Paid -->
+                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-green-100 text-green-600 rounded-lg p-3">
+                                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">AWS-2024-012</p>
+                                    <p class="text-sm text-gray-600">Paid: Dec 28, 2024</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs text-gray-500">Monthly cloud services</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-gray-600">R11,800.00</p>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                                    Paid
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Bill 3 - Paid -->
+                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg bg-gray-50">
+                            <div class="flex items-center gap-4">
+                                <div class="bg-green-100 text-green-600 rounded-lg p-3">
+                                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">AWS-2024-011</p>
+                                    <p class="text-sm text-gray-600">Paid: Nov 30, 2024</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs text-gray-500">Monthly cloud services</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-gray-600">R12,100.00</p>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1">
+                                    Paid
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 relative">
+                    <div class="annotation-badge" style="top: 12px; right: 12px;">8</div>
+                    <h3 class="font-semibold text-gray-900 text-lg mb-4">Performance Metrics</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-600">On-time Delivery</span>
+                                <span class="text-sm font-semibold text-green-600">98%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 98%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-600">Service Quality</span>
+                                <span class="text-sm font-semibold text-green-600">95%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 95%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-600">Cost Competitiveness</span>
+                                <span class="text-sm font-semibold text-blue-600">87%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: 87%"></div>
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-gray-200 relative">
+                            <div class="annotation-badge" style="top: 16px; right: -12px;">9</div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-900">Overall Rating</span>
+                                <div class="flex items-center gap-1">
+                                    <i data-lucide="star" class="fill-yellow-400 text-yellow-400" style="width: 16px; height: 16px;"></i>
+                                    <i data-lucide="star" class="fill-yellow-400 text-yellow-400" style="width: 16px; height: 16px;"></i>
+                                    <i data-lucide="star" class="fill-yellow-400 text-yellow-400" style="width: 16px; height: 16px;"></i>
+                                    <i data-lucide="star" class="fill-yellow-400 text-yellow-400" style="width: 16px; height: 16px;"></i>
+                                    <i data-lucide="star" class="fill-yellow-400 text-yellow-400" style="width: 16px; height: 16px;"></i>
+                                    <span class="ml-2 text-sm font-semibold text-gray-900">4.8/5.0</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-green-600 mt-2 flex items-center">
+                                <i data-lucide="shield-check" class="mr-1" style="width: 14px; height: 14px;"></i>
+                                Preferred Supplier Status
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 relative">
+                    <div class="annotation-badge" style="top: 12px; right: 12px;">11</div>
+                    <h3 class="font-semibold text-gray-900 text-lg mb-4">Payment History</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-green-600 text-white rounded-full p-1">
+                                    <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Dec 2024 Payment</p>
+                                    <p class="text-xs text-gray-600">On time</p>
+                                </div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">R11,800.00</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-green-600 text-white rounded-full p-1">
+                                    <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Nov 2024 Payment</p>
+                                    <p class="text-xs text-gray-600">On time</p>
+                                </div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">R12,100.00</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-green-600 text-white rounded-full p-1">
+                                    <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Oct 2024 Payment</p>
+                                    <p class="text-xs text-gray-600">On time</p>
+                                </div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">R11,950.00</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <p class="text-xs text-gray-600">
+                            <strong>Payment Score:</strong> <span class="text-green-600 font-semibold">Excellent</span> - 100% on-time payments in last 12 months
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes and Documents -->
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mt-6 relative">
+                <div class="annotation-badge" style="top: 12px; right: 12px;">12</div>
+                <h3 class="font-semibold text-gray-900 text-lg mb-4">Notes & Documents</h3>
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Internal Notes</h4>
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <p class="text-sm text-gray-700">Primary cloud services provider. Excellent service reliability. Monthly billing cycle. Payment via EFT to US account.</p>
+                            <p class="text-xs text-gray-500 mt-2">Last updated: Jan 15, 2025</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Documents</h4>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="file-text" class="text-gray-400" style="width: 20px; height: 20px;"></i>
+                                    <span class="text-sm text-gray-900">Service Agreement.pdf</span>
+                                </div>
+                                <i data-lucide="download" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="file-text" class="text-gray-400" style="width: 20px; height: 20px;"></i>
+                                    <span class="text-sm text-gray-900">W-8BEN Tax Form.pdf</span>
+                                </div>
+                                <i data-lucide="download" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel (Fixed Bottom) -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Supplier Name and Contact</h4>
+                            <p class="text-gray-700 text-sm mt-1">Comprehensive supplier header with name, status, email, phone, address, and tax ID. Provides complete contact overview for quick reference and communication.</p>
+
+                            <div class="technical-details hidden" id="tech-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Data Source:</strong> <code>selectedSupplier</code> from View Dialog</li>
+                                    <li><strong>Fields:</strong> name, email, phone, address, taxId, status</li>
+                                    <li><strong>Component:</strong> Supplier header section in dialog</li>
+                                    <li><strong>Type:</strong> <code>Creditor</code> object</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(1)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-1">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Payment Terms and Discount Info</h4>
+                            <p class="text-gray-700 text-sm mt-1">Displays payment terms (e.g., Net 30) and any early payment discount options. Critical for cash flow planning and taking advantage of cost-saving opportunities.</p>
+
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.paymentTerms</code> (days)</li>
+                                    <li><strong>Display:</strong> "Net {days}" format</li>
+                                    <li><strong>Optional:</strong> <code>earlyPaymentDiscount</code> if available</li>
+                                    <li><strong>Used For:</strong> Due date calculation on bills</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Current AP Balance</h4>
+                            <p class="text-gray-700 text-sm mt-1">Total outstanding accounts payable for this supplier. Updated in real-time as bills are recorded or payments processed. Key metric for supplier relationship management.</p>
+
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.currentBalance</code></li>
+                                    <li><strong>Calculation:</strong> Sum of unpaid bills minus unapplied credits</li>
+                                    <li><strong>Updates:</strong> Real-time via Firestore listeners</li>
+                                    <li><strong>Color:</strong> Red when balance > 0, gray when 0</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Payment History</h4>
+                            <p class="text-gray-700 text-sm mt-1">Historical record of all payments made to this supplier. Shows payment dates, amounts, and on-time status. Used to calculate payment score and reliability metrics.</p>
+
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Data Source:</strong> Payment transactions filtered by supplier</li>
+                                    <li><strong>Service:</strong> <code>PaymentService.getPaymentsByCreditor()</code></li>
+                                    <li><strong>Displays:</strong> Payment date, amount, method, on-time status</li>
+                                    <li><strong>Future:</strong> Link to payment receipts and bank records</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">AP Aging Breakdown</h4>
+                            <p class="text-gray-700 text-sm mt-1">Visual breakdown of payables by age: Current, 1-30 days, 31-60 days, 61-90 days, and 90+ days overdue. Helps identify payment priorities and potential cash flow issues.</p>
+
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Calculation:</strong> Groups bills by days past due date</li>
+                                    <li><strong>Service:</strong> <code>APAgingService.getAgingByCreditor()</code></li>
+                                    <li><strong>Buckets:</strong> Current, 1-30, 31-60, 61-90, 90+</li>
+                                    <li><strong>Visual:</strong> Color-coded boxes (green for current, escalating warnings)</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Transaction History Tabs</h4>
+                            <p class="text-gray-700 text-sm mt-1">Tabbed interface for viewing different transaction types: Bills (vendor bills), Purchase Orders (POs sent), Payments (payments made), and Performance (analytics). Organizes supplier data for easy access.</p>
+
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> Tab navigation with state management</li>
+                                    <li><strong>Tabs:</strong> Bills, POs, Payments, Performance</li>
+                                    <li><strong>State:</strong> <code>activeTab</code> controls visible content</li>
+                                    <li><strong>Data:</strong> Each tab queries different Firestore collections</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">7</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Bill List for Supplier</h4>
+                            <p class="text-gray-700 text-sm mt-1">Complete list of all bills from this supplier showing bill number, due date, amount, status (paid/unpaid), and line item details. Click to view full bill or process payment.</p>
+
+                            <div class="technical-details hidden" id="tech-7">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Data Source:</strong> Bills filtered by <code>supplierId</code></li>
+                                    <li><strong>Service:</strong> <code>BillService.getBillsByCreditor()</code></li>
+                                    <li><strong>Type:</strong> <code>VendorBill[]</code> from mock-data.json</li>
+                                    <li><strong>Display:</strong> Sorted by date descending, color-coded by status</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(7)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-7">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">8</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Performance Metrics</h4>
+                            <p class="text-gray-700 text-sm mt-1">Supplier performance analytics including on-time delivery rate, service quality score, and cost competitiveness. Uses historical data to rate supplier performance and inform procurement decisions.</p>
+
+                            <div class="technical-details hidden" id="tech-8">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.performanceMetrics</code> (optional)</li>
+                                    <li><strong>Metrics:</strong> On-time delivery, quality, cost, responsiveness</li>
+                                    <li><strong>Calculation:</strong> Based on PO receipts, bill accuracy, pricing</li>
+                                    <li><strong>Future:</strong> Integration with procurement and inventory systems</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(8)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-8">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">9</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Preferred Supplier Indicator</h4>
+                            <p class="text-gray-700 text-sm mt-1">Badge indicating this supplier has "Preferred" status based on excellent performance, competitive pricing, and reliability. Preferred suppliers get priority in procurement processes.</p>
+
+                            <div class="technical-details hidden" id="tech-9">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.preferredSupplier</code> (boolean)</li>
+                                    <li><strong>Criteria:</strong> Performance > 90%, payment history, pricing</li>
+                                    <li><strong>Benefits:</strong> Priority in PO creation, auto-selection in forms</li>
+                                    <li><strong>Display:</strong> Green shield icon with "Preferred" text</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(9)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-9">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">10</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Quick Actions</h4>
+                            <p class="text-gray-700 text-sm mt-1">Action buttons for common supplier operations: New PO (create purchase order), Record Bill (enter vendor bill), Make Payment (process AP payment). Streamlines supplier transaction workflows.</p>
+
+                            <div class="technical-details hidden" id="tech-10">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Actions:</strong> New PO, Record Bill, Make Payment</li>
+                                    <li><strong>Navigation:</strong> Routes to respective forms with supplier pre-filled</li>
+                                    <li><strong>Services:</strong> POService, BillService, PaymentService</li>
+                                    <li><strong>Context:</strong> Supplier ID passed to maintain data integrity</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(10)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-10">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">11</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Spend Analysis</h4>
+                            <p class="text-gray-700 text-sm mt-1">YTD (year-to-date) and MTD (month-to-date) spend analysis with year-over-year comparison. Helps track spending trends, identify cost-saving opportunities, and support budgeting decisions.</p>
+
+                            <div class="technical-details hidden" id="tech-11">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Calculation:</strong> Sum of all paid bills by date range</li>
+                                    <li><strong>Service:</strong> <code>SpendAnalyticsService.getSpendByCreditor()</code></li>
+                                    <li><strong>Metrics:</strong> YTD, MTD, YoY growth percentage</li>
+                                    <li><strong>Future:</strong> Budget comparison, forecasting, category breakdown</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(11)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-11">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">12</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Notes and Documents Section</h4>
+                            <p class="text-gray-700 text-sm mt-1">Internal notes for supplier context and document repository for contracts, tax forms, agreements, and correspondence. Centralizes supplier-related information for easy team access.</p>
+
+                            <div class="technical-details hidden" id="tech-12">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Notes Field:</strong> <code>Creditor.notes</code> (text)</li>
+                                    <li><strong>Documents:</strong> Firebase Storage references with metadata</li>
+                                    <li><strong>Service:</strong> <code>DocumentService.getDocumentsByCreditor()</code></li>
+                                    <li><strong>Features:</strong> Upload, download, versioning, access control</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(12)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-12">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="23-suppliers-list.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← Suppliers List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Toggle annotation panel
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        // Toggle technical details
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        // Highlight annotation on badge hover
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                // Scroll to relevant annotation
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Start with panel expanded
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

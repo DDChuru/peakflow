@@ -32,7 +32,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import toast from 'react-hot-toast';
+import toastLib from 'react-hot-toast';
 import {
   Upload,
   FileText,
@@ -54,7 +54,7 @@ import {
   Sparkles,
   Trash2
 } from 'lucide-react';
-import { BankTransaction } from '@/types/bank-statement';
+import { BankStatement, BankTransaction } from '@/types/bank-statement';
 import { ImportedTransaction, GLMapping, ImportStatistics } from '@/types/accounting/bank-import';
 import { AccountRecord } from '@/types/accounting/chart-of-accounts';
 import { BankToLedgerService } from '@/lib/accounting/bank-to-ledger-service';
@@ -72,6 +72,84 @@ import {
   type PartialPaymentAllocation
 } from '@/lib/accounting/payment-allocation-service';
 
+// Helper function to format currency
+function formatBalance(value?: number | string | null, currency: string = 'USD'): string {
+  if (value === null || value === undefined) {
+    return '—';
+  }
+
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return '—';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+    }).format(value);
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return '—';
+
+  const numeric = parseFloat(trimmed.replace(/[^0-9.-]/g, ''));
+  const suffixMatch = trimmed.match(/[A-Za-z]+$/);
+  const suffix = suffixMatch ? suffixMatch[0].toUpperCase() : '';
+
+  if (!Number.isNaN(numeric)) {
+    const formatted = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+    }).format(numeric);
+    return suffix ? `${formatted} ${suffix}` : formatted;
+  }
+
+  return trimmed;
+}
+
+// Helper function to format amount (shorter version for inline use)
+function formatAmount(value: number | undefined, currency: string = 'USD'): string {
+  if (!value || !Number.isFinite(value)) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatPeriod(from?: string | null, to?: string | null): string {
+  const start = from?.trim();
+  const end = to?.trim();
+
+  if (!start && !end) {
+    return 'Period unavailable';
+  }
+
+  if (start && end) {
+    return `${start} → ${end}`;
+  }
+
+  return start || end || 'Period unavailable';
+}
+
+// Helper to safely convert any value to string (prevents React rendering objects)
+function safeStringify(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value instanceof Error) return value.message;
+  if (typeof value === 'object' && value !== null) {
+    // Check for common error object structures
+    if ('title' in value && 'description' in value) {
+      const { title, description } = value as { title: unknown; description: unknown };
+      return `${String(title)}: ${String(description)}`;
+    }
+    if ('message' in value) {
+      const { message } = value as { message: unknown };
+      return String(message);
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 interface BankToLedgerImportProps {
   companyId: string;
   bankAccountId?: string;
@@ -81,12 +159,30 @@ interface BankToLedgerImportProps {
 type WorkflowStep = 'select' | 'mapping' | 'preview' | 'posting' | 'complete';
 
 export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: BankToLedgerImportProps) {
-  const { user } = useAuth();
+  const { user, company } = useAuth();
+
+  // Get company currency from context (default to USD if not set)
+  const companyCurrency = company?.defaultCurrency || 'USD';
+
+  // Safe toast wrapper - ensures all messages are strings before rendering
+  type ToastOptions = Parameters<typeof toastLib>[1];
+
+  const toast = Object.assign(
+    (message: unknown, options?: ToastOptions) => toastLib(safeStringify(message), options),
+    {
+      success: (message: unknown, options?: ToastOptions) => toastLib.success(safeStringify(message), options),
+      error: (message: unknown, options?: ToastOptions) => toastLib.error(safeStringify(message), options),
+      loading: (message: unknown, options?: ToastOptions) => toastLib.loading(safeStringify(message), options),
+      info: (message: unknown, options?: ToastOptions) => toastLib(safeStringify(message), options),
+      dismiss: toastLib.dismiss,
+      remove: toastLib.remove,
+    }
+  );
 
   // State
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('select');
   const [loading, setLoading] = useState(false);
-  const [statements, setStatements] = useState<any[]>([]);
+  const [statements, setStatements] = useState<BankStatement[]>([]);
   const [transactions, setTransactions] = useState<ImportedTransaction[]>([]);
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [glAccounts, setGlAccounts] = useState<CompanyAccountRecord[]>([]);
@@ -94,6 +190,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
   const [statistics, setStatistics] = useState<ImportStatistics | null>(null);
   const [showMappingDialog, setShowMappingDialog] = useState(false);
   const [currentMappingTransaction, setCurrentMappingTransaction] = useState<ImportedTransaction | null>(null);
+  const [selectedStatement, setSelectedStatement] = useState<BankStatement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -173,7 +270,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     try {
       setLoading(true);
       const stmts = await bankStatementService.getCompanyBankStatements(companyId, 10);
-      setStatements(stmts);
+      setStatements(Array.isArray(stmts) ? stmts.filter(Boolean) : []);
     } catch (error) {
       console.error('Failed to load bank statements:', error);
       toast.error('Failed to load bank statements');
@@ -223,6 +320,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       const statement = await bankStatementService.getBankStatement(statementId);
 
       if (statement && statement.transactions) {
+        setSelectedStatement(statement);
         const importedTransactions: ImportedTransaction[] = statement.transactions.map((tx, index) => ({
           ...tx,
           id: tx.id || `${statementId}_tx_${index}`,
@@ -232,6 +330,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         }));
 
         setTransactions(importedTransactions);
+        setSelectedTransactions(new Set());
+        setMappings(new Map());
+        setProcessingStats(null);
 
         // Auto-suggest mappings
         if (bankToLedgerService) {
@@ -325,6 +426,11 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       });
 
       setMappings(newMappings);
+
+      // Auto-select all auto-mapped transactions for posting
+      const autoMappedIds = result.autoMapped.map(({ transaction }) => transaction.id);
+      setSelectedTransactions(new Set(autoMappedIds));
+
       calculateStatistics(txs);
 
       // Show success message with statistics
@@ -513,19 +619,18 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
 
       const data = await response.json();
 
-      // Store the AI's message
+      // Store the AI's message (ensure it's a string)
       if (data.message) {
-        setAiMessage(data.message);
-        setConversationHistory([{ role: 'assistant', content: data.message }]);
+        const messageStr = safeStringify(data.message);
+        setAiMessage(messageStr);
+        setConversationHistory([{ role: 'assistant', content: messageStr }]);
       }
 
       if (data.success && data.suggestion) {
         setAiSuggestion(data.suggestion);
         toast.success('AI suggestion ready!');
       } else if (data.needsMoreInfo) {
-        toast('AI needs more information. You can respond in the chat below.', {
-          icon: '💬'
-        });
+        toast.info('AI needs more information. You can respond in the chat below.');
       } else {
         toast.error('Could not generate suggestion');
       }
@@ -562,10 +667,11 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
 
       const data = await response.json();
 
-      // Add AI response to history
+      // Add AI response to history (ensure it's a string)
       if (data.message) {
-        setAiMessage(data.message);
-        setConversationHistory([...newHistory, { role: 'assistant', content: data.message }]);
+        const messageStr = safeStringify(data.message);
+        setAiMessage(messageStr);
+        setConversationHistory([...newHistory, { role: 'assistant', content: messageStr }]);
       }
 
       if (data.success && data.suggestion) {
@@ -575,7 +681,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     } catch (error) {
       console.error('AI chat error:', error);
       toast.error('Failed to send message');
-    } finally {
+    } finally{
       setLoadingAI(false);
     }
   };
@@ -625,6 +731,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     }
 
     try {
+      // Add the current transaction to selected transactions (so it gets posted!)
+      setSelectedTransactions(new Set([...selectedTransactions, currentMappingTransaction.id]));
+
       // Batch-apply to similar unmapped transactions BEFORE saving rule
       const similarCount = applyMappingToSimilar(currentMappingTransaction, mapping, 80);
 
@@ -722,7 +831,81 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     }
   };
 
-  // Post transactions to ledger
+  // Post transactions to staging ledger
+  const postToStaging = async () => {
+    if (!bankToLedgerService || !user) return;
+
+    const selectedTxs = transactions.filter(tx => selectedTransactions.has(tx.id));
+
+    // Validate all selected transactions have mappings
+    const unmappedTxs = selectedTxs.filter(tx => !mappings.has(tx.id));
+    if (unmappedTxs.length > 0) {
+      toast.error(`${unmappedTxs.length} selected transactions are not mapped to GL accounts`);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Create import session
+      const session = await bankToLedgerService.createImportSession(
+        bankAccountId || '',
+        selectedTxs,
+        user.uid,
+        {
+          totalTransactions: selectedTxs.length
+        }
+      );
+
+      // Prepare mappings for posting (same format as postToLedger)
+      const transactionMappings = selectedTxs.map(tx => {
+        const mapping = mappings.get(tx.id)!;
+        return {
+          bankTransaction: tx,
+          debitAccountId: mapping.debitAccount?.id || '',
+          debitAccountCode: mapping.debitAccount?.code || '',
+          creditAccountId: mapping.creditAccount?.id || '',
+          creditAccountCode: mapping.creditAccount?.code || '',
+          description: tx.description,
+          reference: tx.reference
+        };
+      });
+
+      // Post to staging
+      const result = await bankToLedgerService.postToStaging({
+        sessionId: session.id,
+        transactions: transactionMappings,
+        fiscalPeriodId: 'current',
+        postImmediately: false,
+        createdBy: user.uid
+      });
+
+      if (result.success) {
+        toast.success(
+          `Posted ${result.journalCount} transactions to staging ledger.\n` +
+          `Debits: R${result.balance.totalDebits.toFixed(2)}, Credits: R${result.balance.totalCredits.toFixed(2)}\n` +
+          `${result.balance.isBalanced ? '✅ Balanced' : '❌ Not balanced'}`,
+          { duration: 8000 }
+        );
+
+        setCurrentStep('complete');
+
+        if (onComplete) {
+          onComplete();
+        }
+      } else {
+        toast.error('Failed to post to staging ledger');
+      }
+    } catch (error) {
+      console.error('Failed to post to staging:', error);
+      const errorMessage = safeStringify(error);
+      toast.error(`Failed to post to staging: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Post transactions directly to production ledger
   const postToLedger = async () => {
     if (!bankToLedgerService || !user) return;
 
@@ -762,6 +945,13 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         };
       });
 
+      // Log transaction dates for debugging
+      console.log('[PostToLedger] Transaction dates:', transactionMappings.map(t => ({
+        id: t.bankTransaction.id,
+        date: t.bankTransaction.date,
+        description: t.bankTransaction.description
+      })));
+
       // Post to ledger
       const result = await bankToLedgerService.postToLedger({
         sessionId: session.id,
@@ -780,11 +970,19 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           onComplete();
         }
       } else {
-        toast.error(`Posted ${result.processedCount} transactions, ${result.failedCount} failed`);
+        // Show detailed error messages (safely convert to strings)
+        const errorDetails = result.errors && result.errors.length > 0
+          ? `\n\nErrors:\n${result.errors.slice(0, 3).map(e => safeStringify(e)).join('\n')}${result.errors.length > 3 ? '\n...' : ''}`
+          : '';
+        toast.error(`Posted ${result.processedCount} transactions, ${result.failedCount} failed${errorDetails}`, {
+          duration: 10000
+        });
+        console.error('Posting errors:', result.errors);
       }
     } catch (error) {
       console.error('Failed to post transactions:', error);
-      toast.error('Failed to post transactions to ledger');
+      const errorMessage = safeStringify(error);
+      toast.error(`Failed to post transactions: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -828,7 +1026,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         toast.success(message);
       } else if (data.fallback || !data.success) {
         // AI encountered an error or returned fallback mode
-        const errorMessage = data.message || data.details || 'Could not generate suggestion';
+        const errorMessage = safeStringify(data.message || data.details || 'Could not generate suggestion');
         toast.error(`${errorMessage}\n\nOpening manual mapping...`);
         console.error('[AI] Analysis failed:', errorMessage);
 
@@ -928,7 +1126,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           setCurrentAISuggestion(null);
           setCurrentAccountCreation(null);
           setCurrentAIIndex(0);
-          toast.info('All AI transactions processed! 🎉');
+          toast.success('All AI transactions processed! 🎉');
         }
       }
     } catch (error) {
@@ -959,7 +1157,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       setCurrentAISuggestion(null);
       setCurrentAccountCreation(null);
       setCurrentAIIndex(0);
-      toast.info('Reached end of AI transactions');
+      toast('Reached end of AI transactions');
     }
   };
 
@@ -992,7 +1190,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         confidence: alternative.confidence,
         reasoning: alternative.reasoning ? [alternative.reasoning] : currentAISuggestion.reasoning
       });
-      toast.info('Alternative mapping selected');
+      toast('Alternative mapping selected');
     }
   };
 
@@ -1070,7 +1268,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           setCurrentAISuggestion(null);
           setCurrentAccountCreation(null);
           setCurrentAIIndex(0);
-          toast.info('All AI transactions processed! 🎉');
+          toast.success('All AI transactions processed! 🎉');
         }
       } else {
         toast.error('Failed to create account or rule');
@@ -1113,6 +1311,63 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
     }
   };
 
+  const renderSelectedStatementSummary = () => {
+    if (!selectedStatement) {
+      return null;
+    }
+
+    const { accountInfo, summary } = selectedStatement;
+    const period = formatPeriod(summary?.statementPeriod?.from, summary?.statementPeriod?.to);
+
+    return (
+      <Card className="border-dashed bg-muted/30">
+        <CardContent className="pt-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Bank</p>
+              <p className="font-semibold text-sm text-foreground">
+                {accountInfo?.bankName || '—'}
+              </p>
+              {accountInfo?.branch && (
+                <p className="text-xs text-muted-foreground mt-1">{accountInfo.branch}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Account</p>
+              <p className="font-semibold text-sm text-foreground">
+                {accountInfo?.accountName || '—'}
+              </p>
+              <div className="space-y-1 mt-1">
+                {accountInfo?.accountNumber && (
+                  <p className="font-mono text-[11px]">{accountInfo.accountNumber}</p>
+                )}
+                {accountInfo?.accountType && (
+                  <p className="text-xs text-muted-foreground">{accountInfo.accountType}</p>
+                )}
+              </div>
+            </div>
+            <div className="md:text-right">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Statement Period</p>
+              <p className="text-sm font-medium text-foreground">
+                {period}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-xs md:justify-end">
+                <div className="rounded-md border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700">
+                  <p className="uppercase tracking-wide opacity-80">Opening</p>
+                  <p className="font-semibold text-sm">{formatBalance(summary?.openingBalance, companyCurrency)}</p>
+                </div>
+                <div className="rounded-md border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-indigo-700">
+                  <p className="uppercase tracking-wide opacity-80">Closing</p>
+                  <p className="font-semibold text-sm">{formatBalance(summary?.closingBalance, companyCurrency)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const renderSelectStep = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -1142,38 +1397,67 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         <div className="grid gap-4">
           {statements.map((statement) => (
             <Card
-              key={statement.id}
+              key={statement.id ?? statement.fileName}
               className={`cursor-pointer hover:shadow-md transition-shadow ${loading ? 'opacity-50 pointer-events-none' : ''}`}
-              onClick={() => loadTransactionsFromStatement(statement.id)}
+              onClick={() => {
+                if (statement.id) {
+                  loadTransactionsFromStatement(statement.id);
+                }
+              }}
             >
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-semibold">{statement.accountInfo?.bankName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Account: {statement.accountInfo?.accountNumber}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Period: {statement.summary?.statementPeriod?.from} - {statement.summary?.statementPeriod?.to}
-                    </p>
-                  </div>
-                  <div className="text-right flex items-start gap-4">
+                  <div className="flex-1 space-y-2">
                     <div>
-                      <p className="text-sm text-muted-foreground">
-                        {statement.summary?.transactionCount} transactions
-                      </p>
-                      <p className="font-semibold">
-                        Balance: ${statement.summary?.closingBalance?.toFixed(2)}
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Bank</p>
+                      <p className="font-semibold text-sm text-foreground">
+                        {statement.accountInfo?.bankName || 'Bank account'}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteStatement(statement.id!, e)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-medium">
+                        {statement.accountInfo?.accountName || 'Account'}
+                      </p>
+                      {statement.accountInfo?.accountNumber && (
+                        <p className="font-mono text-[11px]">
+                          {statement.accountInfo.accountNumber}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-3 text-right">
+                    <div className="text-xs text-muted-foreground text-right">
+                      <p className="uppercase tracking-wide">Statement period</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {formatPeriod(statement.summary?.statementPeriod?.from, statement.summary?.statementPeriod?.to)}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-md border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-emerald-700">
+                        <p className="text-[11px] uppercase tracking-wide opacity-80">Opening</p>
+                        <p className="font-semibold">{formatBalance(statement.summary?.openingBalance, companyCurrency)}</p>
+                      </div>
+                      <div className="rounded-md border border-indigo-100 bg-indigo-50/80 px-3 py-2 text-indigo-700">
+                        <p className="text-[11px] uppercase tracking-wide opacity-80">Closing</p>
+                        <p className="font-semibold">{formatBalance(statement.summary?.closingBalance, companyCurrency)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="text-right">
+                        <p className="uppercase tracking-wide">Transactions</p>
+                        <p className="font-medium text-foreground">
+                          {statement.summary?.transactionCount ?? statement.transactions.length}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteStatement(statement.id!, e)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -1208,6 +1492,8 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           </Button>
         </div>
       </div>
+
+      {renderSelectedStatementSummary()}
 
       {/* Tri-State Statistics Cards */}
       {processingStats && (
@@ -1357,7 +1643,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                         <TableCell className="text-sm">{transaction.date}</TableCell>
                         <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
                         <TableCell className="text-sm">
-                          ${(transaction.debit || transaction.credit || 0).toFixed(2)}
+                          {formatAmount(transaction.debit || transaction.credit || 0, companyCurrency)}
                         </TableCell>
                         <TableCell className="text-xs">
                           <div>Dr: {mapping.debitAccount.code}</div>
@@ -1408,7 +1694,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                             <div>
                               <p className="font-semibold text-sm">{transaction.description}</p>
                               <p className="text-xs text-muted-foreground">
-                                {transaction.date} • ${(transaction.debit || transaction.credit || 0).toFixed(2)}
+                                {transaction.date} • {formatAmount(transaction.debit || transaction.credit || 0, companyCurrency)}
                               </p>
                             </div>
                           </div>
@@ -1557,7 +1843,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                       );
 
                       if (result.success) {
-                        toast.success(result.message, { duration: 5000 });
+                        toast.success(safeStringify(result.message), { duration: 5000 });
 
                         // Remove from needs AI and move to next
                         setNeedsAI(needsAI.filter((_, idx) => idx !== currentAIIndex));
@@ -1571,11 +1857,11 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                           setCurrentAIIndex(0);
                         }
                       } else {
-                        toast.error(result.message);
+                        toast.error(safeStringify(result.message));
                       }
                     } catch (error: any) {
                       console.error('Multi-invoice allocation error:', error);
-                      toast.error(`Failed to allocate payment: ${error.message}`);
+                      toast.error(`Failed to allocate payment: ${safeStringify(error)}`);
                     } finally {
                       setIsProcessingAI(false);
                     }
@@ -1615,7 +1901,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                       );
 
                       if (result.success) {
-                        toast.success(result.message, { duration: 5000 });
+                        toast.success(safeStringify(result.message), { duration: 5000 });
 
                         // Remove from needs AI and move to next
                         setNeedsAI(needsAI.filter((_, idx) => idx !== currentAIIndex));
@@ -1629,11 +1915,11 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                           setCurrentAIIndex(0);
                         }
                       } else {
-                        toast.error(result.message);
+                        toast.error(safeStringify(result.message));
                       }
                     } catch (error: any) {
                       console.error('Partial payment allocation error:', error);
-                      toast.error(`Failed to allocate partial payment: ${error.message}`);
+                      toast.error(`Failed to allocate partial payment: ${safeStringify(error)}`);
                     } finally {
                       setIsProcessingAI(false);
                     }
@@ -1678,7 +1964,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                               <div>
                                 <p className="font-semibold text-sm">{transaction.description}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {transaction.date} • ${(transaction.debit || transaction.credit || 0).toFixed(2)}
+                                  {transaction.date} • {formatAmount(transaction.debit || transaction.credit || 0, companyCurrency)}
                                 </p>
                               </div>
                             </div>
@@ -1725,6 +2011,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
 
   const renderPreviewStep = () => {
     const selectedTxs = transactions.filter(tx => selectedTransactions.has(tx.id));
+    const bankDisplayName = selectedStatement?.accountInfo?.accountName || selectedStatement?.accountInfo?.bankName || 'Bank Account';
 
     return (
       <div className="space-y-6">
@@ -1740,7 +2027,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <Button onClick={postToLedger} disabled={loading}>
+            <Button variant="outline" onClick={postToLedger} disabled={loading}>
               {loading ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -1748,7 +2035,19 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                 </>
               ) : (
                 <>
-                  Post to Ledger
+                  Post Directly to Production
+                </>
+              )}
+            </Button>
+            <Button onClick={postToStaging} disabled={loading}>
+              {loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Posting...
+                </>
+              ) : (
+                <>
+                  Post to Staging
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
@@ -1756,11 +2055,16 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           </div>
         </div>
 
+        {renderSelectedStatementSummary()}
+
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            You are about to post {selectedTxs.length} transactions to the general ledger.
-            This action cannot be undone.
+            You are about to post {selectedTxs.length} transactions.
+            <br />
+            <strong>Recommended:</strong> Use "Post to Staging" to review and verify balance before finalizing.
+            <br />
+            Or use "Post Directly to Production" to skip staging (cannot be undone).
           </AlertDescription>
         </Alert>
 
@@ -1779,30 +2083,30 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                         <p className="text-sm text-muted-foreground">{tx.date}</p>
                       </div>
                       <p className="text-lg font-semibold">
-                        ${amount.toFixed(2)}
+                        {formatAmount(amount, companyCurrency)}
                       </p>
                     </div>
                     <div className="grid gap-2">
                       {tx.credit ? (
                         <>
                           <div className="flex justify-between text-sm">
-                            <span>Dr: Bank Account</span>
-                            <span>${amount.toFixed(2)}</span>
+                            <span>Dr: {bankDisplayName}</span>
+                            <span>{formatAmount(amount, companyCurrency)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Cr: {mapping?.creditAccount?.name || 'Unknown'}</span>
-                            <span>${amount.toFixed(2)}</span>
+                            <span>{formatAmount(amount, companyCurrency)}</span>
                           </div>
                         </>
                       ) : (
                         <>
                           <div className="flex justify-between text-sm">
                             <span>Dr: {mapping?.debitAccount?.name || 'Unknown'}</span>
-                            <span>${amount.toFixed(2)}</span>
+                            <span>{formatAmount(amount, companyCurrency)}</span>
                           </div>
                           <div className="flex justify-between text-sm">
-                            <span>Cr: Bank Account</span>
-                            <span>${amount.toFixed(2)}</span>
+                            <span>Cr: {bankDisplayName}</span>
+                            <span>{formatAmount(amount, companyCurrency)}</span>
                           </div>
                         </>
                       )}
@@ -1837,6 +2141,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
             setTransactions([]);
             setSelectedTransactions(new Set());
             setMappings(new Map());
+            setProcessingStats(null);
+            setStatistics(null);
+            setSelectedStatement(null);
           }}>
             Import More
           </Button>
@@ -1881,8 +2188,8 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                     <span>{currentMappingTransaction.date}</span>
                     <span>
                       {currentMappingTransaction.credit ?
-                        `Credit: $${currentMappingTransaction.credit.toFixed(2)}` :
-                        `Debit: $${currentMappingTransaction.debit?.toFixed(2)}`
+                        `Credit: ${formatAmount(currentMappingTransaction.credit, companyCurrency)}` :
+                        `Debit: ${formatAmount(currentMappingTransaction.debit, companyCurrency)}`
                       }
                     </span>
                   </div>

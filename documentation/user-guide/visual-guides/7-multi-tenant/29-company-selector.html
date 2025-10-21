@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Selector - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px 24px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 -2px 8px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            box-shadow: 0 -4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .screen-container {
+            margin-bottom: 50vh; /* Space for annotation panel */
+        }
+
+        /* Prevent body scroll when panel is open */
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Company Selector - Multi-Tenant Interface</h2>
+                <p class="text-gray-700 text-sm mb-2">Manage and switch between multiple companies in the PeakFlow workspace</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> 8 - Multi-Tenant & Dashboard
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 29
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/app/companies/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="min-h-screen bg-gray-50 pb-12">
+            <!-- Page Header -->
+            <div class="relative bg-white border-b border-gray-200">
+                <div class="annotation-badge" style="top: 20px; left: 20px;">1</div>
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h1 class="text-2xl font-bold text-gray-900">Companies</h1>
+                            <p class="text-sm text-gray-600 mt-1">Manage client and PeakFlow organizations</p>
+                        </div>
+                        <div class="relative">
+                            <div class="annotation-badge" style="top: -10px; right: -10px;">9</div>
+                            <button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700">
+                                <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                                <span>Add Company</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+                <!-- Search and Filter Bar -->
+                <div class="relative bg-white border border-gray-100 rounded-lg p-4">
+                    <div class="annotation-badge" style="top: 15px; left: 15px;">6</div>
+                    <div class="flex flex-col gap-4 md:flex-row md:items-end">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                            <input
+                                type="text"
+                                placeholder="Search companies by name, domain, or email"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                            />
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50">All</button>
+                            <button class="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg">Client</button>
+                            <button class="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-lg">PeakFlow</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid gap-4 md:grid-cols-3">
+                    <!-- Stat 1 -->
+                    <div class="bg-white border border-gray-100 rounded-lg p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Total companies</p>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">4</p>
+                                <p class="text-sm text-gray-500">1 PeakFlow · 3 Client</p>
+                            </div>
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                                <i data-lucide="building-2" style="width: 20px; height: 20px;"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Stat 2 -->
+                    <div class="bg-white border border-gray-100 rounded-lg p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Active tenants</p>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">4</p>
+                                <p class="text-sm text-gray-500">0 inactive</p>
+                            </div>
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                                <i data-lucide="shield-check" style="width: 20px; height: 20px;"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Stat 3 -->
+                    <div class="bg-white border border-gray-100 rounded-lg p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Users managed</p>
+                                <p class="mt-1 text-2xl font-semibold text-gray-900">12</p>
+                                <p class="text-sm text-gray-500">Across all companies</p>
+                            </div>
+                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                                <i data-lucide="users" style="width: 20px; height: 20px;"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Companies Grid -->
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <!-- Company 1 - TechVentures Ltd (Parent Corporate) -->
+                    <div class="relative bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow group">
+                        <div class="annotation-badge" style="top: 15px; left: 15px;">2</div>
+                        <div class="relative p-6 space-y-4">
+                            <!-- Header -->
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                    <!-- Logo -->
+                                    <div class="flex-shrink-0 relative">
+                                        <div class="annotation-badge" style="top: -5px; left: -5px;">3</div>
+                                        <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
+                                            T
+                                        </div>
+                                    </div>
+
+                                    <!-- Company info -->
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-lg font-semibold text-gray-900 truncate">TechVentures Ltd</h3>
+                                        <div class="flex items-center gap-1.5 mt-0.5 relative">
+                                            <div class="annotation-badge" style="top: -5px; left: -5px;">4</div>
+                                            <span class="text-xs font-medium text-gray-500">Corporate</span>
+                                            <span class="text-gray-300">·</span>
+                                            <span class="text-xs text-gray-500 truncate">techventures.co.za</span>
+                                        </div>
+                                        <div class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 relative">
+                                            <div class="annotation-badge" style="top: -10px; left: -10px;">5</div>
+                                            <i data-lucide="factory" style="width: 12px; height: 12px;"></i>
+                                            <span class="text-xs font-medium">Technology & Software - 889 accounts</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Status badge -->
+                                <div class="relative">
+                                    <div class="annotation-badge" style="top: -10px; right: -10px;">7</div>
+                                    <span class="flex-shrink-0 inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+                                        Active
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Contact -->
+                            <div class="space-y-1 text-sm text-gray-600 min-h-[2.5rem]">
+                                <p class="truncate">finance@techventures.co.za</p>
+                                <p>+27 11 234 5678</p>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex flex-col gap-2 pt-2">
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+                                    <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+                                    Open Workspace
+                                </button>
+                                <div class="flex gap-2">
+                                    <button class="flex-1 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                                        View details
+                                    </button>
+                                    <button class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 relative">
+                                        <div class="annotation-badge" style="top: -10px; right: -10px;">8</div>
+                                        <i data-lucide="edit" style="width: 16px; height: 16px;"></i>
+                                        Edit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Company 2 - Retail Solutions SA -->
+                    <div class="bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="relative p-6 space-y-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                    <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center text-white font-semibold text-lg">
+                                        R
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-lg font-semibold text-gray-900 truncate">Retail Solutions SA</h3>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <span class="text-xs font-medium text-gray-500">Managed Accounts</span>
+                                            <span class="text-gray-300">·</span>
+                                            <span class="text-xs text-gray-500 truncate">retail-sa.co.za</span>
+                                        </div>
+                                        <div class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                            <i data-lucide="factory" style="width: 12px; height: 12px;"></i>
+                                            <span class="text-xs font-medium">Retail & E-commerce - 654 accounts</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="flex-shrink-0 inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+                                    Active
+                                </span>
+                            </div>
+                            <div class="space-y-1 text-sm text-gray-600 min-h-[2.5rem]">
+                                <p class="truncate">accounts@retail-sa.co.za</p>
+                                <p>+27 21 555 6789</p>
+                            </div>
+                            <div class="flex flex-col gap-2 pt-2">
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+                                    <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+                                    Open Workspace
+                                </button>
+                                <div class="flex gap-2">
+                                    <button class="flex-1 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                                        View details
+                                    </button>
+                                    <button class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                                        <i data-lucide="edit" style="width: 16px; height: 16px;"></i>
+                                        Edit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Company 3 - Manufacturing Corp -->
+                    <div class="bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="relative p-6 space-y-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                    <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-semibold text-lg">
+                                        M
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-lg font-semibold text-gray-900 truncate">Manufacturing Corp</h3>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <span class="text-xs font-medium text-gray-500">Managed Accounts</span>
+                                            <span class="text-gray-300">·</span>
+                                            <span class="text-xs text-gray-500 truncate">mfg-corp.co.za</span>
+                                        </div>
+                                        <div class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                            <i data-lucide="factory" style="width: 12px; height: 12px;"></i>
+                                            <span class="text-xs font-medium">Manufacturing - 712 accounts</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="flex-shrink-0 inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+                                    Active
+                                </span>
+                            </div>
+                            <div class="space-y-1 text-sm text-gray-600 min-h-[2.5rem]">
+                                <p class="truncate">finance@mfg-corp.co.za</p>
+                                <p>+27 31 777 8888</p>
+                            </div>
+                            <div class="flex flex-col gap-2 pt-2">
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+                                    <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+                                    Open Workspace
+                                </button>
+                                <div class="flex gap-2">
+                                    <button class="flex-1 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                                        View details
+                                    </button>
+                                    <button class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                                        <i data-lucide="edit" style="width: 16px; height: 16px;"></i>
+                                        Edit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Company 4 - Consulting Partners -->
+                    <div class="bg-white border border-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="relative p-6 space-y-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                    <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-semibold text-lg">
+                                        C
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="text-lg font-semibold text-gray-900 truncate">Consulting Partners</h3>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <span class="text-xs font-medium text-gray-500">Managed Accounts</span>
+                                            <span class="text-gray-300">·</span>
+                                            <span class="text-xs text-gray-500 truncate">consult-ptrs.co.za</span>
+                                        </div>
+                                        <div class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                            <i data-lucide="factory" style="width: 12px; height: 12px;"></i>
+                                            <span class="text-xs font-medium">Professional Services - 523 accounts</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="flex-shrink-0 inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ring-inset bg-emerald-50 text-emerald-700 ring-emerald-600/20">
+                                    Active
+                                </span>
+                            </div>
+                            <div class="space-y-1 text-sm text-gray-600 min-h-[2.5rem]">
+                                <p class="truncate">admin@consult-ptrs.co.za</p>
+                                <p>+27 12 999 1234</p>
+                            </div>
+                            <div class="flex flex-col gap-2 pt-2">
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg">
+                                    <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+                                    Open Workspace
+                                </button>
+                                <div class="flex gap-2">
+                                    <button class="flex-1 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                                        View details
+                                    </button>
+                                    <button class="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                                        <i data-lucide="edit" style="width: 16px; height: 16px;"></i>
+                                        Edit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel (Fixed Bottom) -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Page Header</h4>
+                            <p class="text-gray-700 text-sm mt-1">Main companies management page with title, subtitle, and breadcrumb navigation.</p>
+                            <div class="technical-details hidden" id="tech-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>PageHeader</code> from <code>@/components/ui/navigation</code></li>
+                                    <li><strong>Props:</strong> title, subtitle, breadcrumbs, actions</li>
+                                    <li><strong>Route:</strong> <code>/companies</code></li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(1)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-1">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Company Card</h4>
+                            <p class="text-gray-700 text-sm mt-1">Interactive card displaying company information with hover effects and action buttons.</p>
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Card</code> component with hover state</li>
+                                    <li><strong>Data Source:</strong> <code>CompaniesService.getAllCompanies()</code></li>
+                                    <li><strong>Styling:</strong> <code>hover:shadow-md transition-shadow group</code></li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Company Logo</h4>
+                            <p class="text-gray-700 text-sm mt-1">Company logo or initial-based avatar with gradient background. Supports uploaded logos or generates letter-based placeholders.</p>
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Conditional:</strong> Shows <code>company.logoUrl</code> if exists, else gradient with initial</li>
+                                    <li><strong>Storage:</strong> Firebase Storage for uploaded logos</li>
+                                    <li><strong>Size:</strong> <code>h-10 w-10 rounded-lg</code></li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Company Type & Domain</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows company type (Corporate, Managed Accounts, PeakFlow) and domain name.</p>
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Type:</strong> <code>company.type: 'corporate' | 'manageAccounts' | 'peakflow'</code></li>
+                                    <li><strong>Domain:</strong> <code>company.domain</code> property</li>
+                                    <li><strong>Display:</strong> Conditional rendering based on company type</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Industry Template Badge</h4>
+                            <p class="text-gray-700 text-sm mt-1">Displays the industry-specific chart of accounts template applied to the company, showing template name and number of accounts.</p>
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Source:</strong> <code>INDUSTRY_TEMPLATES[company.industry]</code></li>
+                                    <li><strong>Module:</strong> <code>@/lib/accounting/industry-knowledge-base</code></li>
+                                    <li><strong>Data:</strong> Template name and chartOfAccounts.length</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Search & Filter Bar</h4>
+                            <p class="text-gray-700 text-sm mt-1">Search companies by name, domain, or email. Filter by type (All, Client, PeakFlow).</p>
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>State:</strong> <code>searchTerm</code> and <code>filterType</code> useState hooks</li>
+                                    <li><strong>Filtering:</strong> <code>useMemo</code> to compute filtered companies</li>
+                                    <li><strong>Service:</strong> <code>CompaniesService.getCompaniesByType()</code></li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">7</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Active Status Badge</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows whether company is active or inactive with color-coded badge.</p>
+                            <div class="technical-details hidden" id="tech-7">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Property:</strong> <code>company.isActive: boolean</code></li>
+                                    <li><strong>Styling:</strong> Conditional <code>bg-emerald-50</code> vs <code>bg-gray-50</code></li>
+                                    <li><strong>Toggle:</strong> <code>handleToggleStatus()</code> function</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(7)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-7">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">8</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Edit Company Button</h4>
+                            <p class="text-gray-700 text-sm mt-1">Navigate to company edit page to update details, settings, and configuration.</p>
+                            <div class="technical-details hidden" id="tech-8">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Route:</strong> <code>/companies/{company.id}/edit</code></li>
+                                    <li><strong>Component:</strong> Next.js Link with Button variant</li>
+                                    <li><strong>Icon:</strong> <code>Edit</code> from lucide-react</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(8)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-8">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">9</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Add New Company Button</h4>
+                            <p class="text-gray-700 text-sm mt-1">Create a new company (only visible to admins and super admins). Opens company creation form.</p>
+                            <div class="technical-details hidden" id="tech-9">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Route:</strong> <code>/companies/new</code></li>
+                                    <li><strong>Access Control:</strong> <code>ProtectedRoute requiredRoles={['admin', 'developer']}</code></li>
+                                    <li><strong>Conditional:</strong> Only rendered if <code>canManageCompanies === true</code></li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(9)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-9">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="30-dashboard.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        Next: Dashboard →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Toggle annotation panel
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        // Toggle technical details
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        // Highlight annotation on badge hover
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                // Scroll to relevant annotation
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Start with panel expanded
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

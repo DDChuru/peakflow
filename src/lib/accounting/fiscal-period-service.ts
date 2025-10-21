@@ -47,6 +47,8 @@ export class FiscalPeriodService {
    * Get fiscal period for a specific date
    */
   async getPeriodForDate(tenantId: string, date: Date): Promise<FiscalPeriod | null> {
+    console.log(`[FiscalPeriod] Looking up period for date: ${date.toISOString()}, tenantId: ${tenantId}`);
+
     const periodsRef = collection(db, 'fiscal_periods');
     const q = query(
       periodsRef,
@@ -57,9 +59,27 @@ export class FiscalPeriodService {
 
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty) return null;
+    console.log(`[FiscalPeriod] Query returned ${snapshot.size} periods`);
 
-    return this.convertTimestamps(snapshot.docs[0].data() as any);
+    if (snapshot.empty) {
+      // Log all periods for this tenant to help debug
+      const allPeriodsQuery = query(periodsRef, where('tenantId', '==', tenantId));
+      const allPeriods = await getDocs(allPeriodsQuery);
+      console.log(`[FiscalPeriod] Total periods for tenant: ${allPeriods.size}`);
+      if (allPeriods.size > 0) {
+        console.log('[FiscalPeriod] Available periods:', allPeriods.docs.map(doc => ({
+          id: doc.id,
+          startDate: doc.data().startDate?.toDate().toISOString(),
+          endDate: doc.data().endDate?.toDate().toISOString(),
+          status: doc.data().status
+        })));
+      }
+      return null;
+    }
+
+    const period = this.convertTimestamps(snapshot.docs[0].data() as any);
+    console.log(`[FiscalPeriod] Found period: ${period.id} (${period.name})`);
+    return period;
   }
 
   /**
@@ -134,6 +154,36 @@ export class FiscalPeriodService {
     }
 
     return periods;
+  }
+
+  /**
+   * Auto-generate fiscal periods for multiple years
+   * Based on fiscal year start month (1 = January, 7 = July, etc.)
+   */
+  async createPeriodsForMultipleYears(
+    tenantId: string,
+    startYear: number,
+    numberOfYears: number,
+    fiscalYearStartMonth: number = 1
+  ): Promise<string[]> {
+    const allPeriods: string[] = [];
+
+    for (let yearOffset = 0; yearOffset < numberOfYears; yearOffset++) {
+      const year = startYear + yearOffset;
+      console.log(`Creating fiscal periods for year ${year}...`);
+
+      const yearPeriods = await this.createPeriodsForYear(
+        tenantId,
+        year,
+        fiscalYearStartMonth
+      );
+
+      allPeriods.push(...yearPeriods);
+      console.log(`Created ${yearPeriods.length} periods for ${year}`);
+    }
+
+    console.log(`Total periods created: ${allPeriods.length}`);
+    return allPeriods;
   }
 
   /**

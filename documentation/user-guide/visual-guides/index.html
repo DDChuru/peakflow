@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PeakFlow Visual Guide - Navigation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .journey-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .journey-card:hover {
+            border-color: #4f46e5;
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(79, 70, 229, 0.15);
+        }
+        .screen-link {
+            transition: all 0.2s ease;
+        }
+        .screen-link:hover {
+            background-color: #eef2ff;
+            transform: translateX(4px);
+        }
+        .progress-ring {
+            transition: stroke-dashoffset 0.5s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-indigo-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="bg-gradient-to-br from-indigo-600 to-purple-600 text-white w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl">
+                        P
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">PeakFlow Visual Guide</h1>
+                        <p class="text-sm text-gray-600">Interactive Screen Documentation</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="../USER-MANUAL.md" class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                        <i data-lucide="book-open" style="width: 16px; height: 16px;"></i>
+                        User Manual
+                    </a>
+                    <a href="README-VISUAL-GUIDES.md" class="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium">
+                        <i data-lucide="info" style="width: 16px; height: 16px;"></i>
+                        Guide Info
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Overview Section -->
+        <section class="mb-12">
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-white shadow-xl">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <h2 class="text-3xl font-bold mb-3">Welcome to PeakFlow Visual Documentation</h2>
+                        <p class="text-indigo-100 mb-6 max-w-2xl">
+                            Explore all features and workflows through interactive, annotated screenshots.
+                            Each screen includes detailed explanations and technical insights.
+                        </p>
+                        <div class="flex gap-4">
+                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-6 py-3">
+                                <div class="text-3xl font-bold">8</div>
+                                <div class="text-sm text-indigo-100">Journeys</div>
+                            </div>
+                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-6 py-3">
+                                <div class="text-3xl font-bold">30</div>
+                                <div class="text-sm text-indigo-100">Screens</div>
+                            </div>
+                            <div class="bg-white/20 backdrop-blur-sm rounded-lg px-6 py-3">
+                                <div class="text-3xl font-bold">200+</div>
+                                <div class="text-sm text-indigo-100">Annotations</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block">
+                        <i data-lucide="sparkles" style="width: 120px; height: 120px;" class="text-white/30"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Journey Cards -->
+        <section class="space-y-8">
+            <!-- Journey 0: Getting Started -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-green-500 to-emerald-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="rocket" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 0: Getting Started</h3>
+                            <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">3 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            User onboarding flow from signup to company creation with industry template selection.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <a href="0-getting-started/01-signup.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">1</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">User Registration</div>
+                                    <div class="text-xs text-gray-500">Signup form with Firebase Auth</div>
+                                </div>
+                            </a>
+                            <a href="0-getting-started/02-company-creation.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">2</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Company Creation</div>
+                                    <div class="text-xs text-gray-500">Industry template selection</div>
+                                </div>
+                            </a>
+                            <a href="0-getting-started/03-onboarding-complete.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">3</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Welcome Dashboard</div>
+                                    <div class="text-xs text-gray-500">First view after setup</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journey 1: Accounts Receivable -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-blue-500 to-indigo-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="receipt" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 1: Accounts Receivable (AR)</h3>
+                            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">7 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Complete quote-to-cash cycle: Quotes → Invoices → Payments → Statements.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <a href="1-accounts-receivable/04-quotes-list.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">4</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Quotes List</div>
+                                    <div class="text-xs text-gray-500">Quote management</div>
+                                </div>
+                            </a>
+                            <a href="1-accounts-receivable/05-quote-create.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">5</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Create Quote</div>
+                                    <div class="text-xs text-gray-500">Quote form</div>
+                                </div>
+                            </a>
+                            <a href="1-accounts-receivable/06-invoices-list.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">6</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Invoices List</div>
+                                    <div class="text-xs text-gray-500">Invoice dashboard</div>
+                                </div>
+                            </a>
+                            <a href="1-accounts-receivable/07-invoice-create.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">7</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Create Invoice</div>
+                                    <div class="text-xs text-gray-500">Invoice creation</div>
+                                </div>
+                            </a>
+                            <a href="1-accounts-receivable/08-invoice-detail.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">8</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Invoice Detail</div>
+                                    <div class="text-xs text-gray-500">View invoice</div>
+                                </div>
+                            </a>
+                            <a href="1-accounts-receivable/09-record-payment.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">9</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Record Payment</div>
+                                    <div class="text-xs text-gray-500">Payment recording</div>
+                                </div>
+                            </a>
+                            <a href="1-accounts-receivable/10-customer-statements.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">10</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Customer Statements</div>
+                                    <div class="text-xs text-gray-500">Statement generation</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journey 2: Accounts Payable -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-orange-500 to-red-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="file-text" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 2: Accounts Payable (AP)</h3>
+                            <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-semibold">5 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Purchase-to-pay cycle: POs → Bills → Payments → Supplier Statements.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <a href="2-accounts-payable/11-purchase-orders-list.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-orange-100 text-orange-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">11</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Purchase Orders</div>
+                                    <div class="text-xs text-gray-500">PO management</div>
+                                </div>
+                            </a>
+                            <a href="2-accounts-payable/12-vendor-bills-list.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-orange-100 text-orange-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">12</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Vendor Bills</div>
+                                    <div class="text-xs text-gray-500">Bill list with AI</div>
+                                </div>
+                            </a>
+                            <a href="2-accounts-payable/13-vendor-bill-create.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-orange-100 text-orange-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">13</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Create Bill</div>
+                                    <div class="text-xs text-gray-500">Bill creation/upload</div>
+                                </div>
+                            </a>
+                            <a href="2-accounts-payable/14-vendor-payments.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-orange-100 text-orange-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">14</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Vendor Payments</div>
+                                    <div class="text-xs text-gray-500">Batch payments</div>
+                                </div>
+                            </a>
+                            <a href="2-accounts-payable/15-supplier-statements.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-orange-100 text-orange-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">15</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Supplier Statements</div>
+                                    <div class="text-xs text-gray-500">Statement reconciliation</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journey 3: Bank & Reconciliation -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-purple-500 to-pink-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="credit-card" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 3: Bank & Cash Management</h3>
+                            <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">5 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Bank statement import, reconciliation, and cash flow monitoring.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <a href="3-bank-reconciliation/16-bank-import.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-purple-100 text-purple-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">16</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Bank Import</div>
+                                    <div class="text-xs text-gray-500">Upload & AI extract</div>
+                                </div>
+                            </a>
+                            <a href="3-bank-reconciliation/17-bank-statements-list.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-purple-100 text-purple-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">17</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Statements List</div>
+                                    <div class="text-xs text-gray-500">Statement history</div>
+                                </div>
+                            </a>
+                            <a href="3-bank-reconciliation/18-reconciliation-workspace.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-purple-100 text-purple-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">18</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Reconciliation Workspace</div>
+                                    <div class="text-xs text-gray-500">Drag & drop matching</div>
+                                </div>
+                            </a>
+                            <a href="3-bank-reconciliation/19-reconciliation-auto-match.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-purple-100 text-purple-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">19</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Auto-Match Results</div>
+                                    <div class="text-xs text-gray-500">AI matching</div>
+                                </div>
+                            </a>
+                            <a href="3-bank-reconciliation/20-cash-flow-dashboard.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-purple-100 text-purple-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">20</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Cash Flow</div>
+                                    <div class="text-xs text-gray-500">Cash monitoring</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journey 4: Customer Management -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-cyan-500 to-blue-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="users" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 4: Customer Management</h3>
+                            <span class="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-xs font-semibold">2 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Customer master data, credit management, and transaction history.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <a href="4-customer-management/21-customers-list.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-cyan-100 text-cyan-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">21</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Customers List</div>
+                                    <div class="text-xs text-gray-500">Customer directory</div>
+                                </div>
+                            </a>
+                            <a href="4-customer-management/22-customer-detail.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-cyan-100 text-cyan-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">22</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Customer Detail</div>
+                                    <div class="text-xs text-gray-500">Profile & history</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journey 5: Supplier Management -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="truck" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 5: Supplier Management</h3>
+                            <span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-semibold">2 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Supplier master data, payment terms, and performance tracking.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <a href="5-supplier-management/23-suppliers-list.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-amber-100 text-amber-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">23</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Suppliers List</div>
+                                    <div class="text-xs text-gray-500">Supplier directory</div>
+                                </div>
+                            </a>
+                            <a href="5-supplier-management/24-supplier-detail.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-amber-100 text-amber-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">24</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Supplier Detail</div>
+                                    <div class="text-xs text-gray-500">Performance metrics</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journey 6: General Ledger -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-emerald-500 to-teal-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="book-open" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 6: General Ledger & Reporting</h3>
+                            <span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-semibold">4 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Chart of accounts, journal entries, and financial reporting.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <a href="6-general-ledger/25-journal-entries.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">25</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Journal Entries</div>
+                                    <div class="text-xs text-gray-500">GL transactions</div>
+                                </div>
+                            </a>
+                            <a href="6-general-ledger/26-chart-of-accounts.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">26</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Chart of Accounts</div>
+                                    <div class="text-xs text-gray-500">889 accounts (Tech)</div>
+                                </div>
+                            </a>
+                            <a href="6-general-ledger/27-reports-dashboard.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">27</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Reports Dashboard</div>
+                                    <div class="text-xs text-gray-500">Report menu</div>
+                                </div>
+                            </a>
+                            <a href="6-general-ledger/28-trial-balance.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-emerald-100 text-emerald-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">28</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Trial Balance</div>
+                                    <div class="text-xs text-gray-500">Financial report</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Journey 7: Multi-Tenant & Dashboard -->
+            <div class="journey-card bg-white rounded-xl p-6 shadow-md">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="bg-gradient-to-br from-rose-500 to-pink-600 text-white w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="building" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-xl font-bold text-gray-900">Journey 7: Multi-Tenant & Dashboard</h3>
+                            <span class="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-semibold">2 screens</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Company switching, workspace dashboard, and financial overview.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <a href="7-multi-tenant/29-company-selector.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-rose-100 text-rose-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">29</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Company Selector</div>
+                                    <div class="text-xs text-gray-500">Switch companies</div>
+                                </div>
+                            </a>
+                            <a href="7-multi-tenant/30-dashboard.html" class="screen-link flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                                <span class="bg-rose-100 text-rose-600 w-8 h-8 rounded flex items-center justify-center font-bold text-sm flex-shrink-0">30</span>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 text-sm truncate">Dashboard</div>
+                                    <div class="text-xs text-gray-500">KPIs & quick actions</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-16 py-8 border-t border-gray-200 text-center text-gray-600 text-sm">
+            <p class="mb-2">PeakFlow Visual Guide • Generated: October 2025</p>
+            <p>All screens use mock data from TechVentures Ltd</p>
+        </footer>
+    </main>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

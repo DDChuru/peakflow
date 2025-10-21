@@ -64,6 +64,16 @@ export default function WorkspaceDashboardPage() {
   // Quick action items
   const quickActions = [
     {
+      title: 'Opening Balances',
+      description: 'Set up initial account balances',
+      icon: Sparkles,
+      href: `/workspace/${companyId}/setup/opening-balances`,
+      badge: 'SETUP',
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      adminOnly: true
+    },
+    {
       title: 'Bank Import',
       description: 'Import bank transactions to general ledger',
       icon: FileUp,
@@ -289,7 +299,9 @@ export default function WorkspaceDashboardPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {quickActions.map((action, index) => {
+              {quickActions
+                .filter(action => !action.adminOnly || hasRole('admin') || hasRole('financial_admin'))
+                .map((action, index) => {
                 const Icon = action.icon;
                 return (
                   <Card

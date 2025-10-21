@@ -77,7 +77,6 @@ export class PostingService {
         accountId: line.accountId,
         accountCode: line.accountCode,
         accountName: line.accountName,  // Copy account name for display
-        description: line.description,  // Copy line-level description
         debit: line.debit,
         credit: line.credit,
         cumulativeBalance: 0,
@@ -86,8 +85,9 @@ export class PostingService {
         postingDate: entry.postingDate ?? new Date(),
         fiscalPeriodId: entry.fiscalPeriodId,
         source: entry.source,
-        metadata: entry.metadata,  // Journal-level metadata
-        dimensions: line.dimensions,  // Copy line-level dimensions (customerId, invoiceId, etc.)
+        ...(line.description && { description: line.description }),  // Only include if defined
+        ...(entry.metadata && { metadata: entry.metadata }),  // Only include if defined
+        ...(line.dimensions && { dimensions: line.dimensions }),  // Only include if defined
         createdAt: new Date(),
       }));
 

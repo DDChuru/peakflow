@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Invoice Details - PeakFlow Visual Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .annotation-badge { position: absolute; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9); z-index: 1000; cursor: help; }
+        .annotation-panel { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 3px solid #4f46e5; box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1); max-height: 45vh; overflow-y: auto; z-index: 999; }
+        .annotation-panel.collapsed { transform: translateY(calc(100% - 48px)); }
+        .annotation-item { border-left: 4px solid #e0e7ff; padding-left: 16px; }
+        .annotation-item .number { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; margin-right: 8px; }
+        .screen-container { margin-bottom: 50vh; }
+        .mock-data-indicator { position: fixed; top: 16px; right: 16px; background: rgba(168, 85, 247, 0.95); color: white; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; z-index: 1001; display: flex; align-items: center; gap: 6px; }
+        .screen-info { background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-left: 4px solid #4f46e5; padding: 16px; margin: 16px; border-radius: 8px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="mock-data-indicator"><i data-lucide="sparkles" style="width: 16px; height: 16px;"></i><span>Visual Guide</span></div>
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2"><i data-lucide="book-open" style="width: 20px; height: 20px;"></i></div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">View Invoice Details Dialog</h2>
+                <p class="text-gray-700 text-sm mb-2">Full invoice display with line items and totals breakdown</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border"><strong>Journey:</strong> AR - Quote to Cash</span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border"><strong>Step:</strong> 5 of 7</span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border"><strong>Component:</strong> <code>/app/.../invoices/page.tsx (lines 1602-1732)</code></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen-container">
+        <div class="p-8">
+            <div class="max-w-4xl mx-auto bg-white rounded-lg border shadow-lg">
+                <div class="p-6 border-b">
+                    <div class="flex justify-between items-start" style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">1</div>
+                        <div><h2 class="text-2xl font-bold">Invoice INV-2025-0001</h2><span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 mt-2 inline-block">Sent</span></div>
+                        <button class="text-gray-400 hover:text-gray-600"><i data-lucide="x" style="width: 20px; height: 20px;"></i></button>
+                    </div>
+                </div>
+                
+                <div class="p-6 space-y-6">
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">2</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Customer Information</h3>
+                        <div class="text-sm space-y-1"><p><strong>Name:</strong> AVI Products Ltd</p><p><strong>Email:</strong> accounts@aviproducts.co.za</p><p><strong>Address:</strong> 45 Marine Drive, Cape Town, 8001</p><p><strong>VAT Number:</strong> 4111222333</p></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4" style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">3</div>
+                        <div><h3 class="font-semibold text-gray-900 mb-2">Invoice Date</h3><p class="text-sm">2025-01-15</p></div>
+                        <div><h3 class="font-semibold text-gray-900 mb-2">Due Date</h3><p class="text-sm">2025-02-14</p></div>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">4</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Payment Terms</h3><p class="text-sm">Net 30 days</p>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">5</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Line Items</h3>
+                        <div class="border border-gray-300 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead class="bg-gray-50"><tr><th class="text-left py-2 px-4 text-sm font-medium text-gray-700">Description</th><th class="text-center py-2 px-4 text-sm font-medium text-gray-700">Qty</th><th class="text-right py-2 px-4 text-sm font-medium text-gray-700">Unit Price</th><th class="text-right py-2 px-4 text-sm font-medium text-gray-700">Amount</th></tr></thead>
+                                <tbody><tr><td class="py-3 px-4 text-sm">Software Development - Custom CRM Module</td><td class="py-3 px-4 text-sm text-center">40</td><td class="py-3 px-4 text-sm text-right">R250.00</td><td class="py-3 px-4 text-sm text-right font-medium">R10,000.00</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; right: -10px;">6</div>
+                        <div class="flex justify-end">
+                            <div class="w-80 space-y-2 border-t border-gray-200 pt-4">
+                                <div class="flex justify-between text-sm"><span class="text-gray-600">Subtotal:</span><span class="font-medium">R10,000.00</span></div>
+                                <div class="flex justify-between text-sm"><span class="text-gray-600">Tax (15%):</span><span class="font-medium">R1,500.00</span></div>
+                                <div class="flex justify-between text-base font-bold border-t border-gray-300 pt-2"><span>Total:</span><span>R11,500.00</span></div>
+                                <div class="flex justify-between text-sm text-green-600"><span>Paid:</span><span>R0.00</span></div>
+                                <div class="flex justify-between text-lg font-bold text-indigo-600 border-t border-indigo-200 pt-2"><span>Amount Due:</span><span>R11,500.00</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="position: relative;"><div class="annotation-badge" style="top: -10px; left: -10px;">8</div>
+                        <h3 class="font-semibold text-gray-900 mb-2">Notes</h3><p class="text-sm text-gray-600">Payment due within 30 days. Late payments subject to interest charges.</p>
+                    </div>
+                </div>
+
+                <div class="p-6 border-t flex justify-end gap-3" style="position: relative;"><div class="annotation-badge" style="top: -10px; right: -10px;">7</div>
+                    <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                        <i data-lucide="download" style="width: 16px; height: 16px;"></i>Download PDF
+                    </button>
+                    <button class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2"><i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i><span id="panelTitle">Guide</span></button>
+        </div>
+        <div id="panelContent" class="p-6">
+            <div class="space-y-4">
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">1</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Invoice Header</h4><p class="text-gray-700 text-sm mt-1">Invoice number and status badge. Status indicates current state.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">2</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Customer Information</h4><p class="text-gray-700 text-sm mt-1">Full customer details including name, contact info, and VAT number.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">3</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Invoice Dates</h4><p class="text-gray-700 text-sm mt-1">Invoice date (when created) and due date (when payment is expected).</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">4</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Payment Terms</h4><p class="text-gray-700 text-sm mt-1">Payment terms description (e.g., "Net 30 days").</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">5</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Line Items Table</h4><p class="text-gray-700 text-sm mt-1">Detailed breakdown of invoice items with descriptions, quantities, prices, and amounts.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">6</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Totals Breakdown</h4><p class="text-gray-700 text-sm mt-1">Complete financial summary: Subtotal, Tax, Total, Paid, and Amount Due.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">7</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Download PDF Button</h4><p class="text-gray-700 text-sm mt-1">Generate and download professional PDF invoice using pdfService.</p></div></div></div>
+                <div class="annotation-item"><div class="flex items-start gap-2"><span class="number">8</span><div class="flex-1"><h4 class="font-semibold text-gray-900">Notes Section</h4><p class="text-gray-700 text-sm mt-1">Additional notes or terms included with the invoice.</p></div></div></div>
+            </div>
+            <div class="mt-8 pt-6 border-t">
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border px-4 py-2 rounded-lg hover:bg-gray-50">← All</a>
+                    <a href="07-invoice-create.html" class="text-sm bg-white border px-4 py-2 rounded-lg hover:bg-gray-50">← Prev</a>
+                    <a href="09-record-payment.html" class="text-sm bg-white border px-4 py-2 rounded-lg hover:bg-gray-50">Next →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        function togglePanel() { const p = document.getElementById('annotationPanel'); p.classList.toggle('collapsed'); lucide.createIcons(); }
+        window.addEventListener('load', () => lucide.createIcons());
+    </script>
+</body>
+</html>

@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suppliers List - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px 24px 0 0;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 -2px 8px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .toggle-button:hover {
+            background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+            box-shadow: 0 -4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .screen-container {
+            margin-bottom: 50vh; /* Space for annotation panel */
+        }
+
+        /* Prevent body scroll when panel is open */
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Suppliers Management Page</h2>
+                <p class="text-gray-700 text-sm mb-2">Manage your supplier relationships and accounts payable with comprehensive supplier directory, filtering, and quick actions.</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> 6 - Supplier Management
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 23
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/app/workspace/[companyId]/suppliers/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="p-6 max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6 relative">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Suppliers</h1>
+                    <p class="text-gray-600">Manage your supplier relationships and accounts payable</p>
+                </div>
+                <div class="relative">
+                    <div class="annotation-badge" style="top: -12px; right: -12px;">1</div>
+                    <button class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                        <i data-lucide="plus" class="mr-2" style="width: 16px; height: 16px;"></i>
+                        Add Supplier
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm relative">
+                    <div class="annotation-badge" style="top: -12px; right: -12px;">5</div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">Total Suppliers</p>
+                        <i data-lucide="building-2" class="text-gray-400" style="width: 16px; height: 16px;"></i>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900">4</p>
+                    <p class="text-xs text-gray-500 mt-1">Creditors in system</p>
+                </div>
+
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">Active</p>
+                        <div class="h-2 w-2 rounded-full bg-green-500"></div>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900">4</p>
+                    <p class="text-xs text-gray-500 mt-1">Currently active</p>
+                </div>
+
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm relative">
+                    <div class="annotation-badge" style="top: -12px; right: -12px;">6</div>
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">Total Payable (AP)</p>
+                        <span class="text-red-600 font-bold">R</span>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900">R28,500.00</p>
+                    <p class="text-xs text-gray-500 mt-1">Accounts payable</p>
+                </div>
+
+                <div class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-gray-600">Categories</p>
+                        <span class="text-indigo-600 font-bold">#</span>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900">3</p>
+                    <p class="text-xs text-gray-500 mt-1">Supplier types</p>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="flex gap-4 mb-6">
+                <div class="relative flex-1">
+                    <div class="annotation-badge" style="top: -12px; left: 12px;">2</div>
+                    <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" style="width: 16px; height: 16px;"></i>
+                    <input
+                        type="text"
+                        placeholder="Search suppliers by name, email, phone, or category..."
+                        class="w-full pl-10 pr-20 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                    />
+                    <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <kbd class="px-2 py-1 text-xs font-semibold text-gray-500 bg-gray-100 border border-gray-200 rounded">
+                            ⌘K
+                        </kbd>
+                    </div>
+                </div>
+                <div class="relative">
+                    <div class="annotation-badge" style="top: -12px; right: -12px;">3</div>
+                    <button class="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i data-lucide="filter" class="mr-2" style="width: 16px; height: 16px;"></i>
+                        Filter
+                    </button>
+                </div>
+            </div>
+
+            <!-- Suppliers Table -->
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm relative">
+                <div class="annotation-badge" style="top: 12px; right: 12px;">4</div>
+                <div class="border-b bg-gray-50/50 p-6">
+                    <h3 class="font-semibold text-gray-900 text-lg">Supplier Directory</h3>
+                    <p class="text-sm text-gray-600 mt-1">Complete list of suppliers with their account details</p>
+                    <div class="text-sm text-gray-500 mt-2">
+                        Showing <span class="font-medium text-gray-900">4</span> of <span class="font-medium text-gray-900">4</span> suppliers
+                    </div>
+                </div>
+
+                <div class="overflow-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3.5 px-4 font-semibold text-gray-700 text-sm">Supplier</th>
+                                <th class="text-left py-3.5 px-4 font-semibold text-gray-700 text-sm">Contact</th>
+                                <th class="text-left py-3.5 px-4 font-semibold text-gray-700 text-sm">Category</th>
+                                <th class="text-left py-3.5 px-4 font-semibold text-gray-700 text-sm">Status</th>
+                                <th class="text-left py-3.5 px-4 font-semibold text-gray-700 text-sm">Balance (AP)</th>
+                                <th class="text-left py-3.5 px-4 font-semibold text-gray-700 text-sm">Payment Terms</th>
+                                <th class="text-left py-3.5 px-4 font-semibold text-gray-700 text-sm">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <!-- AWS Cloud Services -->
+                            <tr class="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                                <td class="py-4 px-4">
+                                    <div>
+                                        <p class="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">AWS Cloud Services</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">supp_001</p>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            <span class="truncate max-w-[200px]">billing@aws.amazon.com</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            +1 206 266 1000
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="flex flex-col gap-1.5">
+                                        <div class="flex items-center gap-1.5 relative">
+                                            <div class="annotation-badge" style="top: -8px; left: -8px;">7</div>
+                                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border bg-indigo-100 text-indigo-800 border-indigo-200">
+                                                Trade
+                                            </span>
+                                        </div>
+                                        <span class="text-xs text-gray-500">Cloud Services</span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4 relative">
+                                    <div class="annotation-badge" style="top: 12px; left: -12px;">8</div>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="font-semibold text-red-600">R12,450.00</span>
+                                </td>
+                                <td class="py-4 px-4 relative">
+                                    <div class="annotation-badge" style="top: 12px; left: -12px;">9</div>
+                                    <span class="text-sm text-gray-600">30 days</span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="relative">
+                                        <div class="annotation-badge" style="top: 4px; right: -12px;">10</div>
+                                        <button class="inline-flex items-center justify-center h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
+                                            <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Office Depot SA -->
+                            <tr class="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                                <td class="py-4 px-4">
+                                    <div>
+                                        <p class="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">Office Depot SA</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">supp_002</p>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            <span class="truncate max-w-[200px]">accounts@officedepot.co.za</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            +27 11 345 6789
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border bg-indigo-100 text-indigo-800 border-indigo-200">
+                                            Trade
+                                        </span>
+                                        <span class="text-xs text-gray-500">Office Supplies</span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="font-semibold text-red-600">R4,200.00</span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="text-sm text-gray-600">30 days</span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <button class="inline-flex items-center justify-center h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Microsoft Azure -->
+                            <tr class="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                                <td class="py-4 px-4">
+                                    <div>
+                                        <p class="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">Microsoft Azure</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">supp_003</p>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            <span class="truncate max-w-[200px]">billing@microsoft.com</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            +1 425 882 8080
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border bg-indigo-100 text-indigo-800 border-indigo-200">
+                                            Trade
+                                        </span>
+                                        <span class="text-xs text-gray-500">Cloud Services</span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="font-semibold text-red-600">R8,750.00</span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="text-sm text-gray-600">30 days</span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <button class="inline-flex items-center justify-center h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <!-- Telkom Business -->
+                            <tr class="hover:bg-gray-50/50 transition-colors cursor-pointer group">
+                                <td class="py-4 px-4">
+                                    <div>
+                                        <p class="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">Telkom Business</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">supp_004</p>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="space-y-1">
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="mail" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            <span class="truncate max-w-[200px]">business@telkom.co.za</span>
+                                        </div>
+                                        <div class="flex items-center text-sm text-gray-600">
+                                            <i data-lucide="phone" class="mr-1.5 text-gray-400" style="width: 14px; height: 14px;"></i>
+                                            +27 12 311 9111
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border bg-indigo-100 text-indigo-800 border-indigo-200">
+                                            Trade
+                                        </span>
+                                        <span class="text-xs text-gray-500">Telecommunications</span>
+                                    </div>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="font-semibold text-red-600">R3,100.00</span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <span class="text-sm text-gray-600">7 days</span>
+                                </td>
+                                <td class="py-4 px-4">
+                                    <button class="inline-flex items-center justify-center h-8 w-8 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
+                                        <i data-lucide="more-horizontal" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel (Fixed Bottom) -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Add Supplier Button</h4>
+                            <p class="text-gray-700 text-sm mt-1">Primary action to create a new supplier record. Opens a dialog with comprehensive supplier form including basic info, payment terms, bank details, and primary contact.</p>
+
+                            <div class="technical-details hidden" id="tech-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Button</code> with onClick handler</li>
+                                    <li><strong>Action:</strong> Opens create supplier dialog</li>
+                                    <li><strong>Form:</strong> React Hook Form with Zod validation</li>
+                                    <li><strong>Service:</strong> <code>CreditorService.createCreditor()</code></li>
+                                    <li><strong>Shortcut:</strong> Ctrl/Cmd + N</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(1)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-1">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Search Bar</h4>
+                            <p class="text-gray-700 text-sm mt-1">Real-time search across supplier name, email, phone, and category. Supports keyboard shortcut (⌘K) for quick access. Filters table results instantly as you type.</p>
+
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Input</code> with search icon</li>
+                                    <li><strong>State:</strong> <code>searchTerm</code> state variable</li>
+                                    <li><strong>Filter Logic:</strong> Client-side filtering using <code>.filter()</code></li>
+                                    <li><strong>Search Fields:</strong> name, email, phone, category</li>
+                                    <li><strong>Keyboard Shortcut:</strong> Ctrl/Cmd + K</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Filter by Category</h4>
+                            <p class="text-gray-700 text-sm mt-1">Advanced filtering options for suppliers. Filter by status (active/inactive), creditor type (trade, tax authority, statutory, utility), category, payment terms, or AP balance ranges.</p>
+
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Button</code> with Filter icon</li>
+                                    <li><strong>Filters Available:</strong> Status, Type, Category, Payment Terms, Balance</li>
+                                    <li><strong>Implementation:</strong> Client-side filtering with multiple criteria</li>
+                                    <li><strong>Future Enhancement:</strong> Dropdown menu with filter checkboxes</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Supplier Table</h4>
+                            <p class="text-gray-700 text-sm mt-1">Comprehensive supplier directory displaying: Name, Contact (email/phone), Category, Status, Current AP Balance, and Payment Terms. Click any row to view/edit supplier details. Hover to reveal action menu.</p>
+
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>Card</code> with scrollable table</li>
+                                    <li><strong>Data Source:</strong> <code>CreditorService.getCreditors()</code></li>
+                                    <li><strong>Type:</strong> <code>Creditor[]</code> from Firestore</li>
+                                    <li><strong>Columns:</strong> 7 columns with supplier info and actions</li>
+                                    <li><strong>Interactions:</strong> Row click opens edit dialog, hover shows menu</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Current AP Balance Summary</h4>
+                            <p class="text-gray-700 text-sm mt-1">Displays total accounts payable across all active suppliers. Updates in real-time as bills are recorded or payments made. Critical metric for cash flow management.</p>
+
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> Summary <code>Card</code></li>
+                                    <li><strong>Calculation:</strong> <code>suppliers.reduce((sum, s) => sum + s.currentBalance, 0)</code></li>
+                                    <li><strong>Data Source:</strong> Aggregated from <code>Creditor.currentBalance</code></li>
+                                    <li><strong>Updates:</strong> Real-time from Firestore listener</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Payment Terms Display</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows agreed payment terms in days (e.g., Net 30, Net 7). Used to calculate due dates for bills and track payment compliance. Can include early payment discounts (2/10 Net 30).</p>
+
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.paymentTerms</code> (number of days)</li>
+                                    <li><strong>Display:</strong> "{days} days" format</li>
+                                    <li><strong>Usage:</strong> Auto-calculates bill due dates</li>
+                                    <li><strong>Common Values:</strong> 7, 15, 30, 60, 90 days</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">7</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Creditor Type Badge</h4>
+                            <p class="text-gray-700 text-sm mt-1">Visual indicator of supplier type: Trade (regular suppliers), Tax Authority (SARS), Statutory (UIF, pension funds), Utility (Eskom, municipality), or Other. Helps categorize and prioritize payments.</p>
+
+                            <div class="technical-details hidden" id="tech-7">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.creditorType</code></li>
+                                    <li><strong>Values:</strong> trade, tax-authority, statutory, utility, other</li>
+                                    <li><strong>Function:</strong> <code>getCreditorTypeInfo()</code> returns label and color</li>
+                                    <li><strong>Component:</strong> Color-coded <code>Badge</code></li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(7)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-7">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">8</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Status Badges</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows supplier account status: Active (green) for current suppliers, Inactive (gray) for dormant accounts. Only active suppliers appear in bill creation dropdowns.</p>
+
+                            <div class="technical-details hidden" id="tech-8">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.status</code></li>
+                                    <li><strong>Values:</strong> active, inactive, suspended</li>
+                                    <li><strong>Function:</strong> <code>getStatusColor()</code> returns badge classes</li>
+                                    <li><strong>Component:</strong> <code>Badge</code> with conditional styling</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(8)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-8">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">9</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Early Payment Discount Indicator</h4>
+                            <p class="text-gray-700 text-sm mt-1">Displays available early payment discounts (e.g., "2/10 Net 30" means 2% discount if paid within 10 days). Helps optimize cash management by identifying cost-saving opportunities.</p>
+
+                            <div class="technical-details hidden" id="tech-9">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>Creditor.earlyPaymentDiscount</code> (optional)</li>
+                                    <li><strong>Format:</strong> { percentage, days, terms }</li>
+                                    <li><strong>Display:</strong> Icon or text when discount available</li>
+                                    <li><strong>Future:</strong> Auto-calculate discount savings</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(9)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-9">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">10</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Actions Menu</h4>
+                            <p class="text-gray-700 text-sm mt-1">Quick actions dropdown: View Details (full supplier profile), Edit (update info), Create PO (new purchase order), Create Bill (record expense), Pay (process payment), Delete (remove supplier).</p>
+
+                            <div class="technical-details hidden" id="tech-10">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> <code>DropdownMenu</code> with DropdownMenuItems</li>
+                                    <li><strong>Actions:</strong> View, Edit, Create PO, Create Bill, Pay, Delete</li>
+                                    <li><strong>Handlers:</strong> openViewDialog(), openEditDialog(), openDeleteDialog()</li>
+                                    <li><strong>Visibility:</strong> Hidden until row hover (opacity-0 group-hover:opacity-100)</li>
+                                </ul>
+                            </div>
+
+                            <button onclick="toggleTechnical(10)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-10">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="24-supplier-detail.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        Next: Supplier Detail →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Toggle annotation panel
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        // Toggle technical details
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        // Highlight annotation on badge hover
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                // Scroll to relevant annotation
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Start with panel expanded
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

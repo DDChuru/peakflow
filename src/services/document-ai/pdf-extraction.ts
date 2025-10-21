@@ -69,11 +69,29 @@ Output as structured JSON with clear separation of header, line items, and total
     name: 'Bank Statement',
     prompt: `Extract ALL information from this bank statement.
 
+CRITICAL DATE FORMAT REQUIREMENTS:
+- ALL dates MUST use ISO format: YYYY-MM-DD (e.g., 2024-12-19)
+- ALWAYS use 4-digit years (NEVER use 2-digit years)
+- If the PDF shows "19/12/24", interpret as 2024-12-19 (20XX century)
+- If the PDF shows "19/12/01", interpret as 2024-12-01 or 2025-12-01 (NOT 2001-12-19)
+- Transaction dates should be recent (within last 5 years from current date)
+- When in doubt, assume the current century (2000s)
+
+CRITICAL: FNB AND BANKS WITH PARTIAL DATES (e.g., "13 Dec" without year):
+1. FIRST extract the statement period to determine the year (e.g., "01 Nov 2024 to 30 Nov 2024")
+2. Use the statement period's year to complete ALL transaction dates
+3. If transaction shows "13 Dec", and statement period is "Nov 2024 to Dec 2024", output "2024-12-13"
+4. If transaction shows "28 Nov", and statement period is "Nov 2024", output "2024-11-28"
+5. NEVER default to year 2001, 1970, or any year before 2020 for recent statements
+6. For cross-year statements (e.g., "Dec 2024 to Jan 2025"), use context:
+   - Transactions in December → use 2024
+   - Transactions in January → use 2025
+
 EXTRACTION REQUIREMENTS:
 
 1. Account Information:
    - Account number, name, type
-   - Statement period
+   - Statement period (ISO dates YYYY-MM-DD) - EXTRACT THIS FIRST!
    - Bank name and branch
 
 2. Summary:
@@ -82,7 +100,9 @@ EXTRACTION REQUIREMENTS:
    - Interest earned, fees charged
 
 3. Transactions:
-   - Date, description, debit/credit amounts, balance
+   - Date (MUST be YYYY-MM-DD format with 4-digit year)
+   - Use statement period year to complete dates shown as "DD MMM"
+   - Description, debit/credit amounts, balance
    - Transaction types and references
    - Check numbers if applicable
 
@@ -283,6 +303,13 @@ export async function extractFromPDF(
       documentType,
       dataKeys: Object.keys(extractedData)
     });
+
+    // Debug: Log sample transaction dates for bank statements
+    if (documentType === 'bankStatement' && extractedData.transactions) {
+      const sampleDates = (extractedData.transactions as any[]).slice(0, 5).map((t: any) => t.date);
+      console.log('[AI Extraction] Sample transaction dates from AI:', sampleDates);
+      console.log('[AI Extraction] Statement period from AI:', extractedData.summary || extractedData.accountInfo);
+    }
 
     return {
       success: true,

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trial Balance Report - PeakFlow Visual Guide</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Custom Annotation Styles */
+        .annotation-badge {
+            position: absolute;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-badge:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
+        }
+
+        .annotation-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 3px solid #4f46e5;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+            max-height: 45vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 999;
+        }
+
+        .annotation-panel.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+
+        .annotation-item {
+            border-left: 4px solid #e0e7ff;
+            padding-left: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .annotation-item:hover {
+            border-left-color: #4f46e5;
+            background-color: #f8fafc;
+        }
+
+        .annotation-item .number {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .technical-details {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .technical-details code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .screen-container {
+            margin-bottom: 50vh;
+        }
+
+        body.panel-open {
+            overflow: hidden;
+        }
+
+        .mock-data-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .screen-info {
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            border-left: 4px solid #4f46e5;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .report-header {
+            page-break-inside: avoid;
+        }
+
+        .account-row:hover {
+            background-color: #f8fafc;
+        }
+
+        .clickable-account {
+            cursor: pointer;
+            color: #4f46e5;
+            text-decoration: underline;
+            text-decoration-color: transparent;
+            transition: all 0.2s;
+        }
+
+        .clickable-account:hover {
+            text-decoration-color: #4f46e5;
+        }
+
+        @media print {
+            .annotation-badge, .annotation-panel, .mock-data-indicator, .screen-info {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mock Data Indicator -->
+    <div class="mock-data-indicator">
+        <i data-lucide="sparkles" style="width: 16px; height: 16px;"></i>
+        <span>Visual Guide - Mock Data</span>
+    </div>
+
+    <!-- Screen Info Banner -->
+    <div class="screen-info">
+        <div class="flex items-start gap-3">
+            <div class="bg-indigo-600 text-white rounded-full p-2">
+                <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="flex-1">
+                <h2 class="font-bold text-gray-900 text-lg mb-1">Trial Balance Report Sample</h2>
+                <p class="text-gray-700 text-sm mb-2">Complete trial balance showing all GL accounts with debit and credit balances</p>
+                <div class="flex gap-2 text-xs">
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Journey:</strong> General Ledger & Reporting
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Step:</strong> 28
+                    </span>
+                    <span class="bg-white px-3 py-1 rounded-full text-gray-600 border border-gray-200">
+                        <strong>Component:</strong> <code class="text-xs">/app/workspace/[companyId]/reports/page.tsx</code>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screen Content -->
+    <div class="screen-container" id="screenContent">
+        <div class="container mx-auto p-6 max-w-7xl">
+            <!-- Report Container -->
+            <div class="bg-white border border-gray-200 rounded-lg shadow-lg">
+                <!-- Report Header -->
+                <div class="report-header bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-200 p-6 relative">
+                    <span class="annotation-badge" style="top: 20px; left: 20px;">1</span>
+                    <div class="text-center">
+                        <h1 class="text-3xl font-bold text-gray-900 mb-2">Trial Balance</h1>
+                        <h2 class="text-xl text-gray-700 mb-1">TechVentures Ltd</h2>
+                        <p class="text-gray-600">As of January 31, 2025</p>
+                    </div>
+                </div>
+
+                <!-- Report Controls -->
+                <div class="bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between relative">
+                    <div class="flex items-center gap-4">
+                        <div class="relative">
+                            <span class="annotation-badge" style="top: 5px; left: -15px;">2</span>
+                            <label class="block text-sm font-medium mb-1">As of Date</label>
+                            <div class="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                                <i data-lucide="calendar" style="width: 16px; height: 16px;" class="text-gray-400"></i>
+                                <span class="text-sm">January 31, 2025</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 relative">
+                        <span class="annotation-badge" style="top: 20px; right: -15px;">8</span>
+                        <button class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                            <i data-lucide="printer" style="width: 16px; height: 16px;"></i>
+                            Print
+                        </button>
+                        <button class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2">
+                            <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                            Export PDF
+                        </button>
+                        <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+                            <i data-lucide="sheet" style="width: 16px; height: 16px;"></i>
+                            Export Excel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Trial Balance Table -->
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="border-b-2 border-gray-300">
+                                <tr>
+                                    <th class="text-left p-3 font-bold text-gray-900 relative">
+                                        <span class="annotation-badge" style="top: 8px; left: -15px;">4</span>
+                                        Account Code
+                                    </th>
+                                    <th class="text-left p-3 font-bold text-gray-900 relative">
+                                        <span class="annotation-badge" style="top: 8px; left: -15px;">5</span>
+                                        Account Name
+                                    </th>
+                                    <th class="text-right p-3 font-bold text-gray-900 relative">
+                                        <span class="annotation-badge" style="top: 8px; right: -15px;">6</span>
+                                        Debit
+                                    </th>
+                                    <th class="text-right p-3 font-bold text-gray-900 relative">
+                                        <span class="annotation-badge" style="top: 8px; right: -15px;">7</span>
+                                        Credit
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- ASSETS SECTION -->
+                                <tr class="bg-blue-50 border-t border-b border-blue-200">
+                                    <td colspan="4" class="p-3 font-bold text-blue-900 relative">
+                                        <span class="annotation-badge" style="top: 8px; left: -15px;">3</span>
+                                        ASSETS
+                                    </td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">1100</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium relative">
+                                            <span class="annotation-badge" style="top: -5px; left: -15px;">9</span>
+                                            Bank Account - Main
+                                        </button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 245,230.50</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">1120</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">USD Account</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 262,875.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">1150</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Savings Account</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 500,000.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">1200</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Accounts Receivable</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 40,000.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">1500</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Computer Equipment</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 150,000.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b-2 border-gray-300 bg-blue-50">
+                                    <td class="p-3 font-mono text-sm">1520</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Accumulated Depreciation</button>
+                                    </td>
+                                    <td class="p-3 text-right">-</td>
+                                    <td class="p-3 text-right font-medium">(R 25,000.00)</td>
+                                </tr>
+
+                                <!-- LIABILITIES SECTION -->
+                                <tr class="bg-red-50 border-b border-red-200">
+                                    <td colspan="4" class="p-3 font-bold text-red-900">LIABILITIES</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">2100</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Accounts Payable</button>
+                                    </td>
+                                    <td class="p-3 text-right">-</td>
+                                    <td class="p-3 text-right font-medium">R 28,500.00</td>
+                                </tr>
+                                <tr class="account-row border-b-2 border-gray-300 bg-red-50">
+                                    <td class="p-3 font-mono text-sm">2200</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Sales Tax Payable</button>
+                                    </td>
+                                    <td class="p-3 text-right">-</td>
+                                    <td class="p-3 text-right font-medium">R 8,250.00</td>
+                                </tr>
+
+                                <!-- EQUITY SECTION -->
+                                <tr class="bg-purple-50 border-b border-purple-200">
+                                    <td colspan="4" class="p-3 font-bold text-purple-900">EQUITY</td>
+                                </tr>
+                                <tr class="account-row border-b-2 border-gray-300 bg-purple-50">
+                                    <td class="p-3 font-mono text-sm">3000</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Owner's Equity</button>
+                                    </td>
+                                    <td class="p-3 text-right">-</td>
+                                    <td class="p-3 text-right font-medium">R 850,000.00</td>
+                                </tr>
+
+                                <!-- REVENUE SECTION -->
+                                <tr class="bg-green-50 border-b border-green-200">
+                                    <td colspan="4" class="p-3 font-bold text-green-900">REVENUE</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">4100</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Software Development Revenue</button>
+                                    </td>
+                                    <td class="p-3 text-right">-</td>
+                                    <td class="p-3 text-right font-medium">R 75,000.00</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">4200</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Consulting Revenue</button>
+                                    </td>
+                                    <td class="p-3 text-right">-</td>
+                                    <td class="p-3 text-right font-medium">R 35,000.00</td>
+                                </tr>
+                                <tr class="account-row border-b-2 border-gray-300 bg-green-50">
+                                    <td class="p-3 font-mono text-sm">4300</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Recurring Services Revenue</button>
+                                    </td>
+                                    <td class="p-3 text-right">-</td>
+                                    <td class="p-3 text-right font-medium">R 45,000.00</td>
+                                </tr>
+
+                                <!-- EXPENSES SECTION -->
+                                <tr class="bg-orange-50 border-b border-orange-200">
+                                    <td colspan="4" class="p-3 font-bold text-orange-900">EXPENSES</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">5100</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Office Supplies</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 8,500.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">5300</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Cloud Infrastructure Costs</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 45,000.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b border-gray-200">
+                                    <td class="p-3 font-mono text-sm">5400</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Software Licenses</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 22,500.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+                                <tr class="account-row border-b-2 border-gray-300 bg-orange-50">
+                                    <td class="p-3 font-mono text-sm">5800</td>
+                                    <td class="p-3">
+                                        <button class="clickable-account font-medium">Depreciation Expense</button>
+                                    </td>
+                                    <td class="p-3 text-right font-medium">R 5,000.00</td>
+                                    <td class="p-3 text-right">-</td>
+                                </tr>
+
+                                <!-- TOTALS ROW -->
+                                <tr class="bg-gradient-to-r from-indigo-100 to-purple-100 border-t-4 border-indigo-600 relative">
+                                    <td colspan="2" class="p-4 font-bold text-lg text-gray-900">
+                                        <span class="annotation-badge" style="top: 15px; left: -15px;">10</span>
+                                        TOTAL
+                                    </td>
+                                    <td class="p-4 text-right font-bold text-lg text-gray-900">R 1,279,105.50</td>
+                                    <td class="p-4 text-right font-bold text-lg text-gray-900">R 1,061,750.00</td>
+                                </tr>
+
+                                <!-- Validation Message -->
+                                <tr>
+                                    <td colspan="4" class="p-4">
+                                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+                                            <i data-lucide="alert-circle" class="text-red-600" style="width: 24px; height: 24px;"></i>
+                                            <div>
+                                                <p class="font-semibold text-red-900">Balance Mismatch Detected</p>
+                                                <p class="text-sm text-red-700">Total Debits (R 1,279,105.50) do not equal Total Credits (R 1,061,750.00). Difference: R 217,355.50</p>
+                                                <p class="text-xs text-red-600 mt-1">Note: This is sample data - in production, debits must always equal credits.</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Report Footer -->
+                <div class="bg-gray-50 border-t border-gray-200 p-4 text-center text-sm text-gray-600">
+                    Generated on: January 22, 2025 at 3:45 PM | User: Finance Admin | Page 1 of 1
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Annotation Panel (Fixed Bottom) -->
+    <div class="annotation-panel" id="annotationPanel">
+        <div class="flex items-center justify-center py-2 bg-gradient-to-r from-indigo-600 to-purple-600 cursor-pointer" onclick="togglePanel()">
+            <button class="text-white font-semibold flex items-center gap-2">
+                <i data-lucide="chevron-up" id="panelIcon" style="width: 20px; height: 20px;"></i>
+                <span id="panelTitle">Guide & Annotations</span>
+            </button>
+        </div>
+
+        <div id="panelContent" class="p-6">
+            <div class="mb-6">
+                <h3 class="font-bold text-gray-900 text-lg mb-2 flex items-center gap-2">
+                    <i data-lucide="map" style="width: 20px; height: 20px;" class="text-indigo-600"></i>
+                    Screen Guide
+                </h3>
+                <p class="text-gray-600 text-sm">Click on numbered badges or hover over UI elements to learn more about each feature.</p>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="space-y-4" id="annotationsList">
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">1</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Report Header (Company Name, Period)</h4>
+                            <p class="text-gray-700 text-sm mt-1">Standard report header showing report title, company name, and the as-of date for the trial balance. Critical context for interpreting the numbers.</p>
+                            <div class="technical-details hidden" id="tech-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Company Info:</strong> From company settings in Firestore</li>
+                                    <li><strong>Date:</strong> User-selected as-of date for report</li>
+                                    <li><strong>Format:</strong> Matches standard financial reporting format</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(1)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-1">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">2</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Date Selector</h4>
+                            <p class="text-gray-700 text-sm mt-1">Allows user to select the as-of date for the trial balance. Shows account balances as of the end of that date.</p>
+                            <div class="technical-details hidden" id="tech-2">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Component:</strong> Date picker with common presets (Month-end, Quarter-end, Year-end)</li>
+                                    <li><strong>Calculation:</strong> Sums all ledger entries up to and including selected date</li>
+                                    <li><strong>Default:</strong> Current month-end or today's date</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(2)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-2">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">3</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Account Categories Sections</h4>
+                            <p class="text-gray-700 text-sm mt-1">Accounts organized by type: Assets, Liabilities, Equity, Revenue, Expenses. Standard accounting classification for financial statement preparation.</p>
+                            <div class="technical-details hidden" id="tech-3">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Grouping:</strong> Based on <code>account.type</code> field</li>
+                                    <li><strong>Order:</strong> Assets → Liabilities → Equity → Revenue → Expenses</li>
+                                    <li><strong>Purpose:</strong> Facilitates Balance Sheet and Income Statement preparation</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(3)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-3">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">4</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Account Code Column</h4>
+                            <p class="text-gray-700 text-sm mt-1">Unique numeric identifier for each GL account. Displayed in monospace font for easy scanning and alignment.</p>
+                            <div class="technical-details hidden" id="tech-4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>account.code</code> from chart of accounts</li>
+                                    <li><strong>Format:</strong> Monospace font (font-mono) for alignment</li>
+                                    <li><strong>Standards:</strong> 1xxx=Assets, 2xxx=Liabilities, etc.</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(4)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-4">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">5</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Account Name Column</h4>
+                            <p class="text-gray-700 text-sm mt-1">Descriptive name of the GL account (e.g., "Bank Account - Main", "Accounts Receivable"). User-friendly label for each account.</p>
+                            <div class="technical-details hidden" id="tech-5">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Field:</strong> <code>account.name</code> from chart of accounts</li>
+                                    <li><strong>Clickable:</strong> Links to account inquiry / general ledger detail</li>
+                                    <li><strong>Display:</strong> Regular font weight, left-aligned</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(5)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-5">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">6</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Debit Column</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows debit balance for accounts with debit normal balance (Assets, Expenses). Right-aligned and formatted as currency.</p>
+                            <div class="technical-details hidden" id="tech-6">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Calculation:</strong> Sum of all debit entries - sum of all credit entries (if positive)</li>
+                                    <li><strong>Format:</strong> <code>formatCurrency()</code> with ZAR locale</li>
+                                    <li><strong>Display:</strong> Shows "-" if account has credit balance</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(6)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-6">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">7</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Credit Column</h4>
+                            <p class="text-gray-700 text-sm mt-1">Shows credit balance for accounts with credit normal balance (Liabilities, Equity, Revenue). Right-aligned and formatted as currency.</p>
+                            <div class="technical-details hidden" id="tech-7">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Calculation:</strong> Sum of all credit entries - sum of all debit entries (if positive)</li>
+                                    <li><strong>Format:</strong> <code>formatCurrency()</code> with ZAR locale</li>
+                                    <li><strong>Display:</strong> Shows "-" if account has debit balance</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(7)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-7">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">8</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Export/Print Buttons</h4>
+                            <p class="text-gray-700 text-sm mt-1">Export trial balance to PDF, Excel, or send to printer. PDF for distribution, Excel for further analysis, Print for hard copy.</p>
+                            <div class="technical-details hidden" id="tech-8">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>PDF:</strong> Using <code>pdfService</code> for formatted report</li>
+                                    <li><strong>Excel:</strong> XLSX export with formulas for totals</li>
+                                    <li><strong>Print:</strong> Browser print dialog with @media print styles</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(8)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-8">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">9</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Drill-Down to Account Detail</h4>
+                            <p class="text-gray-700 text-sm mt-1">Clicking on an account name navigates to the general ledger detail for that account, showing all transactions with running balance.</p>
+                            <div class="technical-details hidden" id="tech-9">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Navigation:</strong> Routes to account inquiry page with account filter</li>
+                                    <li><strong>Shows:</strong> All journal entries affecting this account</li>
+                                    <li><strong>Purpose:</strong> Account reconciliation, investigation, audit trail</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(9)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-9">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="annotation-item">
+                    <div class="flex items-start gap-2">
+                        <span class="number">10</span>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-gray-900">Total Debits = Total Credits Validation</h4>
+                            <p class="text-gray-700 text-sm mt-1">Fundamental accounting equation validation. In a properly balanced system, total debits must equal total credits. Any mismatch indicates an error.</p>
+                            <div class="technical-details hidden" id="tech-10">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                                    <strong class="text-gray-700">Technical Details</strong>
+                                </div>
+                                <ul class="list-disc list-inside text-xs space-y-1 text-gray-600">
+                                    <li><strong>Validation:</strong> <code>totalDebits === totalCredits</code></li>
+                                    <li><strong>Error Detection:</strong> Shows warning banner if mismatch detected</li>
+                                    <li><strong>Critical:</strong> Must be balanced before closing period or generating financial statements</li>
+                                </ul>
+                            </div>
+                            <button onclick="toggleTechnical(10)" class="text-indigo-600 text-xs font-medium mt-2 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings" style="width: 12px; height: 12px;"></i>
+                                <span id="tech-toggle-10">Show Technical Details</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h4 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <i data-lucide="compass" style="width: 18px; height: 18px;" class="text-indigo-600"></i>
+                    Related Resources
+                </h4>
+                <div class="flex flex-wrap gap-2">
+                    <a href="../index.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← All Screens
+                    </a>
+                    <a href="../../USER-MANUAL.md" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        📖 User Manual
+                    </a>
+                    <a href="27-reports-dashboard.html" class="text-sm bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-indigo-600 transition-colors">
+                        ← Previous: Reports Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Interactivity -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Toggle annotation panel
+        function togglePanel() {
+            const panel = document.getElementById('annotationPanel');
+            const icon = document.getElementById('panelIcon');
+            const title = document.getElementById('panelTitle');
+
+            panel.classList.toggle('collapsed');
+
+            if (panel.classList.contains('collapsed')) {
+                icon.setAttribute('data-lucide', 'chevron-up');
+                title.textContent = 'Guide & Annotations';
+                document.body.classList.remove('panel-open');
+            } else {
+                icon.setAttribute('data-lucide', 'chevron-down');
+                title.textContent = 'Hide Guide';
+                document.body.classList.add('panel-open');
+            }
+
+            lucide.createIcons();
+        }
+
+        // Toggle technical details
+        function toggleTechnical(id) {
+            const details = document.getElementById(`tech-${id}`);
+            const toggle = document.getElementById(`tech-toggle-${id}`);
+
+            details.classList.toggle('hidden');
+
+            if (details.classList.contains('hidden')) {
+                toggle.textContent = 'Show Technical Details';
+            } else {
+                toggle.textContent = 'Hide Technical Details';
+            }
+        }
+
+        // Highlight annotation on badge hover
+        document.querySelectorAll('.annotation-badge').forEach(badge => {
+            badge.addEventListener('mouseenter', function() {
+                const num = this.textContent;
+                const panel = document.getElementById('annotationPanel');
+                if (panel.classList.contains('collapsed')) {
+                    togglePanel();
+                }
+                const annotation = document.querySelector(`.annotation-item:nth-child(${num})`);
+                if (annotation) {
+                    annotation.style.backgroundColor = '#eef2ff';
+                    annotation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        annotation.style.backgroundColor = '';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Start with panel expanded
+        window.addEventListener('load', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

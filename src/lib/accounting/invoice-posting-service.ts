@@ -446,6 +446,3 @@ export async function createInvoicePostingService(
 
   return new InvoicePostingService(defaultOptions);
 }
-
-// Export for direct use
-export { InvoicePostingService };

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +29,8 @@ import {
   LogOut,
   User,
   FileUp,
-  MessageCircle
+  MessageCircle,
+  Archive
 } from 'lucide-react';
 
 interface WorkspaceLayoutProps {
@@ -49,7 +50,6 @@ interface NavItem {
 
 export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout, hasRole } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -61,12 +61,12 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
   const workspaceNav: NavItem[] = [
     {
       name: 'Overview',
-      href: hasCompany ? `/workspace/${companyId || user?.companyId}` : '/dashboard',
+      href: '/dashboard',
       icon: Home,
     },
     {
       name: 'Banking & Cash',
-      href: hasCompany ? `/workspace/${companyId || user?.companyId}/banking` : '#',
+      href: '#', // Header - not clickable
       icon: DollarSign,
       subItems: hasCompany ? [
         {
@@ -90,11 +90,16 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
           icon: FileUp,
           badge: 'NEW'
         },
+        {
+          name: 'Archived Statements',
+          href: `/workspace/${companyId || user?.companyId}/archived-statements`,
+          icon: Archive,
+        },
       ] : [],
     },
     {
       name: 'Invoicing',
-      href: hasCompany ? `/workspace/${companyId || user?.companyId}/invoicing` : '#',
+      href: '#', // Header - not clickable
       icon: Receipt,
       subItems: hasCompany ? [
         {
@@ -128,7 +133,7 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
     },
     {
       name: 'Customers & Suppliers',
-      href: hasCompany ? `/workspace/${companyId || user?.companyId}/contacts` : '#',
+      href: '#', // Header - not clickable
       icon: Users,
       subItems: hasCompany ? [
         {
@@ -145,7 +150,7 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
     },
     {
       name: 'Accounting',
-      href: hasCompany ? `/workspace/${companyId || user?.companyId}/accounting` : '#',
+      href: '#', // Header - not clickable
       icon: Calculator,
       subItems: hasCompany ? [
         {
@@ -285,29 +290,53 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
           <ul className="space-y-1">
             {allNavItems.map((item) => (
               <li key={item.name}>
-                <Link
-                  href={item.href === '#' ? pathname : item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive(item.href)
-                      ? 'bg-indigo-50 text-indigo-600'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
-                    collapsed && 'justify-center'
-                  )}
-                  title={collapsed ? item.name : undefined}
-                >
-                  <item.icon className={cn('h-5 w-5', collapsed ? 'm-0' : 'mr-0')} />
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1">{item.name}</span>
-                      {item.badge && (
-                        <span className="ml-auto rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-600">
-                          {item.badge}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Link>
+                {/* Render as non-clickable header if it has subitems, otherwise as link */}
+                {item.subItems && item.subItems.length > 0 ? (
+                  <div
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      'text-gray-900 font-semibold',
+                      collapsed && 'justify-center'
+                    )}
+                    title={collapsed ? item.name : undefined}
+                  >
+                    <item.icon className={cn('h-5 w-5', collapsed ? 'm-0' : 'mr-0')} />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1">{item.name}</span>
+                        {item.badge && (
+                          <span className="ml-auto rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-600">
+                            {item.badge}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      isActive(item.href)
+                        ? 'bg-indigo-50 text-indigo-600'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
+                      collapsed && 'justify-center'
+                    )}
+                    title={collapsed ? item.name : undefined}
+                  >
+                    <item.icon className={cn('h-5 w-5', collapsed ? 'm-0' : 'mr-0')} />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1">{item.name}</span>
+                        {item.badge && (
+                          <span className="ml-auto rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-600">
+                            {item.badge}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                )}
 
                 {/* Sub-navigation */}
                 {!collapsed && item.subItems && item.subItems.length > 0 && (
