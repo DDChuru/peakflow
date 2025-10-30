@@ -119,6 +119,63 @@ function toSafeDate(value: unknown): Date {
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 }
 
+function normalizeTransactionDate(value: unknown): string {
+  if (!value) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return new Date().toISOString().slice(0, 10);
+    }
+    // If already ISO-ish, trust it; otherwise try to parse
+    const isoMatch = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+    if (isoMatch) {
+      return trimmed;
+    }
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime())
+      ? new Date().toISOString().slice(0, 10)
+      : parsed.toISOString().slice(0, 10);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  if (value instanceof Timestamp) {
+    return value.toDate().toISOString().slice(0, 10);
+  }
+
+  const coerced = new Date(String(value));
+  return Number.isNaN(coerced.getTime())
+    ? new Date().toISOString().slice(0, 10)
+    : coerced.toISOString().slice(0, 10);
+}
+
+function toOptionalNumber(value: unknown): number | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (value instanceof Timestamp) {
+    return undefined;
+  }
+
+  const cleaned = typeof value === 'string' ? value.replace(/,/g, '').trim() : String(value);
+  if (!cleaned) {
+    return undefined;
+  }
+
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function fromFirestoreSession(id: string, data: DocumentData): ReconciliationSession {
   return {
     id,
@@ -232,6 +289,47 @@ export class ReconciliationService {
     );
     const snapshot = await getDocs(q);
     return snapshot.docs.map((docSnap) => fromFirestoreSession(docSnap.id, docSnap.data()));
+  }
+
+  private async loadStatementTransactions(statementId: string): Promise<BankTransaction[]> {
+    try {
+      const transactionsRef = collection(db, `bank_statements/${statementId}/transactions`);
+      const transactionsSnapshot = await getDocs(query(transactionsRef, orderBy('date', 'asc')));
+
+      return transactionsSnapshot.docs.map((txDoc, index) => {
+        const data = txDoc.data() as Record<string, unknown>;
+        const debit = toOptionalNumber(data.debit);
+        const credit = toOptionalNumber(data.credit);
+        const balance = toOptionalNumber(data.balance);
+
+        const transaction: BankTransaction = {
+          id: txDoc.id || `${statementId}_${index}`,
+          date: normalizeTransactionDate(data.date),
+          description: typeof data.description === 'string' ? data.description : '',
+          debit: debit,
+          credit: credit,
+          balance: typeof balance === 'number' && Number.isFinite(balance) ? balance : 0,
+        };
+
+        if (typeof data.reference === 'string' && data.reference.trim().length > 0) {
+          transaction.reference = data.reference.trim();
+        }
+        if (typeof data.type === 'string') {
+          transaction.type = data.type as BankTransaction['type'];
+        }
+        if (typeof data.category === 'string') {
+          transaction.category = data.category;
+        }
+
+        return transaction;
+      });
+    } catch (error) {
+      console.error('[Reconciliation] Failed to load transactions subcollection', {
+        statementId,
+        error,
+      });
+      return [];
+    }
   }
 
   async getSession(companyId: string, sessionId: string): Promise<ReconciliationSession | null> {
@@ -537,21 +635,31 @@ export class ReconciliationService {
         }
 
         const statement = companySnapshot.data() as BankStatement;
-        const transactions = statement.transactions || [];
+        const inlineTransactions = statement.transactions || [];
 
-        // Ensure all transactions have stable IDs
+        const transactions = inlineTransactions.length
+          ? inlineTransactions
+          : await this.loadStatementTransactions(statementId);
+
         return transactions.map((tx, index) => {
-          const stableId = tx.id || `${statementId}_${tx.date}_${index}_${tx.description?.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          const stableId =
+            tx.id ||
+            `${statementId}_${tx.date}_${index}_${tx.description?.replace(/[^a-zA-Z0-9]/g, '_')}`;
           return { ...tx, id: stableId };
         });
       }
 
       const statement = snapshot.data() as BankStatement;
-      const transactions = statement.transactions || [];
+      const inlineTransactions = statement.transactions || [];
 
-      // Ensure all transactions have stable IDs
+      const transactions = inlineTransactions.length
+        ? inlineTransactions
+        : await this.loadStatementTransactions(statementId);
+
       return transactions.map((tx, index) => {
-        const stableId = tx.id || `${statementId}_${tx.date}_${index}_${tx.description?.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        const stableId =
+          tx.id ||
+          `${statementId}_${tx.date}_${index}_${tx.description?.replace(/[^a-zA-Z0-9]/g, '_')}`;
         return { ...tx, id: stableId };
       });
     } catch (error) {
@@ -605,9 +713,15 @@ export class ReconciliationService {
 
         console.log(`[BANK-TX] Statement ${doc.id}: accountId=${statementAccountId}, accountNumber=${statementAccountNumber}, matches=${isCorrectAccount}`);
 
-        if (isCorrectAccount && statement.transactions) {
+        if (isCorrectAccount) {
+          let statementTransactions = statement.transactions || [];
+
+          if (!statementTransactions.length) {
+            statementTransactions = await this.loadStatementTransactions(doc.id);
+          }
+
           // Filter transactions within the period and ensure stable IDs
-          const filtered = statement.transactions.filter(tx => {
+          const filtered = statementTransactions.filter(tx => {
             const txDate = new Date(tx.date);
             return txDate >= startDate && txDate <= endDate;
           }).map((tx, index) => {

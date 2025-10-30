@@ -113,8 +113,10 @@ export const fnbParser: BankParser = {
  * Standard Bank Parser
  *
  * Format specifics:
- * - Usually has separate Debit and Credit columns
- * - May use negative numbers for debits
+ * - Two-column format: "Payments" (debits) and "Deposits" (credits)
+ * - Payments shown as negative numbers (e.g., -236.90)
+ * - Deposits shown as positive numbers (e.g., 750.00)
+ * - Date format: "03 Dec 24" (Day Month YY)
  */
 export const standardBankParser: BankParser = {
   bankName: 'Standard Bank',
@@ -124,7 +126,8 @@ export const standardBankParser: BankParser = {
       'Standard Bank',
       'SBSA',
       'www.standardbank.co.za',
-      'Moving Forward'
+      'Moving Forward',
+      '0860 123 000' // Standard Bank customer care number
     ];
 
     if (accountInfo?.bankName.toLowerCase().includes('standard')) {
@@ -143,7 +146,7 @@ export const standardBankParser: BankParser = {
 
     const cleanAmount = amountText.trim().replace(/\s+/g, '').replace(/,/g, '');
 
-    // Check for negative numbers (debits)
+    // Check for negative numbers (debits/payments)
     if (cleanAmount.startsWith('-')) {
       const amount = Math.abs(parseFloat(cleanAmount));
       if (!isNaN(amount) && amount > 0) {
@@ -151,13 +154,167 @@ export const standardBankParser: BankParser = {
       }
     }
 
-    // Positive numbers are credits
+    // Positive numbers are credits (deposits)
     const amount = parseFloat(cleanAmount);
     if (!isNaN(amount) && amount > 0) {
       return { credit: amount };
     }
 
     return {};
+  },
+
+  parseDate: (dateText: string): string => {
+    if (!dateText) {
+      return new Date().toISOString();
+    }
+
+    // Standard Bank format: "03 Dec 24" (Day Month YY)
+    const stdBankPattern = /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{2})$/;
+    const match = dateText.trim().match(stdBankPattern);
+
+    if (match) {
+      const day = match[1].padStart(2, '0');
+      const monthStr = match[2];
+      const yearShort = match[3];
+
+      // Month name to number mapping
+      const months: Record<string, string> = {
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+        'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+        'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+      };
+
+      const month = months[monthStr.toLowerCase()];
+
+      if (month) {
+        // Assume 20XX for 2-digit years
+        const year = `20${yearShort}`;
+        return `${year}-${month}-${day}`;
+      }
+    }
+
+    // Fallback to generic date parsing
+    try {
+      const parsed = new Date(dateText);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString();
+      }
+    } catch (error) {
+      console.warn('Could not parse Standard Bank date:', dateText);
+    }
+
+    return new Date().toISOString();
+  },
+
+  extractAccountNumber: (text: string): string | null => {
+    // Standard Bank account numbers can be various lengths
+    const accountMatch = text.match(/(?:Account|Acc)\s*(?:Number|No\.?|#)?\s*:?\s*(\d{8,13})/i);
+    return accountMatch ? accountMatch[1] : null;
+  }
+};
+
+/**
+ * ABSA Bank Parser
+ *
+ * Format specifics:
+ * - Tables with separate "Charge", "Debit Amount", "Credit Amount" columns
+ * - Amounts shown as positive numbers without explicit sign; column determines direction
+ * - Dates typically formatted as "10/04/2025" (DD/MM/YYYY) or "10/04/25"
+ */
+export const absaBankParser: BankParser = {
+  bankName: 'ABSA',
+
+  detect: (text: string, accountInfo?: BankAccountInfo): boolean => {
+    if (accountInfo?.bankName && accountInfo.bankName.toLowerCase().includes('absa')) {
+      return true;
+    }
+
+    const indicators = [
+      'absa bank',
+      'absa bank ltd',
+      'absa cheque account',
+      'cheque account statement',
+      '0860008600'
+    ];
+
+    const lower = text.toLowerCase();
+    return indicators.some(indicator => lower.includes(indicator));
+  },
+
+  parseAmount: (amountText: string): { debit?: number; credit?: number } => {
+    if (!amountText) {
+      return {};
+    }
+
+    const cleaned = amountText
+      .replace(/\s+/g, '')
+      .replace(/,/g, '')
+      .replace(/[rR]/g, '')
+      .trim();
+
+    if (!cleaned) {
+      return {};
+    }
+
+    // Parentheses or leading minus indicate debit
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      const numeric = parseFloat(cleaned.slice(1, -1));
+      if (!isNaN(numeric) && numeric > 0) {
+        return { debit: numeric };
+      }
+    }
+
+    if (cleaned.startsWith('-')) {
+      const numeric = Math.abs(parseFloat(cleaned));
+      if (!isNaN(numeric) && numeric > 0) {
+        return { debit: numeric };
+      }
+    }
+
+    // "Cr" suffix or "+" indicate credit
+    if (/cr$/i.test(cleaned) || cleaned.endsWith('+')) {
+      const numeric = parseFloat(cleaned.replace(/cr$/i, '').replace(/\+$/, ''));
+      if (!isNaN(numeric) && numeric > 0) {
+        return { credit: numeric };
+      }
+    }
+
+    const numericValue = parseFloat(cleaned);
+    if (!isNaN(numericValue) && numericValue > 0) {
+      // Without additional context default to credit (caller should supply correct column)
+      return { credit: numericValue };
+    }
+
+    return {};
+  },
+
+  parseDate: (dateText: string): string => {
+    if (!dateText) {
+      return new Date().toISOString();
+    }
+
+    const trimmed = dateText.trim();
+    const slashPattern = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/;
+    const match = trimmed.match(slashPattern);
+
+    if (match) {
+      const day = match[1].padStart(2, '0');
+      const month = match[2].padStart(2, '0');
+      let year = match[3];
+
+      if (year.length === 2) {
+        year = `20${year}`;
+      }
+
+      return `${year}-${month}-${day}`;
+    }
+
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+
+    return new Date().toISOString().slice(0, 10);
   }
 };
 
@@ -220,6 +377,7 @@ export const genericParser: BankParser = {
 export const bankParsers: BankParser[] = [
   fnbParser,
   standardBankParser,
+  absaBankParser,
   // Add more parsers as needed
 ];
 

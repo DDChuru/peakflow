@@ -360,13 +360,19 @@ export async function processBankStatement(
     const pdfBase64 = await fileToBase64(pdfFile);
 
     // Call Firebase Function with authentication
-    const extractPDF = httpsCallable(functions, 'extractPDFContent');
+    // IMPORTANT: Set timeout to 360 seconds for large statements with month-by-month chunking
+    // Each month takes ~60-90 seconds, 4 months = 240-360 seconds
+    // Note: Browser/network timeouts may intervene around 5-6 minutes
+    const extractPDF = httpsCallable(functions, 'extractPDFContent', {
+      timeout: 360000 // 6 minutes (in milliseconds) - safer than 9 min for HTTP limits
+    });
 
     console.log('Calling Firebase Function with data:', {
       documentType: 'bankStatement',
       saveToFirestore: true,
       pdfSize: pdfBase64.length,
-      userUid: user.uid
+      userUid: user.uid,
+      timeout: '180s'
     });
 
     const functionResult = await extractPDF({
@@ -382,6 +388,33 @@ export async function processBankStatement(
 
     if (!result.success) {
       throw new Error(result.error || 'Failed to process bank statement');
+    }
+
+    const remoteTransactionCount =
+      typeof result.data.transactionCount === 'number' ? result.data.transactionCount : undefined;
+    const remoteFirstTransactionDate = result.data.firstTransactionDate;
+    const remoteLastTransactionDate = result.data.lastTransactionDate;
+    const continuationAttempts = result.data._continuationAttempts;
+
+    // DEBUG: Log transaction count and date range received from function
+    if (result.data && result.data.transactions) {
+      const txCount = result.data.transactions.length;
+      const dates = result.data.transactions.map(t => t.date).sort();
+      console.log(`[Client] Received ${txCount} transactions from Firebase Function`);
+      console.log(`[Client] Date range: ${dates[0]} to ${dates[dates.length - 1]}`);
+      console.log(`[Client] First 3 transactions:`, result.data.transactions.slice(0, 3));
+      console.log(`[Client] Last 3 transactions:`, result.data.transactions.slice(-3));
+      if (remoteTransactionCount !== undefined && remoteTransactionCount !== txCount) {
+        console.warn(
+          `[Client] ⚠️ Transaction count mismatch between payload array (${txCount}) and declared count (${remoteTransactionCount})`
+        );
+      }
+      if (remoteLastTransactionDate) {
+        console.log(`[Client] Declared last transaction date: ${remoteLastTransactionDate}`);
+      }
+      if (typeof continuationAttempts === 'number') {
+        console.log(`[Client] Continuation attempts: ${continuationAttempts}`);
+      }
     }
 
     const rawAccountInfo = (result.data as { accountInfo?: Partial<BankAccountInfo>; accountInformation?: Partial<BankAccountInfo> }).accountInfo
@@ -457,16 +490,102 @@ export async function processBankStatement(
       // Continue with original data if parser fails
     }
 
-    // Save to Firestore
-    const firestorePayload = removeUndefinedDeep({
+    const parseDate = (value?: string) => {
+      if (!value) return null;
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    bankStatement.transactions = [...bankStatement.transactions].sort((a, b) => {
+      const dateA = parseDate(a.date);
+      const dateB = parseDate(b.date);
+
+      if (dateA && dateB) {
+        return dateA.getTime() - dateB.getTime();
+      }
+
+      if (dateA && !dateB) return -1;
+      if (!dateA && dateB) return 1;
+
+      return a.date.localeCompare(b.date);
+    });
+
+    if (remoteTransactionCount !== undefined) {
+      bankStatement.summary.transactionCount = remoteTransactionCount;
+    } else {
+      bankStatement.summary.transactionCount = bankStatement.transactions.length;
+    }
+
+    const firstTransaction = bankStatement.transactions[0];
+    const lastTransaction = bankStatement.transactions[bankStatement.transactions.length - 1];
+
+    if (remoteFirstTransactionDate) {
+      bankStatement.summary.statementPeriod.from =
+        bankStatement.summary.statementPeriod.from || remoteFirstTransactionDate;
+      bankStatement.summary.firstTransactionDate = remoteFirstTransactionDate;
+    } else if (firstTransaction?.date) {
+      bankStatement.summary.firstTransactionDate = firstTransaction.date;
+      bankStatement.summary.statementPeriod.from =
+        bankStatement.summary.statementPeriod.from || firstTransaction.date;
+    }
+
+    if (remoteLastTransactionDate) {
+      bankStatement.summary.statementPeriod.to =
+        bankStatement.summary.statementPeriod.to || remoteLastTransactionDate;
+      bankStatement.summary.lastTransactionDate = remoteLastTransactionDate;
+    } else if (lastTransaction?.date) {
+      bankStatement.summary.lastTransactionDate = lastTransaction.date;
+      bankStatement.summary.statementPeriod.to =
+        bankStatement.summary.statementPeriod.to || lastTransaction.date;
+    }
+
+    // Save to Firestore using SUBCOLLECTIONS for transactions (avoids 1MB document limit)
+    const transactions = bankStatement.transactions;
+    const statementDoc = removeUndefinedDeep({
       ...bankStatement,
+      transactions: [], // Don't save transactions in main doc
+      transactionCount: remoteTransactionCount ?? transactions.length, // Store count for reference
+      firstTransactionDate: remoteFirstTransactionDate ?? firstTransaction?.date,
+      lastTransactionDate: remoteLastTransactionDate ?? lastTransaction?.date,
       uploadedAt: Timestamp.fromDate(bankStatement.uploadedAt),
       processedAt: bankStatement.processedAt ? Timestamp.fromDate(bankStatement.processedAt) : undefined
     });
 
-    const docRef = await addDoc(collection(db, 'bank_statements'), firestorePayload);
+    // DEBUG: Log what we're about to save
+    console.log(`[Client] Saving to Firestore: ${transactions.length} transactions as subcollection`);
+    if (transactions.length > 0) {
+      const dates = transactions.map(t => t.date).sort();
+      console.log(`[Client] Firestore save - Date range: ${dates[0]} to ${dates[dates.length - 1]}`);
+    }
 
+    // Save main document
+    const docRef = await addDoc(collection(db, 'bank_statements'), statementDoc);
     bankStatement.id = docRef.id;
+
+    // Save transactions as subcollection (batch write for efficiency)
+    const transactionsRef = collection(db, `bank_statements/${docRef.id}/transactions`);
+    console.log(`[Client] Saving ${transactions.length} transactions to subcollection...`);
+
+    // Firestore batch has 500 operation limit, so batch in chunks of 500
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
+      const batch = transactions.slice(i, i + BATCH_SIZE);
+      console.log(`[Client] Writing batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.length} transactions`);
+
+      // Use Promise.all to write in parallel for speed
+      await Promise.all(
+        batch.map(tx => {
+          // Remove undefined values before saving to Firestore
+          const cleanTx = removeUndefinedDeep(tx);
+          return addDoc(transactionsRef, cleanTx);
+        })
+      );
+    }
+
+    console.log(`[Client] ✅ Saved ${transactions.length} transactions to subcollection`);
+
+    // Keep transactions in memory for return value
+    bankStatement.transactions = transactions;
 
     // Track usage
     await addDoc(collection(db, 'usage_tracking'), {
@@ -611,23 +730,32 @@ export async function getCompanyBankStatements(
 
     const snapshot = await getDocs(statementsQuery);
 
-    return snapshot.docs.map((docSnapshot) => {
-      const data = docSnapshot.data();
-      const { accountInfo: storedAccountInfo, accountInformation, ...rest } = data;
+    // Load statements with transactions from subcollections
+    const statements = await Promise.all(
+      snapshot.docs.map(async (docSnapshot) => {
+        const data = docSnapshot.data();
+        const { accountInfo: storedAccountInfo, accountInformation, ...rest } = data;
 
-      const accountInfoRaw = (storedAccountInfo ?? accountInformation) as Partial<BankAccountInfo> | null | undefined;
-      const accountInfo = sanitizeAccountInfo(accountInfoRaw);
+        const accountInfoRaw = (storedAccountInfo ?? accountInformation) as Partial<BankAccountInfo> | null | undefined;
+        const accountInfo = sanitizeAccountInfo(accountInfoRaw);
 
-      const summary = data.summary || {};
-      const statementPeriod = summary.statementPeriod || { from: '', to: '' };
+        const summary = data.summary || {};
+        const statementPeriod = summary.statementPeriod || { from: '', to: '' };
 
-      // Detect bank for date parsing
-      const bankName = detectBank('', accountInfo);
+        // Detect bank for date parsing
+        const bankName = detectBank('', accountInfo);
 
-      const transactionsRaw: RawTransaction[] = Array.isArray(data.transactions) ? data.transactions : [];
-      const transactions = transactionsRaw.map((rawTx, index) => {
-        const parsedTx: BankTransaction = {
-          id: rawTx.id ?? `${docSnapshot.id}-tx-${index}`,
+        // Load transactions from subcollection
+        const transactionsRef = collection(db, `bank_statements/${docSnapshot.id}/transactions`);
+        const transactionsQuery = query(transactionsRef, orderBy('date', 'asc'));
+        const transactionsSnapshot = await getDocs(transactionsQuery);
+
+        console.log(`[Load] Loaded ${transactionsSnapshot.size} transactions for statement ${docSnapshot.id}`);
+
+        const transactions = transactionsSnapshot.docs.map((txDoc) => {
+          const rawTx = txDoc.data() as RawTransaction;
+          const parsedTx: BankTransaction = {
+            id: txDoc.id,
           date: normalizeTransactionDate(rawTx.date, bankName, statementPeriod),
           description: rawTx.description ?? '',
           debit: parseSafeNumber(rawTx.debit),
@@ -665,7 +793,10 @@ export async function getCompanyBankStatements(
       };
 
       return safeStatement;
-    });
+    })
+    );
+
+    return statements;
 
   } catch (error) {
     console.error('Error fetching bank statements:', error);
@@ -695,10 +826,17 @@ export async function getBankStatement(statementId: string): Promise<BankStateme
     // Detect bank for date parsing
     const bankName = detectBank('', accountInfo);
 
-    const transactionsRaw: RawTransaction[] = Array.isArray(data.transactions) ? data.transactions : [];
-    const transactions = transactionsRaw.map((rawTx, index) => {
+    // Load transactions from subcollection (new architecture)
+    const transactionsRef = collection(db, `bank_statements/${docSnap.id}/transactions`);
+    const transactionsQuery = query(transactionsRef, orderBy('date', 'asc'));
+    const transactionsSnapshot = await getDocs(transactionsQuery);
+
+    console.log(`[Load Single] Loaded ${transactionsSnapshot.size} transactions for statement ${docSnap.id}`);
+
+    const transactions = transactionsSnapshot.docs.map((txDoc) => {
+      const rawTx = txDoc.data() as RawTransaction;
       const parsedTx: BankTransaction = {
-        id: rawTx.id ?? `${docSnap.id}-tx-${index}`,
+        id: txDoc.id,
         date: normalizeTransactionDate(rawTx.date, bankName, statementPeriod),
         description: rawTx.description ?? '',
         debit: parseSafeNumber(rawTx.debit),
@@ -798,11 +936,29 @@ export function calculateSummaryStats(transactions: BankTransaction[]): {
 
 // Class wrapper for bank statement service functions
 /**
- * Delete a bank statement
+ * Delete a bank statement and all its transactions
  */
 export async function deleteBankStatement(statementId: string): Promise<void> {
   await ensureAuthenticated();
 
+  // Delete all transactions from subcollection first
+  const transactionsRef = collection(db, `bank_statements/${statementId}/transactions`);
+  const transactionsSnapshot = await getDocs(transactionsRef);
+
+  console.log(`[BankStatementService] Deleting ${transactionsSnapshot.size} transactions for statement ${statementId}`);
+
+  // Delete in batches of 500 (Firestore limit)
+  const BATCH_SIZE = 500;
+  const transactionDocs = transactionsSnapshot.docs;
+
+  for (let i = 0; i < transactionDocs.length; i += BATCH_SIZE) {
+    const batch = transactionDocs.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(txDoc => deleteDoc(txDoc.ref))
+    );
+  }
+
+  // Now delete the main statement document
   const statementRef = doc(db, 'bank_statements', statementId);
   await deleteDoc(statementRef);
 

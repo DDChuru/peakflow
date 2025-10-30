@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import { BankTransaction } from '@/types/bank-statement';
+import type { SupportedCurrency } from '@/types/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 
 interface TransactionTableProps {
   transactions: BankTransaction[];
+  currency: SupportedCurrency;
   showFilters?: boolean;
 }
 
@@ -24,7 +26,7 @@ type SortField = 'date' | 'amount' | 'balance';
 
 type BadgeVariant = React.ComponentProps<typeof Badge>['variant'];
 
-export default function TransactionTable({ transactions, showFilters = true }: TransactionTableProps) {
+export default function TransactionTable({ transactions, currency, showFilters = true }: TransactionTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -261,10 +263,10 @@ export default function TransactionTable({ transactions, showFilters = true }: T
                               isDebit && 'text-rose-600'
                             )}
                           >
-                            {amount ? formatCurrency(amount) : '—'}
+                            {amount ? formatCurrency(amount, currency) : '—'}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-right text-sm text-gray-700">
-                            {formatCurrency(transaction.balance)}
+                            {formatCurrency(transaction.balance, currency)}
                           </td>
                         </tr>
                       );
@@ -315,14 +317,17 @@ function SortableHeader({
   );
 }
 
-function formatCurrency(amount?: number | null) {
+function formatCurrency(amount?: number | null, currency: SupportedCurrency = 'USD') {
   if (amount === undefined || amount === null || Number.isNaN(amount)) {
-    return '$0.00';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+    }).format(0);
   }
 
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
   }).format(amount);
 }
 

@@ -715,12 +715,15 @@ import { EXTENDED_INDUSTRY_TEMPLATES } from './industry-templates-extended';
 /**
  * Industry template registry
  */
+// Import comprehensive generated templates
+import { GENERATED_INDUSTRY_TEMPLATES } from './industry-templates-generated';
+
+/**
+ * All industry templates (now using comprehensive generated templates)
+ * This replaces the old manually maintained templates with auto-generated ones from JSON
+ */
 export const INDUSTRY_TEMPLATES: Record<string, IndustryTemplate> = {
-  'restaurant': RESTAURANT_TEMPLATE,
-  'saas': SAAS_TEMPLATE,
-  'professional-services': PROFESSIONAL_SERVICES_TEMPLATE,
-  // Extended templates
-  ...EXTENDED_INDUSTRY_TEMPLATES
+  ...GENERATED_INDUSTRY_TEMPLATES
 };
 
 /**

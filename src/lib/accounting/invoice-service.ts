@@ -203,7 +203,7 @@ export class InvoiceService {
         const paymentTerms = invoiceOptions.paymentTerms || 30;
         const dueDate = this.calculateDueDate(invoiceOptions.invoiceDate, paymentTerms);
 
-        const newInvoice: Invoice = {
+        const newInvoice: any = {
           id: invoiceRef.id,
           companyId,
           invoiceNumber,
@@ -220,6 +220,7 @@ export class InvoiceService {
           sourceDocumentNumber: quote.quoteNumber,
           subtotal: quote.subtotal,
           taxAmount: quote.taxAmount,
+          taxRate: quote.taxRate || 0,
           totalAmount: quote.totalAmount,
           amountPaid: 0,
           amountDue: quote.totalAmount,
@@ -231,8 +232,6 @@ export class InvoiceService {
             glAccountId: item.glAccountId
           })),
           paymentHistory: [],
-          notes: invoiceOptions.notes || quote.notes,
-          termsAndConditions: quote.termsAndConditions,
           metadata: {
             convertedFromQuote: true,
             originalQuoteId: quoteId
@@ -242,9 +241,20 @@ export class InvoiceService {
           createdBy: userId
         };
 
+        // Only add optional fields if they have values
+        const notes = invoiceOptions.notes || quote.notes;
+        if (notes) newInvoice.notes = notes;
+        if (quote.termsAndConditions) newInvoice.termsAndConditions = quote.termsAndConditions;
+        if (quote.purchaseOrderNumber) newInvoice.purchaseOrderNumber = quote.purchaseOrderNumber;
+
+        // Filter out undefined values before saving to Firestore
+        const cleanInvoiceData = Object.fromEntries(
+          Object.entries(newInvoice).filter(([_, value]) => value !== undefined)
+        );
+
         // Save the invoice
         transaction.set(invoiceRef, {
-          ...newInvoice,
+          ...cleanInvoiceData,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           invoiceDate: Timestamp.fromDate(new Date(newInvoice.invoiceDate)),
@@ -336,7 +346,7 @@ export class InvoiceService {
         const invoiceNumber = await this.generateInvoiceNumber(companyId);
         const dueDate = this.calculateDueDate(invoiceOptions.invoiceDate, salesOrder.paymentTerms);
 
-        const newInvoice: Invoice = {
+        const newInvoice: any = {
           id: invoiceRef.id,
           companyId,
           invoiceNumber,
@@ -351,7 +361,6 @@ export class InvoiceService {
           source: 'sales_order',
           sourceDocumentId: salesOrderId,
           sourceDocumentNumber: salesOrder.salesOrderNumber,
-          purchaseOrderNumber: salesOrder.customerPONumber,
           subtotal,
           taxAmount,
           totalAmount,
@@ -361,8 +370,6 @@ export class InvoiceService {
           exchangeRate: salesOrder.exchangeRate,
           lineItems: invoiceLineItems,
           paymentHistory: [],
-          notes: invoiceOptions.notes || salesOrder.notes,
-          termsAndConditions: salesOrder.termsAndConditions,
           metadata: {
             convertedFromSalesOrder: true,
             originalSalesOrderId: salesOrderId
@@ -372,9 +379,20 @@ export class InvoiceService {
           createdBy: userId
         };
 
+        // Only add optional fields if they have values
+        if (salesOrder.customerPONumber) newInvoice.purchaseOrderNumber = salesOrder.customerPONumber;
+        const notes = invoiceOptions.notes || salesOrder.notes;
+        if (notes) newInvoice.notes = notes;
+        if (salesOrder.termsAndConditions) newInvoice.termsAndConditions = salesOrder.termsAndConditions;
+
+        // Filter out undefined values before saving to Firestore
+        const cleanInvoiceData = Object.fromEntries(
+          Object.entries(newInvoice).filter(([_, value]) => value !== undefined)
+        );
+
         // Save the invoice
         transaction.set(invoiceRef, {
-          ...newInvoice,
+          ...cleanInvoiceData,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           invoiceDate: Timestamp.fromDate(new Date(newInvoice.invoiceDate)),

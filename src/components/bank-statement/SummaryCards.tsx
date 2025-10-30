@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { BankStatementSummary } from '@/types/bank-statement';
+import type { SupportedCurrency } from '@/types/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FadeIn, StaggerList } from '@/components/ui/motion';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ interface SummaryCardsProps {
     netCashFlow: number;
     averageBalance: number;
   };
+  currency?: SupportedCurrency;
 }
 
 const metricTone = {
@@ -45,7 +47,7 @@ type Metric = {
   helper?: string;
 };
 
-export default function SummaryCards({ summary, additionalStats }: SummaryCardsProps) {
+export default function SummaryCards({ summary, additionalStats, currency = 'USD' }: SummaryCardsProps) {
   if (!summary) {
     return (
       <FadeIn>
@@ -152,7 +154,7 @@ export default function SummaryCards({ summary, additionalStats }: SummaryCardsP
             <StaggerList className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {metrics.map((metric, index) => (
                 <FadeIn key={metric.title} delay={index * 0.04}>
-                  <MetricCard metric={metric} />
+                  <MetricCard metric={metric} currency={currency} />
                 </FadeIn>
               ))}
             </StaggerList>
@@ -167,7 +169,7 @@ export default function SummaryCards({ summary, additionalStats }: SummaryCardsP
               <div>
                 <p className="text-sm uppercase tracking-wider text-white/70">Balance change</p>
                 <p className="text-3xl font-semibold">
-                  {formatCurrency(balanceDelta)}
+                  {formatCurrency(balanceDelta, currency)}
                 </p>
                 <p className="text-white/80 text-sm">
                   {deltaPercent !== null
@@ -177,7 +179,7 @@ export default function SummaryCards({ summary, additionalStats }: SummaryCardsP
               </div>
               <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-medium">
                 <span className="block text-xs uppercase tracking-wider text-white/70">Opening → Closing</span>
-                <span>{formatCurrency(summary.openingBalance)} → {formatCurrency(summary.closingBalance)}</span>
+                <span>{formatCurrency(summary.openingBalance, currency)} → {formatCurrency(summary.closingBalance, currency)}</span>
               </div>
             </div>
           </CardContent>
@@ -187,7 +189,7 @@ export default function SummaryCards({ summary, additionalStats }: SummaryCardsP
   );
 }
 
-function MetricCard({ metric }: { metric: Metric }) {
+function MetricCard({ metric, currency }: { metric: Metric; currency: SupportedCurrency }) {
   return (
     <div
       className={cn(
@@ -198,7 +200,7 @@ function MetricCard({ metric }: { metric: Metric }) {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{metric.title}</p>
-          <p className="text-xl font-semibold">{formatCurrency(metric.value)}</p>
+          <p className="text-xl font-semibold">{formatCurrency(metric.value, currency)}</p>
           {metric.helper && <p className="text-xs opacity-70">{metric.helper}</p>}
         </div>
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/70 text-gray-700">
@@ -216,10 +218,10 @@ function safeNumber(amount?: number | null) {
   return amount;
 }
 
-function formatCurrency(amount?: number | null) {
+function formatCurrency(amount?: number | null, currency: SupportedCurrency = 'USD') {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
     maximumFractionDigits: 2,
   }).format(safeNumber(amount));
 }
@@ -236,4 +238,3 @@ function formatDate(value?: string | null) {
     day: 'numeric',
   });
 }
-

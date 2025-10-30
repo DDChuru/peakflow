@@ -29,14 +29,12 @@ load_dotenv()
 
 # Configuration
 SAMPLE_RATE = 16000  # 16kHz (Whisper's preferred rate)
-SILENCE_THRESHOLD = 0.01  # Amplitude threshold for silence detection
-SILENCE_DURATION = 4.0  # Seconds of silence before auto-stop
 CHANNELS = 1  # Mono audio
 
 # Global state
 recording = []
 is_recording = True
-silence_frames = 0
+total_frames = 0
 QUIET_MODE = False
 COPY_TO_CLIPBOARD_ENABLED = True
 OUTPUT_FILE = None
@@ -68,7 +66,7 @@ def calculate_rms(audio_chunk):
 
 def audio_callback(indata, frames, time, status):
     """Callback function for audio stream"""
-    global recording, is_recording, silence_frames
+    global recording, is_recording, total_frames
 
     if status:
         log(f"⚠️  Status: {status}", quiet_sensitive=False, file=sys.stderr)
@@ -76,52 +74,36 @@ def audio_callback(indata, frames, time, status):
     # Add audio data to recording
     recording.append(indata.copy())
 
-    # Check for silence
+    # Track total recording time
+    total_frames += frames
+    total_duration = total_frames / SAMPLE_RATE
+
+    # Calculate RMS for display
     rms = calculate_rms(indata)
 
-    if rms < SILENCE_THRESHOLD:
-        silence_frames += frames
-        silence_duration = silence_frames / SAMPLE_RATE
-
-        # Show silence indicator
-        if silence_duration > 0.5:  # Start showing after 0.5s
-            log(f"\r🔇 Silence detected: {silence_duration:.1f}s / {SILENCE_DURATION}s", end='', flush=True)
-
-        # Stop if silence exceeds threshold
-        if silence_duration >= SILENCE_DURATION:
-            log(f"\n✅ Auto-stopped after {SILENCE_DURATION}s of silence", quiet_sensitive=False)
-            is_recording = False
-            raise sd.CallbackStop()
-    else:
-        # Reset silence counter if sound detected
-        if silence_frames > 0:
-            log('', quiet_sensitive=False)
-        silence_frames = 0
-
-        # Show recording indicator
-        log(f"\r🎤 Recording... (RMS: {rms:.4f})", end='', flush=True)
+    # Show recording indicator
+    log(f"\r🎤 Recording... {total_duration:.1f}s (RMS: {rms:.4f}, press Ctrl+C to stop)", end='', flush=True)
 
 
 def record_audio():
-    """Record audio with silence detection"""
-    global recording, is_recording, silence_frames
+    """Record audio until user stops with Ctrl+C"""
+    global recording, is_recording, total_frames
 
     # Reset state
     recording = []
     is_recording = True
-    silence_frames = 0
+    total_frames = 0
 
     log("=" * 60)
     log("🎙️  VOICE-TO-CLIPBOARD TRANSCRIPTION")
     log("=" * 60)
     log(f"📝 Configuration:")
     log(f"   - Sample Rate: {SAMPLE_RATE} Hz")
-    log(f"   - Auto-stop after: {SILENCE_DURATION}s of silence")
-    log(f"   - Stop manually: Press Ctrl+C")
+    log(f"   - Stop recording: Press Ctrl+C")
     log("=" * 60)
     log("\n🎤 Starting recording...\n")
     if QUIET_MODE:
-        log("🎤 Recording... speak naturally. Silence for a few seconds to finish.", quiet_sensitive=False)
+        log("🎤 Recording... speak naturally. Press Ctrl+C when finished.", quiet_sensitive=False)
 
     try:
         with sd.InputStream(

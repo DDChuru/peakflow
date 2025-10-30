@@ -20,6 +20,7 @@ import {
 
 import { useAuth } from '@/contexts/AuthContext';
 import { BankStatement } from '@/types/bank-statement';
+import type { SupportedCurrency } from '@/types/auth';
 import {
   getCompanyBankStatements,
   calculateSummaryStats,
@@ -67,6 +68,7 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
 
   const [companyName, setCompanyName] = useState('');
   const [statements, setStatements] = useState<BankStatement[]>([]);
+  const [companyCurrency, setCompanyCurrency] = useState<SupportedCurrency>('USD');
   const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,9 +118,17 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
           return;
         }
 
-        const name = companyDoc.data()?.name;
+        const data = companyDoc.data();
+        const name = data?.name;
         if (typeof name === 'string') {
           setCompanyName(name);
+        }
+
+        const currencyCandidate = data?.defaultCurrency;
+        if (isSupportedCurrency(currencyCandidate)) {
+          setCompanyCurrency(currencyCandidate);
+        } else {
+          setCompanyCurrency('USD');
         }
 
         const bankStatements = await getCompanyBankStatements(companyId, 50);
@@ -550,21 +560,25 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
                           icon={<ArrowUpCircle className="h-5 w-5 text-emerald-500" />}
                           label="Total deposits"
                           value={selectedStatement.summary?.totalDeposits}
+                          currency={companyCurrency}
                         />
                         <InsightPill
                           icon={<ArrowDownCircle className="h-5 w-5 text-rose-500" />}
                           label="Total withdrawals"
                           value={selectedStatement.summary?.totalWithdrawals}
+                          currency={companyCurrency}
                         />
                         <InsightPill
                           icon={<PiggyBank className="h-5 w-5 text-indigo-500" />}
                           label="Closing balance"
                           value={selectedStatement.summary?.closingBalance}
+                          currency={companyCurrency}
                         />
                         <InsightPill
                           icon={<Building2 className="h-5 w-5 text-amber-500" />}
                           label="Opening balance"
                           value={selectedStatement.summary?.openingBalance}
+                          currency={companyCurrency}
                         />
                       </div>
 
@@ -596,7 +610,7 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
                             Cashflow snapshot
                           </p>
                           <p className="text-2xl font-semibold text-gray-900">
-                            {formatCurrency(analysis.totals.netCashFlow)}
+                            {formatCurrency(analysis.totals.netCashFlow, companyCurrency)}
                           </p>
                           <p className="text-sm text-gray-500">
                             {analysis.totals.netCashFlow >= 0
@@ -617,9 +631,16 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
                   )}
                 </div>
 
-                <SummaryCards summary={selectedStatement.summary} additionalStats={analysis?.totals} />
+                <SummaryCards
+                  summary={selectedStatement.summary}
+                  additionalStats={analysis?.totals}
+                  currency={companyCurrency}
+                />
 
-                <TransactionTable transactions={selectedStatement.transactions} />
+                <TransactionTable
+                  transactions={selectedStatement.transactions}
+                  currency={companyCurrency}
+                />
               </FadeIn>
             )}
           </>
@@ -629,14 +650,17 @@ export default function BankStatementsView({ companyIdOverride }: BankStatements
   );
 }
 
-function formatCurrency(amount?: number | null) {
+function formatCurrency(amount?: number | null, currency: SupportedCurrency = 'USD') {
   if (amount === undefined || amount === null || Number.isNaN(amount)) {
-    return '$0.00';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+    }).format(0);
   }
 
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
   }).format(amount);
 }
 
@@ -644,9 +668,10 @@ interface InsightPillProps {
   icon: React.ReactNode;
   label: string;
   value?: number | null;
+  currency: SupportedCurrency;
 }
 
-function InsightPill({ icon, label, value }: InsightPillProps) {
+function InsightPill({ icon, label, value, currency }: InsightPillProps) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -654,9 +679,12 @@ function InsightPill({ icon, label, value }: InsightPillProps) {
       </span>
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
-        <p className="text-sm font-semibold text-gray-900">{formatCurrency(value)}</p>
+        <p className="text-sm font-semibold text-gray-900">{formatCurrency(value, currency)}</p>
       </div>
     </div>
   );
 }
 
+function isSupportedCurrency(value: unknown): value is SupportedCurrency {
+  return typeof value === 'string' && ['USD', 'ZAR', 'EUR', 'ZWD', 'ZIG'].includes(value);
+}

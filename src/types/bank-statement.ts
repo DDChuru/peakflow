@@ -22,6 +22,8 @@ export interface BankStatementSummary {
     from: string;
     to: string;
   };
+  firstTransactionDate?: string;
+  lastTransactionDate?: string;
 }
 
 export interface BankAccountInfo {
@@ -57,6 +59,11 @@ export interface ProcessedBankStatement {
     accountInfo: BankAccountInfo;
     summary: BankStatementSummary;
     transactions: BankTransaction[];
+    transactionCount?: number;
+    firstTransactionDate?: string;
+    lastTransactionDate?: string;
+    _continuationAttempts?: number;
+    _continuationResolved?: boolean;
   };
   extractedAt: string;
   documentId?: string;

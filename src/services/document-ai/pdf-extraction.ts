@@ -74,6 +74,7 @@ CRITICAL DATE FORMAT REQUIREMENTS:
 - ALWAYS use 4-digit years (NEVER use 2-digit years)
 - If the PDF shows "19/12/24", interpret as 2024-12-19 (20XX century)
 - If the PDF shows "19/12/01", interpret as 2024-12-01 or 2025-12-01 (NOT 2001-12-19)
+- If the PDF shows "03 Dec 24", interpret as 2024-12-03 (Day Month YY format)
 - Transaction dates should be recent (within last 5 years from current date)
 - When in doubt, assume the current century (2000s)
 
@@ -87,12 +88,27 @@ CRITICAL: FNB AND BANKS WITH PARTIAL DATES (e.g., "13 Dec" without year):
    - Transactions in December → use 2024
    - Transactions in January → use 2025
 
+CRITICAL: STANDARD BANK AMOUNT EXTRACTION (Two-Column Format):
+Standard Bank statements have TWO separate amount columns:
+- "Payments" column (often shown in RED with negative sign, e.g., "-236.90") = DEBIT (money OUT)
+- "Deposits" column (often shown in GREEN, e.g., "750.00") = CREDIT (money IN)
+
+For Standard Bank transactions:
+1. If amount is in "Payments" column → set "debit" field (use absolute value, remove negative sign)
+2. If amount is in "Deposits" column → set "credit" field (positive value)
+3. NEVER put the same amount in both debit AND credit fields
+4. Balance column is separate - extract as "balance" field
+5. Examples:
+   - Payments: -236.90, Deposits: blank → {"debit": 236.90, "credit": null}
+   - Payments: blank, Deposits: 750.00 → {"debit": null, "credit": 750.00}
+   - Payments: -1790.04, Deposits: blank → {"debit": 1790.04, "credit": null}
+
 EXTRACTION REQUIREMENTS:
 
 1. Account Information:
    - Account number, name, type
    - Statement period (ISO dates YYYY-MM-DD) - EXTRACT THIS FIRST!
-   - Bank name and branch
+   - Bank name and branch (detect "Standard Bank", "FNB", "ABSA", etc.)
 
 2. Summary:
    - Opening balance, closing balance
@@ -101,12 +117,20 @@ EXTRACTION REQUIREMENTS:
 
 3. Transactions:
    - Date (MUST be YYYY-MM-DD format with 4-digit year)
-   - Use statement period year to complete dates shown as "DD MMM"
-   - Description, debit/credit amounts, balance
-   - Transaction types and references
-   - Check numbers if applicable
+   - Use statement period year to complete dates shown as "DD MMM" or "DD Month YY"
+   - Description (full transaction description)
+   - For TWO-COLUMN format (Standard Bank): Extract from correct column
+     * debit: Value from "Payments" column (absolute value, no negative sign)
+     * credit: Value from "Deposits" column
+   - For SINGLE-COLUMN format (FNB): Extract debit OR credit based on Cr/Dr suffix
+     * credit: Amount with "Cr" suffix
+     * debit: Amount with "Dr" suffix or no suffix
+   - balance: Running balance after transaction
+   - reference: Any reference numbers
+   - Transaction types and check numbers if applicable
 
-Output as structured JSON with account info, summary, and all transactions.`
+Output as structured JSON with account info, summary, and all transactions.
+Each transaction must have: date, description, debit (or null), credit (or null), balance.`
   },
 
   contract: {
@@ -182,8 +206,13 @@ export interface ExtractionOptions {
 
 function parseGeminiJson(responseText: string): Record<string, unknown> {
   if (!responseText || responseText.trim() === '') {
+    console.error('[Gemini Parser] Empty response received');
     throw new Error('Gemini returned an empty response');
   }
+
+  console.log('[Gemini Parser] Raw response length:', responseText.length);
+  console.log('[Gemini Parser] Raw response preview (first 500 chars):', responseText.substring(0, 500));
+  console.log('[Gemini Parser] Raw response end (last 200 chars):', responseText.substring(Math.max(0, responseText.length - 200)));
 
   const cleaned = responseText.replace(/```json\s*|```/gi, '').trim();
 
@@ -192,6 +221,8 @@ function parseGeminiJson(responseText: string): Record<string, unknown> {
   let startIndex = 0;
 
   if (firstBrace === -1 && firstBracket === -1) {
+    console.error('[Gemini Parser] No JSON detected - no opening brace or bracket found');
+    console.log('[Gemini Parser] Full cleaned response:', cleaned);
     startIndex = 0;
   } else if (firstBrace === -1) {
     startIndex = firstBracket;
@@ -202,34 +233,46 @@ function parseGeminiJson(responseText: string): Record<string, unknown> {
   }
 
   const candidate = cleaned.slice(Math.max(startIndex, 0));
+  console.log('[Gemini Parser] Candidate JSON length:', candidate.length);
+  console.log('[Gemini Parser] Candidate JSON preview (first 300 chars):', candidate.substring(0, 300));
 
   const tryParse = (value: string) => {
     try {
       return JSON.parse(value) as Record<string, unknown>;
-    } catch {
+    } catch (error) {
+      console.error('[Gemini Parser] Parse attempt failed:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   };
 
   let parsed = tryParse(candidate);
   if (parsed) {
+    console.log('[Gemini Parser] ✓ Successfully parsed on first attempt');
     return parsed;
   }
+
+  console.log('[Gemini Parser] First parse failed, trying to find valid JSON bounds...');
 
   const lastBrace = candidate.lastIndexOf('}');
   const lastBracket = candidate.lastIndexOf(']');
   const endIndex = Math.max(lastBrace, lastBracket);
 
   if (endIndex !== -1) {
-    parsed = tryParse(candidate.slice(0, endIndex + 1));
+    const bounded = candidate.slice(0, endIndex + 1);
+    console.log('[Gemini Parser] Trying bounded JSON (length: %d)', bounded.length);
+    parsed = tryParse(bounded);
     if (parsed) {
+      console.log('[Gemini Parser] ✓ Successfully parsed bounded JSON');
       return parsed;
     }
   }
 
+  console.log('[Gemini Parser] Attempting to balance braces...');
   let balanced = candidate;
   const braceDelta = (balanced.match(/{/g) || []).length - (balanced.match(/}/g) || []).length;
   const bracketDelta = (balanced.match(/\[/g) || []).length - (balanced.match(/\]/g) || []).length;
+
+  console.log('[Gemini Parser] Brace delta:', braceDelta, 'Bracket delta:', bracketDelta);
 
   if (braceDelta > 0) {
     balanced += '}'.repeat(braceDelta);
@@ -241,9 +284,12 @@ function parseGeminiJson(responseText: string): Record<string, unknown> {
 
   parsed = tryParse(balanced);
   if (parsed) {
+    console.log('[Gemini Parser] ✓ Successfully parsed after balancing');
     return parsed;
   }
 
+  console.error('[Gemini Parser] ✗ All parsing attempts failed');
+  console.error('[Gemini Parser] Final candidate (first 1000 chars):', candidate.substring(0, 1000));
   throw new Error('Failed to parse Gemini response as JSON');
 }
 
@@ -256,12 +302,12 @@ export async function extractFromPDF(
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash-lite', // Upgraded: 65K output tokens
       generationConfig: {
         temperature: 0.1,
         topK: 32,
         topP: 0.8,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 32768, // Leverage higher limit for large statements
         responseMimeType: 'application/json',
       }
     });

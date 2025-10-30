@@ -9,9 +9,11 @@
     "lint": "eslint",
     "seed:bank-accounts": "node scripts/seed-bank-accounts.js",
     "seed:charts": "node scripts/seed-chart-of-accounts.js",
+    "seed:charts:industry": "node scripts/seed-industry-coa.js",
     "seed:ledger": "node scripts/seed-ledger-entries.js",
     "seed:industry-templates": "tsx scripts/seed-industry-templates-client.ts",
     "seed:industry-templates-admin": "tsx scripts/seed-industry-templates.ts",
+    "generate:industry-templates": "node scripts/generate-industry-templates.js",
     "reset:posted-invoices": "tsx scripts/reset-posted-invoices.ts"
   },
   "dependencies": {

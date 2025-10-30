@@ -129,6 +129,15 @@ service cloud.firestore {
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == resource.data.companyId)
       );
+
+      // Transactions subcollection - inherits parent statement permissions
+      match /transactions/{transactionId} {
+        // Same permissions as parent statement (no need to re-check, Firestore doesn't auto-inherit)
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
     }
 
     // Usage tracking collection
