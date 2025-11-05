@@ -2,23 +2,17 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase/config';
 import { auth, db } from '@/lib/firebase/config';
 import { collection, addDoc, query, where, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
-import { extractFromPDF, getDocumentTypes, type DocumentType, type ExtractionResult } from '@/services/document-ai/pdf-extraction';
 
-// Get API key from environment or Firestore
-async function getGeminiApiKey(): Promise<string> {
-  // First try environment variable
-  if (process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-    return process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  }
+// Type definitions (imported from service but types don't include runtime code)
+export type DocumentType = 'audit' | 'invoice' | 'bankStatement' | 'contract' | 'generic';
 
-  // Fall back to Firestore config
-  const configDoc = await getDoc(doc(db, 'config', 'apis'));
-
-  if (configDoc.exists() && configDoc.data().geminiApiKey) {
-    return configDoc.data().geminiApiKey;
-  }
-
-  throw new Error('Gemini API key not configured');
+export interface ExtractionResult {
+  success: boolean;
+  documentType: DocumentType;
+  data?: Record<string, unknown>;
+  error?: string;
+  extractedAt: string;
+  documentId?: string;
 }
 
 // Convert file to base64
@@ -36,7 +30,7 @@ export async function fileToBase64(file: File): Promise<string> {
   });
 }
 
-// Main PDF extraction function for client-side use
+// Main PDF extraction function - uses server-side API to protect API key
 export async function extractPDFContent(
   pdfFile: File,
   documentType: DocumentType = 'generic',
@@ -60,11 +54,24 @@ export async function extractPDFContent(
     // Convert PDF to base64
     const pdfBase64 = await fileToBase64(pdfFile);
 
-    // Get API key
-    const apiKey = await getGeminiApiKey();
+    // Call server-side API endpoint (protects API key from client exposure)
+    const response = await fetch('/api/extract-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pdfBase64,
+        documentType
+      })
+    });
 
-    // Extract content from PDF
-    const extractionResult = await extractFromPDF(pdfBase64, documentType, apiKey);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'PDF extraction failed');
+    }
+
+    const extractionResult: ExtractionResult = await response.json();
 
     // Optionally save to Firestore
     if (saveToFirestore && extractionResult.success) {
@@ -187,5 +194,13 @@ export async function getExtraction(extractionId: string) {
   }
 }
 
-// Export available document types
-export { getDocumentTypes, type DocumentType, type ExtractionResult };
+// Get available document types
+export function getDocumentTypes() {
+  return [
+    { key: 'audit', name: 'Audit Report', description: 'Extract audit report data with scores and tables' },
+    { key: 'invoice', name: 'Invoice', description: 'Extract invoice line items and totals' },
+    { key: 'bankStatement', name: 'Bank Statement', description: 'Extract bank statement transactions' },
+    { key: 'contract', name: 'Contract', description: 'Extract contract terms and parties' },
+    { key: 'generic', name: 'Generic Document', description: 'Extract all information from document' }
+  ];
+}
