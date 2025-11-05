@@ -46,3 +46,15 @@ credentials.md
 # Service account credentials - never commit
 scripts/service-account.json
 service-account.json
+
+# Documentation files with sensitive info (API keys, credentials)
+*API-KEY*.md
+*GEMINI*.md
+*SOLUTION*.md
+*DEPLOYMENT-INSTRUCTIONS*.md
+*NEXT-STEPS*.md
+scripts/check-gemini-key*.js
+scripts/check-gemini-key*.ts
+scripts/update-gemini-key*.js
+scripts/test-gemini-key.sh
+app/admin/update-api-key/
