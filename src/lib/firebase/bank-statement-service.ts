@@ -359,38 +359,24 @@ export async function processBankStatement(
     // Convert PDF to base64
     const pdfBase64 = await fileToBase64(pdfFile);
 
-    // Call Next.js API route (server-side, protects API key)
-    console.log('Calling PDF extraction API with data:', {
+    // Call Firebase Function (has 9-minute timeout for large statements)
+    console.log('Calling Firebase Function for PDF extraction:', {
       documentType: 'bankStatement',
       pdfSize: pdfBase64.length,
       userUid: user.uid
     });
 
-    const apiResponse = await fetch('/api/extract-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        pdfBase64,
-        documentType: 'bankStatement'
-      })
+    const extractPDF = httpsCallable(functions, 'extractPDFContent', {
+      timeout: 540000 // 9 minutes (matches Firebase Function timeout)
     });
 
-    if (!apiResponse.ok) {
-      const errorData = await apiResponse.json();
-      throw new Error(errorData.error || 'PDF extraction failed');
-    }
+    const functionResult = await extractPDF({
+      pdfBase64,
+      documentType: 'bankStatement',
+      saveToFirestore: true
+    });
 
-    const apiResult = await apiResponse.json();
-    console.log('API extraction result:', apiResult);
-
-    // Wrap in same format as Firebase Function result
-    const result = {
-      success: apiResult.success,
-      data: apiResult.data,
-      error: apiResult.error
-    } as ProcessedBankStatement;
+    const result = functionResult.data as ProcessedBankStatement;
 
     if (!result.success) {
       throw new Error(result.error || 'Failed to process bank statement');

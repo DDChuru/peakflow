@@ -58,3 +58,9 @@ scripts/check-gemini-key*.ts
 scripts/update-gemini-key*.js
 scripts/test-gemini-key.sh
 app/admin/update-api-key/
+
+# Extra protection - any file with "key" or "secret" in name
+*secret*.md
+*key*.md
+*credential*.md
+*api-key*.txt
