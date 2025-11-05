@@ -79,7 +79,7 @@ git push origin main
 2. **REMOVE**: `NEXT_PUBLIC_GEMINI_API_KEY` (if still there)
 3. **ADD**:
    - Key: `GEMINI_API_KEY`
-   - Value: `AIzaSyBg-utsnwQpzfH9Y0xOyjYHIojzXohO3Tk`
+   - Value: `YOUR_GEMINI_API_KEY_HERE`
 4. Click **Save**
 5. Trigger new deploy
 
@@ -88,7 +88,7 @@ git push origin main
 2. **REMOVE**: `NEXT_PUBLIC_GEMINI_API_KEY`
 3. **ADD**:
    - Name: `GEMINI_API_KEY`
-   - Value: `AIzaSyBg-utsnwQpzfH9Y0xOyjYHIojzXohO3Tk`
+   - Value: `YOUR_GEMINI_API_KEY_HERE`
    - Environments: Production, Preview, Development
 4. Redeploy
 

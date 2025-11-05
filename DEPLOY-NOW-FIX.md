@@ -38,7 +38,7 @@ git push origin main
 
 3. **Add new**:
    - **Key**: `GEMINI_API_KEY`
-   - **Value**: `AIzaSyBg-utsnwQpzfH9Y0xOyjYHIojzXohO3Tk`
+   - **Value**: `YOUR_GEMINI_API_KEY_HERE`
    - **Scopes**: All scopes
 
 4. **Save**
