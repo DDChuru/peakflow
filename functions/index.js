@@ -906,15 +906,19 @@ Return JSON with transactions array only:
 
 // Get API key from environment or Firestore
 async function getGeminiApiKey() {
-  // First try environment variable (set via Firebase Functions config)
-  if (process.env.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
+  const runtimeKey = process.env.GEMINI_API_KEY;
+
+  if (runtimeKey) {
+    logger.debug('Gemini API key loaded from environment variable');
+    return runtimeKey;
   }
 
   // Fall back to Firestore config
+  logger.warn('GEMINI_API_KEY env var missing; falling back to Firestore config');
   const configDoc = await db.collection('config').doc('apis').get();
 
   if (configDoc.exists && configDoc.data().geminiApiKey) {
+    logger.warn('Using Gemini API key from Firestore fallback. Update env var to avoid leaked keys.');
     return configDoc.data().geminiApiKey;
   }
 

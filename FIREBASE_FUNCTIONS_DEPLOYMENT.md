@@ -52,7 +52,7 @@ npm install
 
 The Gemini API key is already configured in `.env`:
 ```
-GEMINI_API_KEY=AIzaSyBTQPGX78kfkV71LSOZeUy1vwZihUvrOuo
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
 ```
 
 ### 3. Deploy Functions

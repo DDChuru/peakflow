@@ -15,11 +15,11 @@
   NEXT_PUBLIC_FIREBASE_APP_ID = "1:244374297943:web:bdb6cdfc855059a88f7212"
   NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID = "G-0SHKPBDPJR"
   NEXT_PUBLIC_USE_FIREBASE_EMULATOR = "false"
-  NEXT_PUBLIC_GEMINI_API_KEY = "AIzaSyBTQPGX78kfkV71LSOZeUy1vwZihUvrOuo"
 
 # IMPORTANT: Add these SECRET variables in Netlify Dashboard
 # (Site settings → Environment variables)
 #
+# NEXT_PUBLIC_GEMINI_API_KEY = "your-gemini-api-key" (for PDF processing)
 # ANTHROPIC_API_KEY = "sk-ant-api03-..." (for AI workspace chat)
 # ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929"
 #
