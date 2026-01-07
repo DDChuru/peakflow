@@ -6,6 +6,7 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
+  NODE_VERSION = "18"
   # Public Firebase Configuration (safe to expose)
   NEXT_PUBLIC_FIREBASE_API_KEY = "AIzaSyCMuPp8kXVgBkHKxxEt2XIX6mwr_tRR_jc"
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = "peakflow-3a2ed.firebaseapp.com"
