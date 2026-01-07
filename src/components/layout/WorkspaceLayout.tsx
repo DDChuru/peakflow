@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { CompaniesService } from '@/lib/firebase/companies-service';
 import {
   LayoutDashboard,
   Building2,
@@ -53,9 +54,39 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
   const { user, logout, hasRole } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [workspaceCompanyName, setWorkspaceCompanyName] = useState<string | null>(null);
 
   const isAdmin = hasRole('admin') || hasRole('developer');
-  const hasCompany = user?.companyId || companyId;
+  // Use the URL's companyId as the primary source, fallback to user's companyId
+  const activeCompanyId = companyId || user?.companyId;
+  const hasCompany = !!activeCompanyId;
+
+  // Fetch the workspace company name when companyId changes
+  useEffect(() => {
+    const fetchWorkspaceCompany = async () => {
+      if (!activeCompanyId) {
+        setWorkspaceCompanyName(null);
+        return;
+      }
+
+      // If companyName was provided as prop, use it
+      if (companyName) {
+        setWorkspaceCompanyName(companyName);
+        return;
+      }
+
+      try {
+        const companiesService = new CompaniesService();
+        const company = await companiesService.getCompanyById(activeCompanyId);
+        setWorkspaceCompanyName(company?.name || null);
+      } catch (error) {
+        console.error('Error fetching workspace company:', error);
+        setWorkspaceCompanyName(null);
+      }
+    };
+
+    fetchWorkspaceCompany();
+  }, [activeCompanyId, companyName]);
 
   // Define workspace navigation items
   const workspaceNav: NavItem[] = [
@@ -71,28 +102,28 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
       subItems: hasCompany ? [
         {
           name: 'Bank Statements',
-          href: `/workspace/${companyId || user?.companyId}/bank-statements`,
+          href: `/workspace/${activeCompanyId}/bank-statements`,
           icon: FileText,
         },
         {
           name: 'Reconciliation',
-          href: `/workspace/${companyId || user?.companyId}/reconciliation`,
+          href: `/workspace/${activeCompanyId}/reconciliation`,
           icon: UserCheck,
         },
         {
           name: 'Cash Flow',
-          href: `/workspace/${companyId || user?.companyId}/cash-flow`,
+          href: `/workspace/${activeCompanyId}/cash-flow`,
           icon: TrendingUp,
         },
         {
           name: 'Bank Import',
-          href: `/workspace/${companyId || user?.companyId}/bank-import`,
+          href: `/workspace/${activeCompanyId}/bank-import`,
           icon: FileUp,
           badge: 'NEW'
         },
         {
           name: 'Archived Statements',
-          href: `/workspace/${companyId || user?.companyId}/archived-statements`,
+          href: `/workspace/${activeCompanyId}/archived-statements`,
           icon: Archive,
         },
       ] : [],
@@ -104,28 +135,28 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
       subItems: hasCompany ? [
         {
           name: 'Invoices',
-          href: `/workspace/${companyId || user?.companyId}/invoices`,
+          href: `/workspace/${activeCompanyId}/invoices`,
           icon: Receipt,
         },
         {
           name: 'Quotes',
-          href: `/workspace/${companyId || user?.companyId}/quotes`,
+          href: `/workspace/${activeCompanyId}/quotes`,
           icon: FileText,
         },
         {
           name: 'Contracts',
-          href: `/workspace/${companyId || user?.companyId}/contracts`,
+          href: `/workspace/${activeCompanyId}/contracts`,
           icon: FileCheck,
         },
         {
           name: 'Statements',
-          href: `/workspace/${companyId || user?.companyId}/statements`,
+          href: `/workspace/${activeCompanyId}/statements`,
           icon: FileText,
           badge: 'NEW'
         },
         {
           name: 'Credit Notes',
-          href: `/workspace/${companyId || user?.companyId}/credit-notes`,
+          href: `/workspace/${activeCompanyId}/credit-notes`,
           icon: CreditCard,
           badge: 'NEW'
         },
@@ -138,12 +169,12 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
       subItems: hasCompany ? [
         {
           name: 'Customers',
-          href: `/workspace/${companyId || user?.companyId}/customers`,
+          href: `/workspace/${activeCompanyId}/customers`,
           icon: Users,
         },
         {
           name: 'Suppliers',
-          href: `/workspace/${companyId || user?.companyId}/suppliers`,
+          href: `/workspace/${activeCompanyId}/suppliers`,
           icon: Building2,
         },
       ] : [],
@@ -155,29 +186,29 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
       subItems: hasCompany ? [
         {
           name: 'Chart of Accounts',
-          href: `/workspace/${companyId || user?.companyId}/chart-of-accounts`,
+          href: `/workspace/${activeCompanyId}/chart-of-accounts`,
           icon: BarChart3,
         },
         {
           name: 'Journal Entries',
-          href: `/workspace/${companyId || user?.companyId}/journal`,
+          href: `/workspace/${activeCompanyId}/journal`,
           icon: FileText,
         },
         {
           name: 'Settings',
-          href: `/workspace/${companyId || user?.companyId}/settings`,
+          href: `/workspace/${activeCompanyId}/settings`,
           icon: Settings,
         },
       ] : [],
     },
     {
       name: 'Reports',
-      href: hasCompany ? `/workspace/${companyId || user?.companyId}/reports` : '#',
+      href: hasCompany ? `/workspace/${activeCompanyId}/reports` : '#',
       icon: BarChart3,
     },
     {
       name: 'AI Assistant',
-      href: hasCompany ? `/workspace/${companyId || user?.companyId}/ai-chat` : '#',
+      href: hasCompany ? `/workspace/${activeCompanyId}/ai-chat` : '#',
       icon: MessageCircle,
       badge: 'NEW'
     },
@@ -280,8 +311,13 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
           <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
             <p className="text-xs text-gray-500">Workspace</p>
             <p className="text-sm font-medium text-gray-900 truncate">
-              {companyName || 'My Company'}
+              {workspaceCompanyName || 'Loading...'}
             </p>
+            {activeCompanyId && (
+              <p className="text-xs text-gray-400 truncate mt-0.5" title={activeCompanyId}>
+                {activeCompanyId.substring(0, 8)}...
+              </p>
+            )}
           </div>
         )}
 

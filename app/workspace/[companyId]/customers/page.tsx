@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { NumberInput } from '@/components/ui/number-input';
 import {
   Dialog,
   DialogContent,
@@ -53,7 +55,9 @@ import {
   MapPin,
   CreditCard,
   Calendar,
-  FileText
+  FileText,
+  DollarSign,
+  User
 } from 'lucide-react';
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
 import { useAuth } from '@/contexts/AuthContext';
@@ -760,170 +764,229 @@ export default function CustomersPage() {
 
           {/* Create Customer Dialog */}
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Customer</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  Add New Customer
+                </DialogTitle>
                 <DialogDescription>
-                  Enter customer details to create a new account
+                  Create a new customer account to track receivables and manage relationships
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit(onCreateSubmit)}>
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  <div className="col-span-2">
-                    <Label htmlFor="name">Customer Name *</Label>
-                    <Input
-                      id="name"
-                      {...register('name')}
-                      placeholder="Enter customer name"
-                      error={errors.name?.message}
-                    />
+                <div className="space-y-6 py-4">
+                  {/* Basic Information Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <Users className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Basic Information</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <Label htmlFor="name" className="flex items-center gap-1">
+                          Customer Name
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="name"
+                          {...register('name')}
+                          placeholder="Enter customer or company name"
+                          error={errors.name?.message}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email Address</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          {...register('email')}
+                          placeholder="customer@example.com"
+                          icon={<Mail className="h-4 w-4" />}
+                          error={errors.email?.message}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          {...register('phone')}
+                          placeholder="+27 12 345 6789"
+                          icon={<Phone className="h-4 w-4" />}
+                          error={errors.phone?.message}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label htmlFor="address" className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                          Address
+                        </Label>
+                        <Textarea
+                          id="address"
+                          {...register('address')}
+                          placeholder="Street address, city, postal code"
+                          className="resize-none mt-1.5"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="taxId">Tax ID / VAT Number</Label>
+                        <Input
+                          id="taxId"
+                          {...register('taxId')}
+                          placeholder="e.g., 4123456789"
+                          icon={<FileText className="h-4 w-4" />}
+                          className="mt-1.5"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      {...register('email')}
-                      placeholder="customer@example.com"
-                      icon={<Mail className="h-4 w-4" />}
-                      error={errors.email?.message}
-                    />
+
+                  {/* Financial Settings Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <DollarSign className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Financial Settings</h3>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="creditLimit">Credit Limit</Label>
+                        <Controller
+                          name="creditLimit"
+                          control={control}
+                          render={({ field }) => (
+                            <CurrencyInput
+                              id="creditLimit"
+                              value={field.value}
+                              onChange={field.onChange}
+                              placeholder="0.00"
+                              className="mt-1.5"
+                            />
+                          )}
+                        />
+                        {errors.creditLimit && (
+                          <p className="text-sm text-red-600 mt-1">{errors.creditLimit.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="paymentTerms">Payment Terms</Label>
+                        <Controller
+                          name="paymentTerms"
+                          control={control}
+                          render={({ field }) => (
+                            <NumberInput
+                              id="paymentTerms"
+                              value={field.value}
+                              onChange={field.onChange}
+                              min={0}
+                              max={365}
+                              placeholder="30"
+                              suffix="days"
+                              className="mt-1.5"
+                            />
+                          )}
+                        />
+                        {errors.paymentTerms && (
+                          <p className="text-sm text-red-600 mt-1">{errors.paymentTerms.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="status">Status</Label>
+                        <Controller
+                          name="status"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onChange={field.onChange}
+                              className="mt-1.5"
+                            >
+                              <option value="active">🟢 Active</option>
+                              <option value="inactive">⚪ Inactive</option>
+                              <option value="blocked">🔴 Blocked</option>
+                            </Select>
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      {...register('phone')}
-                      placeholder="+27 12 345 6789"
-                      icon={<Phone className="h-4 w-4" />}
-                      error={errors.phone?.message}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="address">Address</Label>
+
+                  {/* Notes Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Additional Notes</h3>
+                      <span className="text-xs text-gray-400">(Optional)</span>
+                    </div>
                     <Textarea
-                      id="address"
-                      {...register('address')}
-                      placeholder="Enter customer address"
+                      id="notes"
+                      {...register('notes')}
+                      placeholder="Any additional notes about this customer..."
                       className="resize-none"
                       rows={2}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="taxId">Tax ID / VAT Number</Label>
-                    <Input
-                      id="taxId"
-                      {...register('taxId')}
-                      placeholder="Enter tax ID"
-                      icon={<FileText className="h-4 w-4" />}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="creditLimit">Credit Limit (R)</Label>
-                    <Controller
-                      name="creditLimit"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="0.00"
-                          icon={<CreditCard className="h-4 w-4" />}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          error={errors.creditLimit?.message}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="paymentTerms">Payment Terms (days)</Label>
-                    <Controller
-                      name="paymentTerms"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="30"
-                          icon={<Calendar className="h-4 w-4" />}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 30)}
-                          error={errors.paymentTerms?.message}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Controller
-                      name="status"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onChange={field.onChange}
-                        >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                          <option value="blocked">Blocked</option>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      {...register('notes')}
-                      placeholder="Additional notes about this customer"
-                      className="resize-none"
-                      rows={3}
-                    />
-                  </div>
 
                   {/* Primary Contact Section */}
-                  <div className="col-span-2 pt-4 border-t">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">Primary Contact (Optional)</h3>
+                  <div className="space-y-4 rounded-lg bg-gray-50 p-4 border border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-500" />
+                        <h3 className="text-sm font-semibold text-gray-900">Primary Contact</h3>
+                        <span className="text-xs text-gray-400">(Optional)</span>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="primaryContactName">Contact Name</Label>
+                        <Label htmlFor="primaryContactName" className="text-gray-600">Contact Name</Label>
                         <Input
                           id="primaryContactName"
                           {...register('primaryContactName')}
                           placeholder="John Doe"
+                          className="mt-1.5 bg-white"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="primaryContactPosition">Position</Label>
+                        <Label htmlFor="primaryContactPosition" className="text-gray-600">Position / Title</Label>
                         <Input
                           id="primaryContactPosition"
                           {...register('primaryContactPosition')}
-                          placeholder="e.g., CEO, Manager"
+                          placeholder="e.g., Finance Manager"
+                          className="mt-1.5 bg-white"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="primaryContactEmail">Email</Label>
+                        <Label htmlFor="primaryContactEmail" className="text-gray-600">Email</Label>
                         <Input
                           id="primaryContactEmail"
                           type="email"
                           {...register('primaryContactEmail')}
                           placeholder="john@example.com"
+                          className="mt-1.5 bg-white"
                         />
                         {errors.primaryContactEmail && (
                           <p className="text-sm text-red-600 mt-1">{errors.primaryContactEmail.message}</p>
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="primaryContactPhone">Phone</Label>
+                        <Label htmlFor="primaryContactPhone" className="text-gray-600">Phone</Label>
                         <Input
                           id="primaryContactPhone"
                           {...register('primaryContactPhone')}
                           placeholder="+27 11 234 5678"
+                          className="mt-1.5 bg-white"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
-                <DialogFooter>
+
+                <DialogFooter className="mt-6 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"
@@ -935,14 +998,17 @@ export default function CustomersPage() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || !isValid}>
+                  <Button type="submit" disabled={isSubmitting || !isValid} className="min-w-[140px]">
                     {isSubmitting ? (
                       <>
                         <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
                         Creating...
                       </>
                     ) : (
-                      'Create Customer'
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Customer
+                      </>
                     )}
                   </Button>
                 </DialogFooter>
@@ -952,127 +1018,176 @@ export default function CustomersPage() {
 
           {/* Edit Customer Dialog */}
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Edit Customer</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <Edit className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  Edit Customer
+                </DialogTitle>
                 <DialogDescription>
-                  Update customer information
+                  Update customer information and settings
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit(onEditSubmit)}>
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  <div className="col-span-2">
-                    <Label htmlFor="edit-name">Customer Name *</Label>
-                    <Input
-                      id="edit-name"
-                      {...register('name')}
-                      placeholder="Enter customer name"
-                      error={errors.name?.message}
-                    />
+                <div className="space-y-6 py-4">
+                  {/* Basic Information Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <Users className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Basic Information</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <Label htmlFor="edit-name" className="flex items-center gap-1">
+                          Customer Name
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="edit-name"
+                          {...register('name')}
+                          placeholder="Enter customer or company name"
+                          error={errors.name?.message}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-email">Email Address</Label>
+                        <Input
+                          id="edit-email"
+                          type="email"
+                          {...register('email')}
+                          placeholder="customer@example.com"
+                          icon={<Mail className="h-4 w-4" />}
+                          error={errors.email?.message}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-phone">Phone Number</Label>
+                        <Input
+                          id="edit-phone"
+                          {...register('phone')}
+                          placeholder="+27 12 345 6789"
+                          icon={<Phone className="h-4 w-4" />}
+                          error={errors.phone?.message}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label htmlFor="edit-address" className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                          Address
+                        </Label>
+                        <Textarea
+                          id="edit-address"
+                          {...register('address')}
+                          placeholder="Street address, city, postal code"
+                          className="resize-none mt-1.5"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-taxId">Tax ID / VAT Number</Label>
+                        <Input
+                          id="edit-taxId"
+                          {...register('taxId')}
+                          placeholder="e.g., 4123456789"
+                          icon={<FileText className="h-4 w-4" />}
+                          className="mt-1.5"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="edit-email">Email</Label>
-                    <Input
-                      id="edit-email"
-                      type="email"
-                      {...register('email')}
-                      placeholder="customer@example.com"
-                      icon={<Mail className="h-4 w-4" />}
-                      error={errors.email?.message}
-                    />
+
+                  {/* Financial Settings Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <DollarSign className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Financial Settings</h3>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="edit-creditLimit">Credit Limit</Label>
+                        <Controller
+                          name="creditLimit"
+                          control={control}
+                          render={({ field }) => (
+                            <CurrencyInput
+                              id="edit-creditLimit"
+                              value={field.value}
+                              onChange={field.onChange}
+                              placeholder="0.00"
+                              className="mt-1.5"
+                            />
+                          )}
+                        />
+                        {errors.creditLimit && (
+                          <p className="text-sm text-red-600 mt-1">{errors.creditLimit.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-paymentTerms">Payment Terms</Label>
+                        <Controller
+                          name="paymentTerms"
+                          control={control}
+                          render={({ field }) => (
+                            <NumberInput
+                              id="edit-paymentTerms"
+                              value={field.value}
+                              onChange={field.onChange}
+                              min={0}
+                              max={365}
+                              placeholder="30"
+                              suffix="days"
+                              className="mt-1.5"
+                            />
+                          )}
+                        />
+                        {errors.paymentTerms && (
+                          <p className="text-sm text-red-600 mt-1">{errors.paymentTerms.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-status">Status</Label>
+                        <Controller
+                          name="status"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onChange={field.onChange}
+                              className="mt-1.5"
+                            >
+                              <option value="active">🟢 Active</option>
+                              <option value="inactive">⚪ Inactive</option>
+                              <option value="blocked">🔴 Blocked</option>
+                            </Select>
+                          )}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="edit-phone">Phone</Label>
-                    <Input
-                      id="edit-phone"
-                      {...register('phone')}
-                      placeholder="+27 12 345 6789"
-                      icon={<Phone className="h-4 w-4" />}
-                      error={errors.phone?.message}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="edit-address">Address</Label>
+
+                  {/* Notes Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Additional Notes</h3>
+                      <span className="text-xs text-gray-400">(Optional)</span>
+                    </div>
                     <Textarea
-                      id="edit-address"
-                      {...register('address')}
-                      placeholder="Enter customer address"
+                      id="edit-notes"
+                      {...register('notes')}
+                      placeholder="Any additional notes about this customer..."
                       className="resize-none"
                       rows={2}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="edit-taxId">Tax ID / VAT Number</Label>
-                    <Input
-                      id="edit-taxId"
-                      {...register('taxId')}
-                      placeholder="Enter tax ID"
-                      icon={<FileText className="h-4 w-4" />}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-creditLimit">Credit Limit (R)</Label>
-                    <Controller
-                      name="creditLimit"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="0.00"
-                          icon={<CreditCard className="h-4 w-4" />}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          error={errors.creditLimit?.message}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-paymentTerms">Payment Terms (days)</Label>
-                    <Controller
-                      name="paymentTerms"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          {...field}
-                          type="number"
-                          placeholder="30"
-                          icon={<Calendar className="h-4 w-4" />}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 30)}
-                          error={errors.paymentTerms?.message}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-status">Status</Label>
-                    <Controller
-                      name="status"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onChange={field.onChange}
-                        >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                          <option value="blocked">Blocked</option>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="edit-notes">Notes</Label>
-                    <Textarea
-                      id="edit-notes"
-                      {...register('notes')}
-                      placeholder="Additional notes about this customer"
-                      className="resize-none"
-                      rows={3}
-                    />
-                  </div>
                 </div>
-                <DialogFooter>
+
+                <DialogFooter className="mt-6 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"
@@ -1085,14 +1200,17 @@ export default function CustomersPage() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || !isValid}>
+                  <Button type="submit" disabled={isSubmitting || !isValid} className="min-w-[140px]">
                     {isSubmitting ? (
                       <>
                         <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
                         Updating...
                       </>
                     ) : (
-                      'Update Customer'
+                      <>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Update Customer
+                      </>
                     )}
                   </Button>
                 </DialogFooter>

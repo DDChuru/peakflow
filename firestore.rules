@@ -329,40 +329,44 @@ service cloud.firestore {
 
       // Debtors collection - scoped to company
       match /debtors/{debtorId} {
-        // Users can only read debtors from their own company
+        // Users can only read debtors from their own company (admins/developers can read all)
         allow read: if belongsToCompany(companyId) || canManageCompanies();
 
-        // Users can create debtors for their own company
-        allow create: if belongsToCompany(companyId) &&
-          request.resource.data.companyId == companyId &&
-          request.resource.data.createdBy == request.auth.uid;
+        // Users can create debtors for their own company (admins/developers can create for any company)
+        allow create: if canManageCompanies() ||
+          (belongsToCompany(companyId) &&
+           request.resource.data.companyId == companyId &&
+           request.resource.data.createdBy == request.auth.uid);
 
-        // Users can update debtors in their company (but not change companyId)
-        allow update: if belongsToCompany(companyId) &&
-          resource.data.companyId == companyId &&
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy']));
+        // Users can update debtors in their company (admins/developers can update any)
+        allow update: if canManageCompanies() ||
+          (belongsToCompany(companyId) &&
+           resource.data.companyId == companyId &&
+           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy'])));
 
-        // Only company admins can delete debtors
-        allow delete: if isCompanyAdmin(companyId);
+        // Company admins and platform admins can delete debtors
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
       }
 
       // Creditors collection - scoped to company
       match /creditors/{creditorId} {
-        // Users can only read creditors from their own company
+        // Users can only read creditors from their own company (admins/developers can read all)
         allow read: if belongsToCompany(companyId) || canManageCompanies();
 
-        // Users can create creditors for their own company
-        allow create: if belongsToCompany(companyId) &&
-          request.resource.data.companyId == companyId &&
-          request.resource.data.createdBy == request.auth.uid;
+        // Users can create creditors for their own company (admins/developers can create for any company)
+        allow create: if canManageCompanies() ||
+          (belongsToCompany(companyId) &&
+           request.resource.data.companyId == companyId &&
+           request.resource.data.createdBy == request.auth.uid);
 
-        // Users can update creditors in their company (but not change companyId)
-        allow update: if belongsToCompany(companyId) &&
-          resource.data.companyId == companyId &&
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy']));
+        // Users can update creditors in their company (admins/developers can update any)
+        allow update: if canManageCompanies() ||
+          (belongsToCompany(companyId) &&
+           resource.data.companyId == companyId &&
+           (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['companyId', 'id', 'createdAt', 'createdBy'])));
 
-        // Only company admins can delete creditors
-        allow delete: if isCompanyAdmin(companyId);
+        // Company admins and platform admins can delete creditors
+        allow delete: if isCompanyAdmin(companyId) || canManageCompanies();
       }
 
       // Pending Payments collection - AI-matched payments awaiting allocation

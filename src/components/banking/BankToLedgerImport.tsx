@@ -550,25 +550,45 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
    * @param mappedTransaction - The transaction that was just mapped
    * @param mapping - The GL mapping to apply
    * @param similarityThreshold - Minimum similarity score (0-100) to consider a match
-   * @returns Number of additional transactions mapped
+   * @returns Object with count of mapped transactions and their IDs for immediate bucket updates
    */
   const applyMappingToSimilar = (
     mappedTransaction: ImportedTransaction,
     mapping: GLMapping,
     similarityThreshold: number = 80
-  ): number => {
-    let count = 0;
+  ): { count: number; mappedIds: string[] } => {
+    const mappedIds: string[] = [];
 
-    // Get all unmapped transactions (from all buckets)
-    const unmappedTransactions = [
-      ...needsReview.map(item => item.transaction),
-      ...needsAI.map(item => item.transaction),
-      ...transactions.filter(tx =>
-        tx.mappingStatus === 'unmapped' &&
-        tx.id !== mappedTransaction.id &&
-        !mappings.has(tx.id)
-      )
-    ];
+    // Get all unmapped transactions (from all buckets) - deduplicate by ID
+    const seenIds = new Set<string>();
+    const unmappedTransactions: ImportedTransaction[] = [];
+
+    // Collect from needsReview bucket
+    needsReview.forEach(item => {
+      if (!seenIds.has(item.transaction.id) && item.transaction.id !== mappedTransaction.id) {
+        seenIds.add(item.transaction.id);
+        unmappedTransactions.push(item.transaction);
+      }
+    });
+
+    // Collect from needsAI bucket
+    needsAI.forEach(item => {
+      if (!seenIds.has(item.transaction.id) && item.transaction.id !== mappedTransaction.id) {
+        seenIds.add(item.transaction.id);
+        unmappedTransactions.push(item.transaction);
+      }
+    });
+
+    // Collect from main transactions array (unmapped only)
+    transactions.forEach(tx => {
+      if (!seenIds.has(tx.id) &&
+          tx.mappingStatus === 'unmapped' &&
+          tx.id !== mappedTransaction.id &&
+          !mappings.has(tx.id)) {
+        seenIds.add(tx.id);
+        unmappedTransactions.push(tx);
+      }
+    });
 
     // Find similar transactions using fuzzy matching
     const similarTransactions = unmappedTransactions.filter(tx => {
@@ -593,10 +613,10 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         manuallyMapped: false // Marked as auto-applied from similar transaction
       });
       setSelectedTransactions(prev => new Set([...prev, tx.id]));
-      count++;
+      mappedIds.push(tx.id);
     });
 
-    return count;
+    return { count: mappedIds.length, mappedIds };
   };
 
   // Get AI suggestion for transaction
@@ -735,7 +755,11 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       setSelectedTransactions(new Set([...selectedTransactions, currentMappingTransaction.id]));
 
       // Batch-apply to similar unmapped transactions BEFORE saving rule
-      const similarCount = applyMappingToSimilar(currentMappingTransaction, mapping, 80);
+      // Returns both count and IDs for immediate bucket updates
+      const { count: similarCount, mappedIds: similarMappedIds } = applyMappingToSimilar(currentMappingTransaction, mapping, 80);
+
+      // Build the complete set of IDs to remove from buckets (current + similar)
+      const allMappedIds = new Set([currentMappingTransaction.id, ...similarMappedIds]);
 
       // If saveAsRule is checked, create a new GL mapping rule
       if (saveAsRule && currentMappingTransaction.description) {
@@ -795,14 +819,10 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
         }
       }
 
-      // Update buckets - remove all newly mapped transactions
-      const newlyMappedIds = new Set<string>();
-      transactions.forEach(t => {
-        if (mappings.has(t.id)) newlyMappedIds.add(t.id);
-      });
-
-      setNeedsAI(needsAI.filter(item => !newlyMappedIds.has(item.transaction.id)));
-      setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
+      // Update buckets - remove all newly mapped transactions using the IDs we collected directly
+      // (This avoids stale state issues from async setState in saveMapping)
+      setNeedsAI(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
+      setNeedsReview(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
 
       // Close dialog and reset
       setShowMappingDialog(false);
@@ -1095,16 +1115,12 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           setSelectedTransactions(new Set([...selectedTransactions, currentTransaction.id]));
 
           // Batch-apply to similar unmapped transactions
-          const similarCount = applyMappingToSimilar(tx, mapping, 80);
+          const { count: similarCount, mappedIds: similarMappedIds } = applyMappingToSimilar(tx, mapping, 80);
 
-          // Update buckets - remove all newly mapped transactions
-          const newlyMappedIds = new Set([currentTransaction.id]);
-          transactions.forEach(t => {
-            if (mappings.has(t.id)) newlyMappedIds.add(t.id);
-          });
-
-          setNeedsAI(needsAI.filter(item => !newlyMappedIds.has(item.transaction.id)));
-          setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
+          // Update buckets - remove all newly mapped transactions using IDs we collected directly
+          const allMappedIds = new Set([currentTransaction.id, ...similarMappedIds]);
+          setNeedsAI(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
+          setNeedsReview(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
 
           // Show success message with batch count
           if (similarCount > 0) {
@@ -1232,16 +1248,12 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           setSelectedTransactions(new Set([...selectedTransactions, currentTransaction.id]));
 
           // Batch-apply to similar unmapped transactions
-          const similarCount = applyMappingToSimilar(tx, mapping, 80);
+          const { count: similarCount, mappedIds: similarMappedIds } = applyMappingToSimilar(tx, mapping, 80);
 
-          // Update buckets - remove all newly mapped transactions
-          const newlyMappedIds = new Set([currentTransaction.id]);
-          transactions.forEach(t => {
-            if (mappings.has(t.id)) newlyMappedIds.add(t.id);
-          });
-
-          setNeedsAI(needsAI.filter(item => !newlyMappedIds.has(item.transaction.id)));
-          setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
+          // Update buckets - remove all newly mapped transactions using IDs we collected directly
+          const allMappedIds = new Set([currentTransaction.id, ...similarMappedIds]);
+          setNeedsAI(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
+          setNeedsReview(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
 
           // Reload GL accounts to include newly created account
           await loadGLAccounts();
@@ -1741,26 +1753,26 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                               saveMapping(transaction.id, mapping);
                               setSelectedTransactions(new Set([...selectedTransactions, transaction.id]));
 
-                              // Remove from needsReview bucket
-                              setNeedsReview(needsReview.filter(item => item.transaction.id !== transaction.id));
-
-                              // Optionally apply to similar transactions
+                              // Apply to similar transactions first so we get the IDs
                               const tx = transactions.find(t => t.id === transaction.id);
                               if (tx) {
-                                const similarCount = applyMappingToSimilar(tx, mapping, 80);
+                                const { count: similarCount, mappedIds: similarMappedIds } = applyMappingToSimilar(tx, mapping, 80);
+
+                                // Build complete set of mapped IDs (current + similar)
+                                const allMappedIds = new Set([transaction.id, ...similarMappedIds]);
+
+                                // Remove all mapped transactions from both buckets
+                                setNeedsReview(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
+                                setNeedsAI(prev => prev.filter(item => !allMappedIds.has(item.transaction.id)));
+
                                 if (similarCount > 0) {
                                   toast.success(`✅ Mapping applied to ${similarCount + 1} similar transactions!`, { duration: 5000 });
-
-                                  // Remove all newly mapped transactions from needsReview
-                                  const newlyMappedIds = new Set([transaction.id]);
-                                  transactions.forEach(t => {
-                                    if (mappings.has(t.id)) newlyMappedIds.add(t.id);
-                                  });
-                                  setNeedsReview(needsReview.filter(item => !newlyMappedIds.has(item.transaction.id)));
                                 } else {
                                   toast.success('✅ Mapping applied!');
                                 }
                               } else {
+                                // No tx found in array, just remove the current one
+                                setNeedsReview(prev => prev.filter(item => item.transaction.id !== transaction.id));
                                 toast.success('✅ Mapping applied!');
                               }
                             }}>

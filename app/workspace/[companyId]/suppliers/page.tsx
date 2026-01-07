@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { NumberInput } from '@/components/ui/number-input';
 import {
   RadixSelect as Select,
   SelectContent,
@@ -60,13 +61,17 @@ import {
   ChevronRight,
   Building,
   CreditCard,
-  FileText
+  FileText,
+  DollarSign,
+  User,
+  MapPin,
+  Landmark
 } from 'lucide-react';
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
 import { CreditorService } from '@/lib/firebase/creditor-service';
 import { Creditor } from '@/types/financial';
 import { useAuth } from '@/contexts/AuthContext';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
@@ -839,289 +844,329 @@ export default function SuppliersPage() {
           }}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    {isEditDialogOpen ? (
+                      <Edit className="h-4 w-4 text-indigo-600" />
+                    ) : (
+                      <Building2 className="h-4 w-4 text-indigo-600" />
+                    )}
+                  </div>
                   {isEditDialogOpen ? 'Edit Supplier' : 'Add New Supplier'}
                 </DialogTitle>
                 <DialogDescription>
                   {isEditDialogOpen
-                    ? 'Update the supplier information below.'
-                    : 'Enter the supplier details below to add them to your system.'}
+                    ? 'Update supplier information and payment settings'
+                    : 'Create a new supplier account to track payables and manage relationships'}
                 </DialogDescription>
               </DialogHeader>
 
               <form onSubmit={form.handleSubmit(isEditDialogOpen ? handleEditSupplier : handleCreateSupplier)}>
-                <div className="grid gap-6 py-4">
-                  {/* Basic Information */}
+                <div className="space-y-6 py-4">
+                  {/* Basic Information Section */}
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-gray-900 flex items-center">
-                      <Building className="h-4 w-4 mr-2" />
-                      Basic Information
-                    </h3>
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <Building className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Basic Information</h3>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">
-                          Supplier Name <span className="text-red-500">*</span>
+                      <div>
+                        <Label htmlFor="name" className="flex items-center gap-1">
+                          Supplier Name
+                          <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           id="name"
                           {...form.register('name')}
                           placeholder="e.g., ABC Suppliers Ltd"
-                          className={form.formState.errors.name ? 'border-red-500 focus:ring-red-500' : ''}
+                          className={`mt-1.5 ${form.formState.errors.name ? 'border-red-500 focus:ring-red-500' : ''}`}
                           aria-invalid={!!form.formState.errors.name}
                         />
                         {form.formState.errors.name && (
-                          <p className="text-sm text-red-500 flex items-center gap-1">
+                          <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
                             <AlertCircle className="h-3.5 w-3.5" />
                             {form.formState.errors.name.message}
                           </p>
                         )}
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="creditorType">
-                          Creditor Type <span className="text-red-500">*</span>
+                      <div>
+                        <Label htmlFor="creditorType" className="flex items-center gap-1">
+                          Creditor Type
+                          <span className="text-red-500">*</span>
                         </Label>
                         <Select
                           value={form.watch('creditorType')}
                           onValueChange={(value) => form.setValue('creditorType', value as any)}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="mt-1.5">
                             <SelectValue placeholder="Select creditor type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="trade">Trade Supplier</SelectItem>
-                            <SelectItem value="tax-authority">Tax Authority (e.g., SARS)</SelectItem>
-                            <SelectItem value="statutory">Statutory (e.g., UIF, Pension)</SelectItem>
-                            <SelectItem value="utility">Utility (e.g., Eskom, Municipality)</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="trade">🏭 Trade Supplier</SelectItem>
+                            <SelectItem value="tax-authority">🏛️ Tax Authority (e.g., SARS)</SelectItem>
+                            <SelectItem value="statutory">📋 Statutory (e.g., UIF, Pension)</SelectItem>
+                            <SelectItem value="utility">⚡ Utility (e.g., Eskom, Municipality)</SelectItem>
+                            <SelectItem value="other">📦 Other</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Input
-                          id="category"
-                          {...form.register('category')}
-                          placeholder="e.g., Raw Materials"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
+                      <div>
                         <Label htmlFor="email">Email Address</Label>
                         <Input
                           id="email"
                           type="email"
                           {...form.register('email')}
                           placeholder="supplier@example.com"
-                          className={form.formState.errors.email ? 'border-red-500 focus:ring-red-500' : ''}
+                          icon={<Mail className="h-4 w-4" />}
+                          className={`mt-1.5 ${form.formState.errors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
                           aria-invalid={!!form.formState.errors.email}
                         />
                         {form.formState.errors.email && (
-                          <p className="text-sm text-red-500 flex items-center gap-1">
+                          <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
                             <AlertCircle className="h-3.5 w-3.5" />
                             {form.formState.errors.email.message}
                           </p>
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div>
                         <Label htmlFor="phone">Phone Number</Label>
                         <Input
                           id="phone"
                           {...form.register('phone')}
                           placeholder="+27 11 234 5678"
+                          icon={<Phone className="h-4 w-4" />}
+                          className="mt-1.5"
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="col-span-2">
+                        <Label htmlFor="address" className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                          Address
+                        </Label>
+                        <Textarea
+                          id="address"
+                          {...form.register('address')}
+                          placeholder="Street address, city, postal code"
+                          className="resize-none mt-1.5"
+                          rows={2}
+                        />
+                      </div>
+
+                      <div>
                         <Label htmlFor="taxId">Tax ID / VAT Number</Label>
                         <Input
                           id="taxId"
                           {...form.register('taxId')}
-                          placeholder="4123456789"
+                          placeholder="e.g., 4123456789"
+                          icon={<FileText className="h-4 w-4" />}
+                          className="mt-1.5"
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div>
                         <Label htmlFor="accountNumber">Account Number</Label>
                         <Input
                           id="accountNumber"
                           {...form.register('accountNumber')}
                           placeholder="ACC-001"
+                          className="mt-1.5"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="category">Category</Label>
+                        <Input
+                          id="category"
+                          {...form.register('category')}
+                          placeholder="e.g., Raw Materials"
+                          className="mt-1.5"
                         />
                       </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="address">Address</Label>
-                      <Textarea
-                        id="address"
-                        {...form.register('address')}
-                        placeholder="123 Main Street, City, Province, 0001"
-                        className="min-h-[80px]"
-                      />
-                    </div>
                   </div>
 
-                  {/* Payment Information */}
+                  {/* Payment Information Section */}
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-gray-900 flex items-center">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Payment Information
-                    </h3>
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <DollarSign className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Payment Settings</h3>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="paymentTerms">Payment Terms (Days)</Label>
-                        <Input
-                          id="paymentTerms"
-                          type="number"
-                          min="0"
-                          {...form.register('paymentTerms')}
-                          placeholder="30"
-                          className={form.formState.errors.paymentTerms ? 'border-red-500 focus:ring-red-500' : ''}
-                          aria-invalid={!!form.formState.errors.paymentTerms}
+                      <div>
+                        <Label htmlFor="paymentTerms">Payment Terms</Label>
+                        <Controller
+                          name="paymentTerms"
+                          control={form.control}
+                          render={({ field }) => (
+                            <NumberInput
+                              id="paymentTerms"
+                              value={field.value}
+                              onChange={field.onChange}
+                              min={0}
+                              max={365}
+                              placeholder="30"
+                              suffix="days"
+                              className={`mt-1.5 ${form.formState.errors.paymentTerms ? 'border-red-500 focus:ring-red-500' : ''}`}
+                            />
+                          )}
                         />
                         {form.formState.errors.paymentTerms && (
-                          <p className="text-sm text-red-500 flex items-center gap-1">
+                          <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
                             <AlertCircle className="h-3.5 w-3.5" />
                             {form.formState.errors.paymentTerms.message}
                           </p>
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div>
                         <Label htmlFor="status">Status</Label>
                         <Select
                           value={form.watch('status')}
                           onValueChange={(value) => form.setValue('status', value as 'active' | 'inactive')}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="mt-1.5">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="active">🟢 Active</SelectItem>
+                            <SelectItem value="inactive">⚪ Inactive</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
                   </div>
 
-                  {/* Bank Details Section */}
-                  <div className="space-y-4">
+                  {/* Bank Details Section - Collapsible */}
+                  <div className="space-y-4 rounded-lg bg-gray-50 p-4 border border-gray-100">
                     <button
                       type="button"
                       onClick={() => setShowBankDetails(!showBankDetails)}
-                      className="flex items-center text-sm font-medium text-gray-900 hover:text-gray-700"
+                      className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700 w-full"
                     >
-                      {showBankDetails ? (
-                        <ChevronDown className="h-4 w-4 mr-2" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 mr-2" />
-                      )}
-                      Bank Details (Optional)
+                      <Landmark className="h-4 w-4 text-gray-500" />
+                      <span>Bank Details</span>
+                      <span className="text-xs text-gray-400">(Optional)</span>
+                      <div className="ml-auto">
+                        {showBankDetails ? (
+                          <ChevronDown className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-gray-400" />
+                        )}
+                      </div>
                     </button>
 
                     {showBankDetails && (
-                      <div className="grid grid-cols-2 gap-4 pl-6">
-                        <div className="space-y-2">
-                          <Label htmlFor="bankName">Bank Name</Label>
+                      <div className="grid grid-cols-3 gap-4 pt-2">
+                        <div>
+                          <Label htmlFor="bankName" className="text-gray-600">Bank Name</Label>
                           <Input
                             id="bankName"
                             {...form.register('bankName')}
                             placeholder="e.g., Standard Bank"
+                            className="mt-1.5 bg-white"
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="branchCode">Branch Code</Label>
+                        <div>
+                          <Label htmlFor="branchCode" className="text-gray-600">Branch Code</Label>
                           <Input
                             id="branchCode"
                             {...form.register('branchCode')}
                             placeholder="051001"
+                            className="mt-1.5 bg-white"
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <Label htmlFor="swiftCode">SWIFT Code</Label>
+                        <div>
+                          <Label htmlFor="swiftCode" className="text-gray-600">SWIFT Code</Label>
                           <Input
                             id="swiftCode"
                             {...form.register('swiftCode')}
                             placeholder="SBZAZAJJ"
+                            className="mt-1.5 bg-white"
                           />
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Notes */}
+                  {/* Notes Section */}
                   <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-gray-900 flex items-center">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Additional Information
-                    </h3>
-                    <div className="space-y-2">
-                      <Label htmlFor="notes">Notes</Label>
-                      <Textarea
-                        id="notes"
-                        {...form.register('notes')}
-                        placeholder="Any additional notes about this supplier..."
-                        className="min-h-[100px]"
-                      />
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Additional Notes</h3>
+                      <span className="text-xs text-gray-400">(Optional)</span>
                     </div>
+                    <Textarea
+                      id="notes"
+                      {...form.register('notes')}
+                      placeholder="Any additional notes about this supplier..."
+                      className="resize-none"
+                      rows={2}
+                    />
                   </div>
 
                   {/* Primary Contact Section */}
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-sm font-medium text-gray-900">Primary Contact (Optional)</h3>
+                  <div className="space-y-4 rounded-lg bg-gray-50 p-4 border border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-900">Primary Contact</h3>
+                      <span className="text-xs text-gray-400">(Optional)</span>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="primaryContactName">Contact Name</Label>
+                      <div>
+                        <Label htmlFor="primaryContactName" className="text-gray-600">Contact Name</Label>
                         <Input
                           id="primaryContactName"
                           {...form.register('primaryContactName')}
                           placeholder="John Doe"
+                          className="mt-1.5 bg-white"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="primaryContactPosition">Position</Label>
+                      <div>
+                        <Label htmlFor="primaryContactPosition" className="text-gray-600">Position / Title</Label>
                         <Input
                           id="primaryContactPosition"
                           {...form.register('primaryContactPosition')}
                           placeholder="e.g., Account Manager"
+                          className="mt-1.5 bg-white"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="primaryContactEmail">Email</Label>
+                      <div>
+                        <Label htmlFor="primaryContactEmail" className="text-gray-600">Email</Label>
                         <Input
                           id="primaryContactEmail"
                           type="email"
                           {...form.register('primaryContactEmail')}
                           placeholder="john@supplier.com"
-                          className={form.formState.errors.primaryContactEmail ? 'border-red-500 focus:ring-red-500' : ''}
+                          className={`mt-1.5 bg-white ${form.formState.errors.primaryContactEmail ? 'border-red-500 focus:ring-red-500' : ''}`}
                           aria-invalid={!!form.formState.errors.primaryContactEmail}
                         />
                         {form.formState.errors.primaryContactEmail && (
-                          <p className="text-sm text-red-500 flex items-center gap-1">
+                          <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
                             <AlertCircle className="h-3.5 w-3.5" />
                             {form.formState.errors.primaryContactEmail.message}
                           </p>
                         )}
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="primaryContactPhone">Phone</Label>
+                      <div>
+                        <Label htmlFor="primaryContactPhone" className="text-gray-600">Phone</Label>
                         <Input
                           id="primaryContactPhone"
                           {...form.register('primaryContactPhone')}
                           placeholder="+27 11 234 5678"
+                          className="mt-1.5 bg-white"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="mt-6 pt-4 border-t">
                   <Button
                     type="button"
                     variant="outline"
@@ -1135,7 +1180,7 @@ export default function SuppliersPage() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || !form.formState.isValid}>
+                  <Button type="submit" disabled={isSubmitting || !form.formState.isValid} className="min-w-[140px]">
                     {isSubmitting ? (
                       <>
                         <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
@@ -1143,7 +1188,17 @@ export default function SuppliersPage() {
                       </>
                     ) : (
                       <>
-                        {isEditDialogOpen ? 'Update Supplier' : 'Create Supplier'}
+                        {isEditDialogOpen ? (
+                          <>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Update Supplier
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Supplier
+                          </>
+                        )}
                       </>
                     )}
                   </Button>

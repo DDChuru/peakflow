@@ -140,6 +140,7 @@ const pricingPlans = [
 
 export default function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showParticles, setShowParticles] = useState(false);
   const { scrollY } = useScroll();
   const heroY = useTransform(scrollY, [0, 500], [0, -150]);
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.3]);
@@ -152,13 +153,21 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Animate between solid and particle images
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowParticles(prev => !prev);
+    }, 4000); // Toggle every 4 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <motion.nav
         className={`fixed top-0 w-full z-50 transition-all duration-300 ${
           isScrolled
-            ? 'bg-white/80 backdrop-blur-md border-b border-gray-200'
+            ? 'bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm'
             : 'bg-transparent'
         }`}
         initial={{ y: -100 }}
@@ -174,22 +183,22 @@ export default function LandingPage() {
                 width={180}
                 height={120}
                 priority
-                className="hidden h-12 w-auto sm:block"
+                className={`hidden h-10 w-auto sm:block transition-all ${isScrolled ? '' : 'brightness-110'}`}
               />
-              <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent sm:hidden">
+              <span className={`text-xl font-bold sm:hidden ${isScrolled ? 'text-gray-900' : 'text-white'}`}>
                 PeakFlow
               </span>
             </Link>
 
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
-              <a href="#testimonials" className="text-gray-600 hover:text-gray-900 transition-colors">Testimonials</a>
-              <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition-colors">Pricing</a>
+              <a href="#features" className={`transition-colors ${isScrolled ? 'text-gray-600 hover:text-gray-900' : 'text-slate-300 hover:text-white'}`}>Features</a>
+              <a href="#testimonials" className={`transition-colors ${isScrolled ? 'text-gray-600 hover:text-gray-900' : 'text-slate-300 hover:text-white'}`}>Testimonials</a>
+              <a href="#pricing" className={`transition-colors ${isScrolled ? 'text-gray-600 hover:text-gray-900' : 'text-slate-300 hover:text-white'}`}>Pricing</a>
               <Link href="/login">
-                <Button variant="outline" className="mr-2">Sign In</Button>
+                <Button variant="outline" className={`mr-2 ${isScrolled ? '' : 'border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white'}`}>Sign In</Button>
               </Link>
               <Link href="/signup">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Button className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-lg shadow-blue-500/25">
                   Get Started
                 </Button>
               </Link>
@@ -199,93 +208,174 @@ export default function LandingPage() {
       </motion.nav>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50"></div>
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-3/4 right-1/4 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-pink-400/20 rounded-full blur-3xl"></div>
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+        {/* Animated Background Glow */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-500/10 rounded-full blur-[120px] animate-pulse"></div>
+          <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[100px]"></div>
+          <div className="absolute bottom-1/3 right-1/4 w-[300px] h-[300px] bg-cyan-500/10 rounded-full blur-[80px]"></div>
         </div>
 
-        <motion.div
-          className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
-          style={{ y: heroY, opacity: heroOpacity }}
-        >
-          <motion.div
-            {...fadeInUp}
-            className="space-y-8"
-          >
-            <div className="flex justify-center">
-              <Image
-                src="/peakflow-logo.png"
-                alt="PeakFlow Accounting Software logo"
-                width={320}
-                height={214}
-                priority
-                className="w-40 sm:w-56 lg:w-64 h-auto drop-shadow-lg"
-              />
-            </div>
+        {/* Grid Pattern Overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]"></div>
 
-            <Badge className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border-blue-200">
-              🚀 Revolutionizing Financial Management
-            </Badge>
-
-            <h1 className="text-5xl md:text-7xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
-              Financial Operations
-              <br />
-              <span className="text-transparent bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text">
-                Simplified
-              </span>
-            </h1>
-
-            <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              Streamline your accounting with AI-powered bank reconciliation,
-              direct ledger imports, and real-time financial insights.
-              <span className="font-semibold text-gray-800">Perfect for SMEs and growing businesses.</span>
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
-              <Link href="/signup">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  Start Free Trial
-                  <ArrowRightIcon className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
-
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-2 border-gray-300 hover:border-gray-400 px-8 py-4 text-lg rounded-xl"
-              >
-                <PlayIcon className="mr-2 w-5 h-5" />
-                Watch Demo
-              </Button>
-            </div>
-
-            <div className="pt-8 text-sm text-gray-500">
-              ✨ No credit card required • 14-day free trial • Setup in 5 minutes
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Floating Dashboard Preview */}
-        <motion.div
-          className="absolute bottom-10 left-1/2 transform -translate-x-1/2 w-full max-w-4xl mx-auto px-4"
-          initial={{ opacity: 0, y: 100 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.5 }}
-        >
-          <Card className="bg-white/70 backdrop-blur-sm border border-white/20 shadow-2xl rounded-2xl overflow-hidden">
-            <div className="h-64 bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
-              <div className="text-gray-400 text-lg font-medium">
-                🎯 Interactive Dashboard Preview Coming Soon
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center min-h-screen py-24">
+            {/* Left Content */}
+            <motion.div
+              className="space-y-8"
+              initial={{ opacity: 0, x: -60 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/peakflow-logo.png"
+                  alt="PeakFlow Accounting Software logo"
+                  width={180}
+                  height={120}
+                  priority
+                  className="h-12 w-auto brightness-110"
+                />
               </div>
-            </div>
-          </Card>
+
+              <Badge className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-blue-300 border-blue-500/30 backdrop-blur-sm">
+                AI-Powered Financial Management
+              </Badge>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                Transform Your
+                <span className="block bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  Financial Flow
+                </span>
+              </h1>
+
+              <p className="text-lg sm:text-xl text-slate-300 max-w-xl leading-relaxed">
+                Streamline accounting with AI-powered reconciliation, direct ledger imports, and real-time insights.
+                <span className="text-white font-medium"> Built for modern SMEs.</span>
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Link href="/signup">
+                  <Button
+                    size="lg"
+                    className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300"
+                  >
+                    Start Free Trial
+                    <ArrowRightIcon className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-2 border-slate-600 hover:border-slate-500 text-slate-300 hover:text-white px-8 py-4 text-lg rounded-xl bg-slate-800/50 backdrop-blur-sm"
+                >
+                  <PlayIcon className="mr-2 w-5 h-5" />
+                  Watch Demo
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-6 pt-4 text-sm text-slate-400">
+                <span className="flex items-center gap-2">
+                  <CheckIcon className="w-4 h-4 text-cyan-400" />
+                  No credit card
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckIcon className="w-4 h-4 text-cyan-400" />
+                  14-day trial
+                </span>
+                <span className="flex items-center gap-2">
+                  <CheckIcon className="w-4 h-4 text-cyan-400" />
+                  5 min setup
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Right - Animated 3D Peak */}
+            <motion.div
+              className="relative flex items-center justify-center"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1, delay: 0.3 }}
+            >
+              <div className="relative w-full max-w-lg aspect-square">
+                {/* Glow Effect Behind Image */}
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/30 via-blue-500/30 to-purple-500/30 rounded-full blur-[60px] scale-75"></div>
+
+                {/* Solid Peak Image */}
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{ opacity: showParticles ? 0 : 1 }}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                >
+                  <Image
+                    src="/hero-peak-solid.png"
+                    alt="Crystal peak visualization"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-contain drop-shadow-2xl"
+                    priority
+                  />
+                </motion.div>
+
+                {/* Particle Peak Image */}
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{ opacity: showParticles ? 1 : 0 }}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                >
+                  <Image
+                    src="/hero-peak-particles.png"
+                    alt="Peak dissolving into data particles"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-contain drop-shadow-2xl"
+                    priority
+                  />
+                </motion.div>
+
+                {/* Floating Stats Cards */}
+                <motion.div
+                  className="absolute -left-4 top-1/4 bg-slate-800/80 backdrop-blur-md border border-slate-700/50 rounded-xl p-3 shadow-xl"
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <div className="text-xs text-slate-400">Accuracy</div>
+                  <div className="text-xl font-bold text-cyan-400">95%</div>
+                </motion.div>
+
+                <motion.div
+                  className="absolute -right-4 top-1/3 bg-slate-800/80 backdrop-blur-md border border-slate-700/50 rounded-xl p-3 shadow-xl"
+                  animate={{ y: [0, 10, 0] }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                >
+                  <div className="text-xs text-slate-400">Time Saved</div>
+                  <div className="text-xl font-bold text-purple-400">10h/wk</div>
+                </motion.div>
+
+                <motion.div
+                  className="absolute left-1/4 -bottom-4 bg-slate-800/80 backdrop-blur-md border border-slate-700/50 rounded-xl p-3 shadow-xl"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                >
+                  <div className="text-xs text-slate-400">Transactions</div>
+                  <div className="text-xl font-bold text-blue-400">10K+/day</div>
+                </motion.div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <motion.div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="w-6 h-10 border-2 border-slate-600 rounded-full flex justify-center">
+            <div className="w-1.5 h-3 bg-slate-500 rounded-full mt-2"></div>
+          </div>
         </motion.div>
       </section>
 
