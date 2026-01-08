@@ -517,14 +517,15 @@ function evaluateTruncation(transactions, statementEndDate) {
 // Helper function to extract bank statement by monthly chunks
 async function extractBankStatementByMonths(pdfBase64, apiKey, partialData) {
   try {
+    // RESTORE POINT: commit 319b2c9 has gemini-2.5-flash-lite if rollback needed
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
+      model: 'gemini-3-flash-preview', // Upgraded for better accuracy & native PDF support
       generationConfig: {
         temperature: 0.1,
         topK: 32,
         topP: 0.8,
-        maxOutputTokens: 65536, // Increased to 65K (max for this model) for 3-month statements
+        maxOutputTokens: 65536,
         responseMimeType: 'application/json',
       }
     });
@@ -643,14 +644,15 @@ Return JSON with just the transactions array:
 async function extractFromPDF(pdfBase64, documentType = 'generic', apiKey) {
   try {
     // Initialize Gemini
+    // RESTORE POINT: commit 319b2c9 has gemini-2.5-flash-lite if rollback needed
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite', // Upgraded: 65K output tokens (vs 8K)
+      model: 'gemini-3-flash-preview', // Upgraded for better accuracy & native PDF support
       generationConfig: {
         temperature: 0.1,
         topK: 32,
         topP: 0.8,
-        maxOutputTokens: 65536, // Leverage max limit (65K) for large 3-month statements
+        maxOutputTokens: 65536,
         responseMimeType: 'application/json',
       }
     });

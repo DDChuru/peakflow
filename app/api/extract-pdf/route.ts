@@ -26,14 +26,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Gemini AI
+    // RESTORE POINT: commit 319b2c9 has gemini-2.0-flash-exp if rollback needed
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp', // Using same model as before
+      model: 'gemini-3-flash-preview', // Upgraded from gemini-2.0-flash-exp for better accuracy & native PDF
       generationConfig: {
         temperature: 0.1,
         topK: 32,
         topP: 0.8,
-        maxOutputTokens: 65536, // Higher than old service (32768)
+        maxOutputTokens: 65536,
         responseMimeType: 'application/json',
       }
     });

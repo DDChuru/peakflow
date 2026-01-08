@@ -147,8 +147,8 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
         setSelectedSession(sessions[0].id);
       }
     } catch (error) {
-      console.error('[StagingReview] Failed to load staging sessions:', error);
-      toast.error('Failed to load staging sessions');
+      console.error('[StagingReview] Failed to load pending entries:', error);
+      toast.error('Failed to load pending entries');
     } finally {
       setLoading(false);
     }
@@ -223,7 +223,7 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
 
       if (result.success) {
         toast.success(
-          `Posted ${result.journalCount} journal entries and ${result.glCount} GL entries to production ledger`,
+          `Posted ${result.journalCount} journal entries and ${result.glCount} GL entries to general ledger`,
           { duration: 8000 }
         );
 
@@ -236,11 +236,11 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
           onPostComplete();
         }
       } else {
-        toast.error('Failed to post to production');
+        toast.error('Failed to post to general ledger');
       }
     } catch (error) {
-      console.error('[StagingReview] Post to production failed:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to post to production');
+      console.error('[StagingReview] Post to general ledger failed:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to post to general ledger');
     } finally {
       setPosting(false);
     }
@@ -330,7 +330,7 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading staging sessions...</p>
+          <p className="text-gray-600">Loading pending entries...</p>
         </div>
       </div>
     );
@@ -342,9 +342,9 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
         <CardContent className="pt-6">
           <div className="text-center py-12 text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="font-medium">No staged imports yet</p>
+            <p className="font-medium">No entries pending review</p>
             <p className="text-sm mt-2">
-              Import and stage bank transactions to review them here before posting to production
+              Import and stage bank transactions to review them here before posting to the general ledger
             </p>
           </div>
         </CardContent>
@@ -357,9 +357,9 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
       {/* Session Selector */}
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-semibold">Staged Import Sessions</h3>
+          <h3 className="text-lg font-semibold">Pending Journal Entries</h3>
           <p className="text-sm text-muted-foreground">
-            {stagingSessions.length} staged import{stagingSessions.length !== 1 ? 's' : ''} ready for review
+            {stagingSessions.length} import session{stagingSessions.length !== 1 ? 's' : ''} ready for review
           </p>
         </div>
         <Button variant="outline" onClick={loadStagingSessions} disabled={loading}>
@@ -461,7 +461,7 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Staging Details - Session #{selectedSessionData.id.slice(-8)}</span>
+              <span>Draft Entries - Session #{selectedSessionData.id.slice(-8)}</span>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -501,7 +501,7 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
               </div>
             </CardTitle>
             <CardDescription>
-              Review journal entries before posting to production ledger
+              Review journal entries before posting to the general ledger
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -560,7 +560,7 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
           <DialogHeader>
             <DialogTitle>General Ledger Entries - Session #{selectedSessionData?.id.slice(-8)}</DialogTitle>
             <DialogDescription>
-              Detailed GL entries that will be posted to production ledger
+              Detailed GL entries that will be posted to the general ledger
             </DialogDescription>
           </DialogHeader>
 
@@ -613,9 +613,9 @@ export function StagingReview({ companyId, onPostComplete }: StagingReviewProps)
       <Dialog open={showPostDialog} onOpenChange={setShowPostDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Post to Production Ledger?</DialogTitle>
+            <DialogTitle>Post to General Ledger?</DialogTitle>
             <DialogDescription>
-              This will permanently post the staged entries to your production general ledger.
+              This will permanently post the reviewed entries to your general ledger. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
 

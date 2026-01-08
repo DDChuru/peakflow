@@ -902,7 +902,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
 
       if (result.success) {
         toast.success(
-          `Posted ${result.journalCount} transactions to staging ledger.\n` +
+          `Staged ${result.journalCount} transactions for review.\n` +
           `Debits: R${result.balance.totalDebits.toFixed(2)}, Credits: R${result.balance.totalCredits.toFixed(2)}\n` +
           `${result.balance.isBalanced ? '✅ Balanced' : '❌ Not balanced'}`,
           { duration: 8000 }
@@ -914,18 +914,18 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           onComplete();
         }
       } else {
-        toast.error('Failed to post to staging ledger');
+        toast.error('Failed to stage entries for review');
       }
     } catch (error) {
-      console.error('Failed to post to staging:', error);
+      console.error('Failed to stage entries:', error);
       const errorMessage = safeStringify(error);
-      toast.error(`Failed to post to staging: ${errorMessage}`);
+      toast.error(`Failed to stage entries: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Post transactions directly to production ledger
+  // Post transactions directly to general ledger
   const postToLedger = async () => {
     if (!bankToLedgerService || !user) return;
 
@@ -2047,7 +2047,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                 </>
               ) : (
                 <>
-                  Post Directly to Production
+                  Post Directly to Ledger
                 </>
               )}
             </Button>
@@ -2055,11 +2055,11 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
               {loading ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Posting...
+                  Staging...
                 </>
               ) : (
                 <>
-                  Post to Staging
+                  Stage for Review
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
@@ -2074,9 +2074,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
           <AlertDescription>
             You are about to post {selectedTxs.length} transactions.
             <br />
-            <strong>Recommended:</strong> Use "Post to Staging" to review and verify balance before finalizing.
+            <strong>Recommended:</strong> Use "Stage for Review" to review and verify balance before finalizing.
             <br />
-            Or use "Post Directly to Production" to skip staging (cannot be undone).
+            Or use "Post Directly to Ledger" to skip review (cannot be undone).
           </AlertDescription>
         </Alert>
 
