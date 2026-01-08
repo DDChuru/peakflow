@@ -1507,7 +1507,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
 
       {renderSelectedStatementSummary()}
 
-      {/* Tri-State Statistics Cards */}
+      {/* Tri-State Statistics Cards - Uses live array lengths for real-time updates */}
       {processingStats && (
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
@@ -1527,9 +1527,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                 <p className="text-sm font-semibold text-green-700">🟢 Auto-Mapped</p>
                 <CheckCircle className="h-4 w-4 text-green-600" />
               </div>
-              <p className="text-2xl font-bold text-green-700">{processingStats.autoMappedCount}</p>
+              <p className="text-2xl font-bold text-green-700">{autoMapped.length}</p>
               <p className="text-xs text-green-600 mt-1">
-                {processingStats.autoMappedPercentage.toFixed(0)}% - Ready to apply
+                {processingStats.total > 0 ? ((autoMapped.length / processingStats.total) * 100).toFixed(0) : 0}% - Ready to apply
               </p>
             </CardContent>
           </Card>
@@ -1540,7 +1540,7 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                 <p className="text-sm font-semibold text-yellow-700">🟡 Needs Review</p>
                 <AlertCircle className="h-4 w-4 text-yellow-600" />
               </div>
-              <p className="text-2xl font-bold text-yellow-700">{processingStats.needsReviewCount}</p>
+              <p className="text-2xl font-bold text-yellow-700">{needsReview.length}</p>
               <p className="text-xs text-yellow-600 mt-1">
                 Medium confidence - verify
               </p>
@@ -1553,9 +1553,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                 <p className="text-sm font-semibold text-blue-700">🔵 Needs AI</p>
                 <Sparkles className="h-4 w-4 text-blue-600" />
               </div>
-              <p className="text-2xl font-bold text-blue-700">{processingStats.needsAICount}</p>
+              <p className="text-2xl font-bold text-blue-700">{needsAI.length}</p>
               <p className="text-xs text-blue-600 mt-1">
-                Est. cost: ${processingStats.estimatedAICost.toFixed(3)}
+                {needsAI.length > 0 ? `Est. cost: $${(needsAI.length * 0.001).toFixed(3)}` : 'No AI needed'}
               </p>
             </CardContent>
           </Card>
