@@ -50,8 +50,10 @@ export function middleware(request: NextRequest) {
   if (companyMatch) {
     const [, companyId, feature] = companyMatch;
 
-    // Don't redirect the edit route - it's a valid companies route
-    if (feature === 'edit') {
+    // Don't redirect routes that only exist under /companies/
+    // These include edit, invoices/new, quotes/new, etc.
+    const companyOnlyRoutes = ['edit', 'invoices/new', 'quotes/new', 'contracts/new'];
+    if (companyOnlyRoutes.some(route => feature === route || feature.startsWith(route))) {
       return NextResponse.next();
     }
 

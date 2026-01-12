@@ -370,10 +370,11 @@ export default function QuoteToInvoiceModal({
                                 <label className="block text-xs text-gray-500 mb-1">Unit Price</label>
                                 <Input
                                   type="number"
-                                  value={item.unitPrice}
+                                  value={item.unitPrice || ''}
                                   onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                                   min="0"
                                   step="0.01"
+                                  placeholder="0.00"
                                   disabled={!item.included}
                                 />
                               </div>
@@ -381,11 +382,12 @@ export default function QuoteToInvoiceModal({
                                 <label className="block text-xs text-gray-500 mb-1">Tax Rate (%)</label>
                                 <Input
                                   type="number"
-                                  value={item.taxRate}
+                                  value={item.taxRate || ''}
                                   onChange={(e) => updateLineItem(index, 'taxRate', parseFloat(e.target.value) || 0)}
                                   min="0"
                                   max="100"
                                   step="0.01"
+                                  placeholder="0"
                                   disabled={!item.included}
                                 />
                               </div>
@@ -473,11 +475,12 @@ export default function QuoteToInvoiceModal({
                     </label>
                     <Input
                       type="number"
-                      value={taxRate}
+                      value={taxRate || ''}
                       onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
                       min="0"
                       max="100"
                       step="0.01"
+                      placeholder="0"
                     />
                   </div>
                 </div>

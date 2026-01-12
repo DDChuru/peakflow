@@ -9,10 +9,19 @@ import { quoteService, debtorService, chartOfAccountsService, adminService } fro
 import { Company, Debtor, ChartOfAccount, QuoteCreateRequest } from '@/lib/firebase';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/navigation';
+import {
+  RadixSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Plus,
   Save,
@@ -25,9 +34,14 @@ import {
   Calendar,
   Calculator,
   Trash2,
-  ArrowLeft
+  ArrowLeft,
+  Clock,
+  Building2,
+  Mail,
+  Phone,
+  CalendarCheck
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 
 interface LineItem {
   id: string;
@@ -305,192 +319,243 @@ export default function CreateQuotePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
             {/* Customer Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+                <CardTitle className="flex items-center gap-2 text-indigo-900">
                   <User className="h-5 w-5" />
                   Customer Information
                 </CardTitle>
+                <CardDescription>
+                  Select the customer for this quote
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Customer *
-                  </label>
+              <CardContent className="space-y-4 pt-6">
+                {!selectedCustomer ? (
                   <div className="relative">
                     <Input
                       icon={<Search className="h-4 w-4" />}
-                      placeholder="Search customers..."
-                      value={selectedCustomer ? selectedCustomer.name : customerSearch}
-                      onChange={(e) => {
-                        if (!selectedCustomer) {
-                          setCustomerSearch(e.target.value);
-                        }
-                      }}
+                      placeholder="Search customers by name or email..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
                       onFocus={() => setShowCustomerDropdown(true)}
                       onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
                     />
 
-                    {showCustomerDropdown && !selectedCustomer && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                    {showCustomerDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                         {filteredDebtors.length > 0 ? (
                           filteredDebtors.map((debtor) => (
                             <div
                               key={debtor.id}
-                              className="px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                              className="px-4 py-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                               onClick={() => {
                                 setSelectedCustomer(debtor);
                                 setCustomerSearch('');
                                 setShowCustomerDropdown(false);
                               }}
                             >
-                              <div className="font-medium text-sm">{debtor.name}</div>
-                              {debtor.email && (
-                                <div className="text-xs text-gray-500">{debtor.email}</div>
-                              )}
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                  <Building2 className="h-5 w-5 text-indigo-600" />
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900">{debtor.name}</div>
+                                  {debtor.email && (
+                                    <div className="text-sm text-gray-500">{debtor.email}</div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           ))
                         ) : (
-                          <div className="px-3 py-2 text-sm text-gray-500">No customers found</div>
+                          <div className="px-4 py-6 text-center text-gray-500">
+                            <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>No customers found</p>
+                            <p className="text-xs mt-1">Try a different search term</p>
+                          </div>
                         )}
                       </div>
                     )}
                   </div>
-
-                  {selectedCustomer && (
-                    <div className="p-3 bg-gray-50 rounded-md">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-sm">{selectedCustomer.name}</div>
-                          {selectedCustomer.email && (
-                            <div className="text-xs text-gray-500">{selectedCustomer.email}</div>
-                          )}
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-indigo-600 flex items-center justify-center">
+                          <Building2 className="h-6 w-6 text-white" />
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedCustomer(null);
-                            setCustomerSearch('');
-                          }}
-                        >
-                          Change
-                        </Button>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{selectedCustomer.name}</h3>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1">
+                            {selectedCustomer.email && (
+                              <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                                <Mail className="h-3.5 w-3.5" />
+                                {selectedCustomer.email}
+                              </span>
+                            )}
+                            {selectedCustomer.phone && (
+                              <span className="flex items-center gap-1.5 text-sm text-gray-600">
+                                <Phone className="h-3.5 w-3.5" />
+                                {selectedCustomer.phone}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCustomer(null);
+                          setCustomerSearch('');
+                        }}
+                        className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100"
+                      >
+                        Change
+                      </Button>
                     </div>
-                  )}
-                </div>
+                  </motion.div>
+                )}
               </CardContent>
             </Card>
 
             {/* Quote Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 border-b">
+                <CardTitle className="flex items-center gap-2 text-blue-900">
                   <Calendar className="h-5 w-5" />
                   Quote Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6 pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Quote Date *
-                    </label>
+                    <Label htmlFor="quoteDate" className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-gray-500" />
+                      Quote Date
+                    </Label>
                     <Input
+                      id="quoteDate"
                       type="date"
                       value={quoteDate}
                       onChange={(e) => setQuoteDate(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Validity Period (Days) *
-                    </label>
-                    <Input
-                      type="number"
-                      value={validityPeriod}
-                      onChange={(e) => setValidityPeriod(parseInt(e.target.value) || 30)}
-                      min="1"
-                      max="365"
-                    />
+                    <Label htmlFor="validityPeriod" className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-gray-500" />
+                      Validity Period
+                    </Label>
+                    <RadixSelect
+                      value={validityPeriod.toString()}
+                      onValueChange={(value) => setValidityPeriod(parseInt(value))}
+                    >
+                      <SelectTrigger id="validityPeriod">
+                        <SelectValue placeholder="Select period" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">7 days</SelectItem>
+                        <SelectItem value="14">14 days</SelectItem>
+                        <SelectItem value="30">30 days</SelectItem>
+                        <SelectItem value="45">45 days</SelectItem>
+                        <SelectItem value="60">60 days</SelectItem>
+                        <SelectItem value="90">90 days</SelectItem>
+                      </SelectContent>
+                    </RadixSelect>
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
+                    <Label className="flex items-center gap-1.5">
+                      <CalendarCheck className="h-3.5 w-3.5 text-gray-500" />
                       Valid Until
-                    </label>
-                    <Input
-                      value={validUntil.toLocaleDateString()}
-                      disabled
-                      className="bg-gray-50"
-                    />
+                    </Label>
+                    <div className="h-10 px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-sm flex items-center">
+                      <span className="text-gray-700">{validUntil.toLocaleDateString()}</span>
+                      <Badge variant="outline" className="ml-auto text-xs bg-white">
+                        {validityPeriod} days
+                      </Badge>
+                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <Label htmlFor="currency" className="flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-gray-500" />
                     Currency
-                  </label>
-                  <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                  >
-                    <option value="USD">USD - US Dollar</option>
-                    <option value="EUR">EUR - Euro</option>
-                    <option value="GBP">GBP - British Pound</option>
-                    <option value="CAD">CAD - Canadian Dollar</option>
-                  </select>
+                  </Label>
+                  <RadixSelect value={currency} onValueChange={setCurrency}>
+                    <SelectTrigger id="currency">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                      <SelectItem value="ZAR">ZAR - South African Rand</SelectItem>
+                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                    </SelectContent>
+                  </RadixSelect>
                 </div>
               </CardContent>
             </Card>
 
             {/* Line Items */}
-            <Card>
-              <CardHeader>
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Line Items
-                  </CardTitle>
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-emerald-900">
+                      <FileText className="h-5 w-5" />
+                      Line Items
+                    </CardTitle>
+                    <CardDescription>
+                      Add products and services to this quote
+                    </CardDescription>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={addLineItem}
+                    className="bg-white hover:bg-emerald-50 border-emerald-200"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-4 w-4 mr-1" />
                     Add Item
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-6">
                 {lineItems.map((item, index) => (
                   <motion.div
                     key={item.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="p-4 border border-gray-200 rounded-lg space-y-3"
+                    className="p-4 border border-gray-200 rounded-lg space-y-4 hover:border-emerald-200 transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <Badge variant="secondary">Item {index + 1}</Badge>
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                        Item {index + 1}
+                      </Badge>
                       {lineItems.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => removeLineItem(index)}
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Description *
-                        </label>
+                        <Label className="text-sm font-medium">Description</Label>
                         <Input
                           placeholder="Service or product description"
                           value={item.description}
@@ -498,91 +563,84 @@ export default function CreateQuotePage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Revenue Account *
-                        </label>
-                        <select
+                        <Label className="text-sm font-medium">Revenue Account</Label>
+                        <RadixSelect
                           value={item.glAccountId}
-                          onChange={(e) => updateLineItem(index, 'glAccountId', e.target.value)}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          onValueChange={(value) => updateLineItem(index, 'glAccountId', value)}
                         >
-                          <option value="">Select account</option>
-                          {accounts.map((account) => (
-                            <option key={account.id} value={account.id}>
-                              {account.accountCode} - {account.accountName}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.accountCode} - {account.accountName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </RadixSelect>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Quantity *
-                        </label>
+                        <Label className="text-sm font-medium">Quantity</Label>
                         <Input
                           type="number"
                           value={item.quantity}
                           onChange={(e) => updateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
                           min="0"
-                          step="0.01"
+                          step="1"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Unit Price *
-                        </label>
+                        <Label className="text-sm font-medium">Unit Price</Label>
                         <Input
                           type="number"
-                          value={item.unitPrice}
+                          value={item.unitPrice || ''}
                           onChange={(e) => updateLineItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                           min="0"
                           step="0.01"
+                          placeholder="0.00"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Tax Rate (%)
-                        </label>
+                        <Label className="text-sm font-medium">Tax %</Label>
                         <Input
                           type="number"
-                          value={item.taxRate}
+                          value={item.taxRate || ''}
                           onChange={(e) => updateLineItem(index, 'taxRate', parseFloat(e.target.value) || 0)}
                           min="0"
                           max="100"
-                          step="0.01"
+                          step="0.5"
+                          placeholder="0"
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Amount
-                        </label>
-                        <Input
-                          value={formatCurrency(item.amount)}
-                          disabled
-                          className="bg-gray-50"
-                        />
+                        <Label className="text-sm font-medium">Amount</Label>
+                        <div className="h-10 px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-sm flex items-center font-semibold">
+                          {formatCurrency(item.amount + item.taxAmount)}
+                        </div>
                       </div>
                     </div>
                   </motion.div>
                 ))}
 
                 {/* Totals */}
-                <div className="border-t pt-4">
+                <div className="bg-gray-50 -mx-6 -mb-6 mt-6 p-4 border-t">
                   <div className="flex justify-end">
-                    <div className="w-64 space-y-2">
+                    <div className="w-full md:w-72 space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Subtotal:</span>
-                        <span>{formatCurrency(subtotal)}</span>
+                        <span className="text-gray-600">Subtotal</span>
+                        <span className="font-medium">{formatCurrency(subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span>Tax:</span>
-                        <span>{formatCurrency(totalTax)}</span>
+                        <span className="text-gray-600">Tax</span>
+                        <span className="font-medium">{formatCurrency(totalTax)}</span>
                       </div>
-                      <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                        <span>Total:</span>
-                        <span>{formatCurrency(totalAmount)}</span>
+                      <div className="flex justify-between text-lg font-bold pt-3 border-t border-gray-200">
+                        <span className="text-gray-900">Total</span>
+                        <span className="text-emerald-600">{formatCurrency(totalAmount)}</span>
                       </div>
                     </div>
                   </div>
@@ -591,33 +649,43 @@ export default function CreateQuotePage() {
             </Card>
 
             {/* Notes and Terms */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Additional Information</CardTitle>
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50 border-b">
+                <CardTitle className="flex items-center gap-2 text-amber-900">
+                  <FileText className="h-5 w-5" />
+                  Additional Information
+                </CardTitle>
+                <CardDescription>
+                  Add notes and terms for this quote
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6 pt-6">
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <Label htmlFor="notes" className="text-sm font-medium">
                     Notes
-                  </label>
-                  <textarea
+                    <span className="text-gray-400 text-xs ml-2">(visible on quote)</span>
+                  </Label>
+                  <Textarea
+                    id="notes"
                     rows={3}
-                    placeholder="Internal notes..."
+                    placeholder="Add any notes for your customer..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    className="resize-none"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <Label htmlFor="terms" className="text-sm font-medium">
                     Terms and Conditions
-                  </label>
-                  <textarea
+                    <span className="text-gray-400 text-xs ml-2">(optional)</span>
+                  </Label>
+                  <Textarea
+                    id="terms"
                     rows={4}
-                    placeholder="Terms and conditions for this quote..."
+                    placeholder="Add standard terms and conditions..."
                     value={termsAndConditions}
                     onChange={(e) => setTermsAndConditions(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    className="resize-none"
                   />
                 </div>
               </CardContent>
