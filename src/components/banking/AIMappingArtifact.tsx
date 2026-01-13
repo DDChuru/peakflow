@@ -570,17 +570,21 @@ export function AIMappingArtifact({
             </div>
 
             {/* Reasoning */}
-            {suggestion.reasoning && suggestion.reasoning.length > 0 && (
+            {suggestion.reasoning && (
               <div className="space-y-2">
                 <h5 className="text-sm font-semibold text-gray-900">Why this mapping?</h5>
-                <ul className="space-y-1 text-sm text-gray-700">
-                  {suggestion.reasoning.map((reason, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-indigo-600 mt-1">•</span>
-                      <span>{reason}</span>
-                    </li>
-                  ))}
-                </ul>
+                {Array.isArray(suggestion.reasoning) ? (
+                  <ul className="space-y-1 text-sm text-gray-700">
+                    {suggestion.reasoning.map((reason, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-indigo-600 mt-1">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-700">{suggestion.reasoning}</p>
+                )}
               </div>
             )}
 
@@ -634,17 +638,21 @@ export function AIMappingArtifact({
             </div>
 
             {/* Reasoning */}
-            {suggestion.reasoning && suggestion.reasoning.length > 0 && (
+            {suggestion.reasoning && (
               <div className="space-y-2">
                 <h5 className="text-sm font-semibold text-gray-900">💬 Reasoning:</h5>
-                <ul className="space-y-1 text-sm text-gray-700">
-                  {suggestion.reasoning.map((reason, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="text-indigo-600 mt-1">•</span>
-                      <span>{reason}</span>
-                    </li>
-                  ))}
-                </ul>
+                {Array.isArray(suggestion.reasoning) ? (
+                  <ul className="space-y-1 text-sm text-gray-700">
+                    {suggestion.reasoning.map((reason, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-indigo-600 mt-1">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-700">{suggestion.reasoning}</p>
+                )}
               </div>
             )}
 
