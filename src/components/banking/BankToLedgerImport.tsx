@@ -591,8 +591,23 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       }
     });
 
-    // Find similar transactions using fuzzy matching
+    // Find similar transactions using category-based matching (priority) + fuzzy description matching (fallback)
     const similarTransactions = unmappedTransactions.filter(tx => {
+      // PRIORITY 1: Match by category (bank transaction type) - exact match
+      // This handles scenarios like school fees where all "AUTOBANK CASH DEPOSIT" should match
+      // even though student names in descriptions are different
+      const sourceCategory = mappedTransaction.category?.toLowerCase().trim();
+      const targetCategory = tx.category?.toLowerCase().trim();
+
+      if (sourceCategory && targetCategory && sourceCategory === targetCategory) {
+        // Category match found - these are the same type of transaction
+        // (e.g., both are "AUTOBANK CASH DEPOSIT" for school fees)
+        console.log(`[Category Match] "${sourceCategory}" - matched transaction: ${tx.description?.substring(0, 30)}...`);
+        return true;
+      }
+
+      // PRIORITY 2: Fall back to fuzzy description matching for transactions without category
+      // or with different categories
       const matchResult = fuzzyMatch(
         mappedTransaction.description,
         tx.description,
@@ -763,50 +778,83 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
       const allMappedIds = new Set([currentMappingTransaction.id, ...similarMappedIds]);
 
       // If saveAsRule is checked, create a new GL mapping rule
-      if (saveAsRule && currentMappingTransaction.description) {
-        // Extract key terms from the transaction description
-        const description = currentMappingTransaction.description.trim();
+      if (saveAsRule && (currentMappingTransaction.category || currentMappingTransaction.description)) {
+        // Determine which account to use for the rule (debit or credit based on transaction type)
+        const accountToMap = currentMappingTransaction.credit && currentMappingTransaction.credit > 0
+          ? mapping.creditAccount
+          : mapping.debitAccount;
 
-        // Create a pattern from the description
-        // Remove common words and numbers, keep significant terms
-        const words = description.split(/\s+/)
-          .filter(word => word.length > 3) // Keep words longer than 3 chars
-          .filter(word => !/^\d+$/.test(word)) // Remove pure numbers
-          .filter(word => !['FROM', 'FOR', 'THE', 'AND', 'WITH', 'PAYMENT'].includes(word.toUpperCase()))
-          .slice(0, 3); // Take first 3 significant words
+        // PRIORITY 1: Create category-based rule if category exists
+        // This handles school fees scenario where all "AUTOBANK CASH DEPOSIT" should match
+        const category = currentMappingTransaction.category?.trim();
 
-        if (words.length > 0) {
-          const pattern = words.join('.*'); // Create regex pattern
-
-          // Determine which account to use for the rule (debit or credit based on transaction type)
-          const accountToMap = currentMappingTransaction.credit && currentMappingTransaction.credit > 0
-            ? mapping.creditAccount
-            : mapping.debitAccount;
-
+        if (category) {
+          // Create an exact match rule on category (transaction type)
+          // This will match all transactions with the same bank transaction type
           await coaService.saveMappingRule({
-            pattern,
-            patternType: 'regex',
+            pattern: category,
+            patternType: 'exact', // Exact match on category
+            matchField: 'category', // Match against the category field, not description
             glAccountCode: accountToMap.code,
             glAccountId: accountToMap.id,
-            priority: 50, // Medium priority for user-created rules
+            priority: 90, // High priority for category-based rules
             isActive: true,
             metadata: {
-              description: `Manual mapping from: ${description}`,
-              category: 'user-created'
+              description: `Category rule: All "${category}" transactions`,
+              category: category,
+              ruleType: 'category-based'
             }
           });
 
-          // Show success message with batch count
+          // Show success message with category info
           if (similarCount > 0) {
             toast.success(
-              `✅ Mapping applied to ${similarCount + 1} similar transactions!\n📋 Rule created for future auto-matching!`,
+              `✅ Mapping applied to ${similarCount + 1} "${category}" transactions!\n📋 Rule created: All future "${category}" transactions will auto-map!`,
               { duration: 5000 }
             );
           } else {
-            toast.success('Mapping saved and rule created for future auto-matching!');
+            toast.success(`Rule created: All "${category}" transactions will auto-map to this account!`);
           }
         } else {
-          toast.error('Could not create rule pattern from transaction description');
+          // PRIORITY 2: Fall back to description-based pattern if no category
+          const description = currentMappingTransaction.description.trim();
+
+          // Create a pattern from the description
+          // Remove common words and numbers, keep significant terms
+          const words = description.split(/\s+/)
+            .filter(word => word.length > 3) // Keep words longer than 3 chars
+            .filter(word => !/^\d+$/.test(word)) // Remove pure numbers
+            .filter(word => !['FROM', 'FOR', 'THE', 'AND', 'WITH', 'PAYMENT'].includes(word.toUpperCase()))
+            .slice(0, 3); // Take first 3 significant words
+
+          if (words.length > 0) {
+            const pattern = words.join('.*'); // Create regex pattern
+
+            await coaService.saveMappingRule({
+              pattern,
+              patternType: 'regex',
+              glAccountCode: accountToMap.code,
+              glAccountId: accountToMap.id,
+              priority: 50, // Medium priority for description-based rules
+              isActive: true,
+              metadata: {
+                description: `Manual mapping from: ${description}`,
+                category: 'user-created'
+              }
+            });
+
+            // Show success message with batch count
+            if (similarCount > 0) {
+              toast.success(
+                `✅ Mapping applied to ${similarCount + 1} similar transactions!\n📋 Rule created for future auto-matching!`,
+                { duration: 5000 }
+              );
+            } else {
+              toast.success('Mapping saved and rule created for future auto-matching!');
+            }
+          } else {
+            toast.error('Could not create rule pattern from transaction description');
+          }
         }
       } else {
         // No rule, just show batch mapping results

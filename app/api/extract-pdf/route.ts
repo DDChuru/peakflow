@@ -26,23 +26,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Gemini AI
-    // RESTORE POINT: commit 319b2c9 has gemini-2.0-flash-exp if rollback needed
+    // Using gemini-2.0-flash-exp which reliably extracts all transactions
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview', // Upgraded from gemini-2.0-flash-exp for better accuracy & native PDF
+      model: 'gemini-2.0-flash-exp', // Reliable extraction - gets all transactions
       generationConfig: {
         temperature: 0.1,
-        topK: 32,
-        topP: 0.8,
         maxOutputTokens: 65536,
         responseMimeType: 'application/json',
-      }
+      },
     });
 
     // Get extraction template based on document type
     const template = getExtractionTemplate(documentType);
 
     // Generate content with the PDF
+    // Timeout set to 8 minutes to handle large multi-page PDFs (Standard Bank, ABSA can be 50+ pages)
     const result = await model.generateContent({
       contents: [{
         role: 'user',
@@ -56,6 +55,8 @@ export async function POST(request: NextRequest) {
           }
         ]
       }]
+    }, {
+      timeout: 480000  // 8 minutes in milliseconds
     });
 
     const responseText = result.response.text();
@@ -201,11 +202,19 @@ EXTRACTION REQUIREMENTS:
 3. Transactions (transactions array) - ALL AMOUNTS MUST BE NUMBERS:
    Each transaction object:
    - date: "YYYY-MM-DD" (ISO format string)
-   - description: string
+   - description: string (the main transaction narrative/reference, e.g., customer name, payment reference)
+   - category: string or null (the BANK'S transaction type/category, e.g., "AUTOBANK CASH DEPOSIT", "CREDIT TRANSFER", "DEBIT CARD PURCHASE", "EFT PAYMENT", "CASH DEPOSIT FEE", "MAGTAPE CREDIT", etc. - extract this from the bank's categorization, NOT from the description)
    - debit: number or null (NO quotes, NO commas)
    - credit: number or null (NO quotes, NO commas)
    - balance: number (NO quotes, NO commas)
    - reference: string or null
+
+   IMPORTANT FOR CATEGORY FIELD:
+   - Most bank statements show a transaction TYPE separate from the description/reference
+   - Examples: "CASH DEPOSIT", "CREDIT TRANSFER", "DEBIT ORDER", "STOP ORDER", "ATM WITHDRAWAL", "POS PURCHASE"
+   - This is different from the description which contains variable info like names, references
+   - If the bank shows "AUTOBANK CASH DEPOSIT" as the transaction type, put that in category
+   - The description would contain the variable reference like "JOHN SMITH 3B A123"
 
 Output complete, valid JSON. Ensure all braces and brackets are closed.`,
 
