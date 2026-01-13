@@ -58,6 +58,7 @@ import { BankStatement, BankTransaction } from '@/types/bank-statement';
 import { ImportedTransaction, GLMapping, ImportStatistics } from '@/types/accounting/bank-import';
 import { AccountRecord } from '@/types/accounting/chart-of-accounts';
 import { BankToLedgerService } from '@/lib/accounting/bank-to-ledger-service';
+import { AccountSelector, AccountOption } from '@/components/accounting/AccountSelector';
 import { IndustryTemplateService, CompanyAccountRecord } from '@/lib/accounting/industry-template-service';
 import { bankStatementService } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -2294,13 +2295,8 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
 
               <div className="space-y-4">
                 <div>
-                  <Label>Debit Account</Label>
-                  {loadingAccounts ? (
-                    <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Loading accounts...
-                    </div>
-                  ) : glAccounts.length === 0 ? (
+                  <Label className="mb-2 block">Debit Account</Label>
+                  {glAccounts.length === 0 && !loadingAccounts ? (
                     <Alert className="mt-2">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
@@ -2308,16 +2304,22 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <RadixSelect
+                    <AccountSelector
+                      accounts={glAccounts.map(acc => ({
+                        id: acc.id || acc.code,
+                        code: acc.code,
+                        name: acc.name,
+                        type: acc.type,
+                        description: acc.description
+                      }))}
                       value={mappings.get(currentMappingTransaction.id)?.debitAccount?.id || ''}
-                      onValueChange={(value) => {
-                        const account = glAccounts.find(a => a.id === value);
+                      onSelect={(account) => {
                         if (account) {
                           const currentMapping = mappings.get(currentMappingTransaction.id) || {};
                           saveMapping(currentMappingTransaction.id, {
                             ...currentMapping,
                             debitAccount: {
-                              id: account.id || '',
+                              id: account.id,
                               code: account.code,
                               name: account.name
                             },
@@ -2325,33 +2327,15 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                           });
                         }
                       }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select debit account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {glAccounts.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground">No accounts available</div>
-                        ) : (
-                          glAccounts.map(account => (
-                            <SelectItem key={account.id} value={account.id || account.code}>
-                              {account.code} - {account.name} ({account.type})
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </RadixSelect>
+                      placeholder="Search or select debit account..."
+                      loading={loadingAccounts}
+                    />
                   )}
                 </div>
 
                 <div>
-                  <Label>Credit Account</Label>
-                  {loadingAccounts ? (
-                    <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
-                      <RefreshCw className="h-4 w-4 animate-spin" />
-                      Loading accounts...
-                    </div>
-                  ) : glAccounts.length === 0 ? (
+                  <Label className="mb-2 block">Credit Account</Label>
+                  {glAccounts.length === 0 && !loadingAccounts ? (
                     <Alert className="mt-2">
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
@@ -2359,16 +2343,22 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                       </AlertDescription>
                     </Alert>
                   ) : (
-                    <RadixSelect
+                    <AccountSelector
+                      accounts={glAccounts.map(acc => ({
+                        id: acc.id || acc.code,
+                        code: acc.code,
+                        name: acc.name,
+                        type: acc.type,
+                        description: acc.description
+                      }))}
                       value={mappings.get(currentMappingTransaction.id)?.creditAccount?.id || ''}
-                      onValueChange={(value) => {
-                        const account = glAccounts.find(a => a.id === value);
+                      onSelect={(account) => {
                         if (account) {
                           const currentMapping = mappings.get(currentMappingTransaction.id) || {};
                           saveMapping(currentMappingTransaction.id, {
                             ...currentMapping,
                             creditAccount: {
-                              id: account.id || '',
+                              id: account.id,
                               code: account.code,
                               name: account.name
                             },
@@ -2376,22 +2366,9 @@ export function BankToLedgerImport({ companyId, bankAccountId, onComplete }: Ban
                           });
                         }
                       }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select credit account" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {glAccounts.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground">No accounts available</div>
-                        ) : (
-                          glAccounts.map(account => (
-                            <SelectItem key={account.id} value={account.id || account.code}>
-                              {account.code} - {account.name} ({account.type})
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </RadixSelect>
+                      placeholder="Search or select credit account..."
+                      loading={loadingAccounts}
+                    />
                   )}
                 </div>
 
