@@ -286,15 +286,16 @@ interface JournalEntryLine {
 
 interface JournalEntry {
   entryNumber: string;
-  date: Date;
+  entryDate: Date;  // Changed from 'date' to match service response
   description: string;
   source: string;
+  reference?: string;
   createdBy: string;
   createdAt: Date;
   lines: JournalEntryLine[];
   totalDebit: number;
   totalCredit: number;
-  isBalanced: boolean;
+  balanced: boolean;  // Changed from 'isBalanced' to match service response
 }
 
 interface JournalEntriesReport {
@@ -1118,7 +1119,7 @@ export default function ReportsPage() {
     entries: [
       {
         entryNumber: 'JE-2025-0001',
-        date: new Date('2025-01-15'),
+        entryDate: new Date('2025-01-15'),
         description: 'Vendor Bill BILL-2025-0001 - ABC Supplier',
         source: 'AP_BILL',
         createdBy: 'John Doe',
@@ -1141,11 +1142,11 @@ export default function ReportsPage() {
         ],
         totalDebit: 500,
         totalCredit: 500,
-        isBalanced: true,
+        balanced: true,
       },
       {
         entryNumber: 'JE-2025-0002',
-        date: new Date('2025-01-20'),
+        entryDate: new Date('2025-01-20'),
         description: 'Payment to ABC Supplier via Check #1001',
         source: 'AP_PAYMENT',
         createdBy: 'Jane Smith',
@@ -1168,11 +1169,11 @@ export default function ReportsPage() {
         ],
         totalDebit: 500,
         totalCredit: 500,
-        isBalanced: true,
+        balanced: true,
       },
       {
         entryNumber: 'JE-2025-0003',
-        date: new Date('2025-01-22'),
+        entryDate: new Date('2025-01-22'),
         description: 'Invoice INV-2025-0015 - XYZ Corporation',
         source: 'AR_INVOICE',
         createdBy: 'John Doe',
@@ -1195,11 +1196,11 @@ export default function ReportsPage() {
         ],
         totalDebit: 7500,
         totalCredit: 7500,
-        isBalanced: true,
+        balanced: true,
       },
       {
         entryNumber: 'JE-2025-0004',
-        date: new Date('2025-01-25'),
+        entryDate: new Date('2025-01-25'),
         description: 'Monthly Rent Payment - January 2025',
         source: 'JOURNAL',
         createdBy: 'Jane Smith',
@@ -1222,11 +1223,11 @@ export default function ReportsPage() {
         ],
         totalDebit: 3000,
         totalCredit: 3000,
-        isBalanced: true,
+        balanced: true,
       },
       {
         entryNumber: 'JE-2025-0005',
-        date: new Date('2025-01-28'),
+        entryDate: new Date('2025-01-28'),
         description: 'Customer Payment - ABC Corporation',
         source: 'AR_PAYMENT',
         createdBy: 'John Doe',
@@ -1249,7 +1250,7 @@ export default function ReportsPage() {
         ],
         totalDebit: 5000,
         totalCredit: 5000,
-        isBalanced: true,
+        balanced: true,
       },
     ],
   });
@@ -3201,7 +3202,7 @@ export default function ReportsPage() {
                               className="hover:bg-gray-50 border-b border-gray-100"
                               title="TODO: Click to view full journal entry"
                             >
-                              <td className="p-2">{formatDate(entry.date)}</td>
+                              <td className="p-2">{formatDate(entry.entryDate)}</td>
                               <td className="p-2 max-w-xs truncate">{entry.description}</td>
                               <td className="p-2">
                                 <Badge className={`text-xs ${getSourceBadgeColor(entry.source)}`}>
@@ -3362,14 +3363,14 @@ export default function ReportsPage() {
                             <Badge className={`${getSourceBadgeColor(entry.source)}`}>
                               {entry.source}
                             </Badge>
-                            {entry.isBalanced ? (
+                            {entry.balanced ? (
                               <CheckCircle2 className="h-5 w-5 text-green-600" />
                             ) : (
                               <XCircle className="h-5 w-5 text-red-600" />
                             )}
                           </div>
                           <div className="text-right">
-                            <div className="text-sm text-gray-600">{formatDate(entry.date)}</div>
+                            <div className="text-sm text-gray-600">{formatDate(entry.entryDate)}</div>
                           </div>
                         </div>
                         <div className="mt-2 text-sm text-gray-700">{entry.description}</div>
@@ -3391,6 +3392,7 @@ export default function ReportsPage() {
                             <table className="w-full">
                               <thead>
                                 <tr className="border-b-2 border-gray-300">
+                                  <th className="text-left p-2 font-semibold">Date</th>
                                   <th className="text-left p-2 font-semibold">Account</th>
                                   <th className="text-left p-2 font-semibold">Account Name</th>
                                   <th className="text-left p-2 font-semibold">Description</th>
@@ -3404,6 +3406,7 @@ export default function ReportsPage() {
                                     key={lineIdx}
                                     className="hover:bg-gray-50 border-b border-gray-100"
                                   >
+                                    <td className="p-2 text-sm">{formatDate(entry.entryDate)}</td>
                                     <td className="p-2">{line.accountCode}</td>
                                     <td className="p-2">{line.accountName}</td>
                                     <td className="p-2 text-sm text-gray-600">{line.description}</td>
@@ -3418,7 +3421,7 @@ export default function ReportsPage() {
 
                                 {/* Totals Row */}
                                 <tr className="border-t-2 border-gray-400 bg-gray-100">
-                                  <td colSpan={3} className="p-2 font-bold text-right">
+                                  <td colSpan={4} className="p-2 font-bold text-right">
                                     TOTALS
                                   </td>
                                   <td className="p-2 text-right font-bold border-t-4 border-gray-900">
@@ -3426,7 +3429,7 @@ export default function ReportsPage() {
                                   </td>
                                   <td className="p-2 text-right font-bold border-t-4 border-gray-900 flex items-center justify-end gap-2">
                                     {formatCurrency(entry.totalCredit)}
-                                    {entry.isBalanced && (
+                                    {entry.balanced && (
                                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                                     )}
                                   </td>
