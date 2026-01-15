@@ -76,3 +76,26 @@ Task 5 completed successfully.
 - Exports added to `/src/lib/reporting/index.ts`
 - State file updated: Task 5 marked as completed
 [2026-01-15 09:51:46] [0;32mTask 5 completed successfully[0m
+[2026-01-15 09:51:46] [0;32mAuto-committed changes for task 5[0m
+[2026-01-15 09:51:48] Agent: code-implementation
+[2026-01-15 09:51:48] Description: Extend the centralized PDF service to generate PDFs for GL, TB, IS, and BS reports matching template visual layouts. Add methods like generateGLPDF(), generateTBPDF(), generateISPDF(), generateBSPDF() that produce properly styled pdfMake documents.
+[2026-01-15 09:51:48] Attempt 1 of 3
+Task 6 completed successfully.
+
+**Summary of Implementation:**
+- Added 4 PDF generation methods to the centralized PDF service (`/src/lib/pdf/pdf.service.ts`):
+  - `generateGLPDF()` / `downloadGLPDF()` - General Ledger
+  - `generateTBPDF()` / `downloadTBPDF()` - Trial Balance
+  - `generateISPDF()` / `downloadISPDF()` - Income Statement
+  - `generateBSPDF()` / `downloadBSPDF()` - Balance Sheet
+
+- Each PDF includes:
+  - Professional headers with company name and date range
+  - Styled tables matching Excel column structures
+  - Account groupings and subtotals
+  - Grand totals with highlighting
+  - Page numbers in footer
+  - Color-coded profit/loss indicators
+
+- Created new index file at `/src/lib/pdf/index.ts` for clean exports
+[2026-01-15 09:57:10] [0;32mTask 6 completed successfully[0m
