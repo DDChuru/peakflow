@@ -517,17 +517,15 @@ function evaluateTruncation(transactions, statementEndDate) {
 // Helper function to extract bank statement by monthly chunks
 async function extractBankStatementByMonths(pdfBase64, apiKey, partialData) {
   try {
-    // RESTORE POINT: commit 319b2c9 has gemini-2.5-flash-lite if rollback needed
+    // Using gemini-2.0-flash-exp which extracts 237 transactions vs Gemini 3's 99
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview', // Upgraded for better accuracy & native PDF support
+      model: 'gemini-2.0-flash-exp', // Reliable extraction
       generationConfig: {
         temperature: 0.1,
-        topK: 32,
-        topP: 0.8,
         maxOutputTokens: 65536,
         responseMimeType: 'application/json',
-      }
+      },
     });
 
     // Get statement period from partial data
@@ -644,17 +642,17 @@ Return JSON with just the transactions array:
 async function extractFromPDF(pdfBase64, documentType = 'generic', apiKey) {
   try {
     // Initialize Gemini
-    // RESTORE POINT: commit 319b2c9 has gemini-2.5-flash-lite if rollback needed
+    // Using gemini-2.0-flash-exp which extracts 237 transactions vs Gemini 3's 99
+    // Gemini 3 config preserved for future testing when model improves
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview', // Upgraded for better accuracy & native PDF support
+      model: 'gemini-2.0-flash-exp', // Reliable extraction - gets all 237 transactions
       generationConfig: {
         temperature: 0.1,
-        topK: 32,
-        topP: 0.8,
         maxOutputTokens: 65536,
         responseMimeType: 'application/json',
-      }
+      },
+      // Note: Gemini 3 config for future: temp=1.0, thinkingLevel='MINIMAL'
     });
 
     // Get the appropriate template
@@ -666,6 +664,7 @@ async function extractFromPDF(pdfBase64, documentType = 'generic', apiKey) {
     });
 
     // Generate content with the PDF
+    // Timeout set to 8 minutes to handle large multi-page PDFs (Standard Bank, ABSA can be 50+ pages)
     const result = await model.generateContent({
       contents: [{
         role: 'user',
@@ -679,6 +678,8 @@ async function extractFromPDF(pdfBase64, documentType = 'generic', apiKey) {
           }
         ]
       }]
+    }, {
+      timeout: 480000  // 8 minutes in milliseconds
     });
 
     if (!result || !result.response) {

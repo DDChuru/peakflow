@@ -64,3 +64,6 @@ app/admin/update-api-key/
 *key*.md
 *credential*.md
 *api-key*.txt
+
+# Local Netlify folder
+.netlify

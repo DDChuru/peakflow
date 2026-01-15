@@ -1,0 +1,219 @@
+{
+  "version": 2,
+  "session_id": "report-templates-2026-01-15",
+  "status": "executing",
+  "config": {
+    "max_iterations": 50,
+    "auto_commit": true,
+    "template": "feature",
+    "execution_mode": "unattended"
+  },
+  "plan": {
+    "approved": true,
+    "description": "Match Peakflow financial reports to Templates.xlsx formats with Excel and PDF exports",
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Install ExcelJS and Create Excel Export Service",
+        "description": "Add exceljs package for proper .xlsx generation. Create a centralized Excel export service in /src/lib/excel/ that mirrors the pattern of the PDF service. This service should handle workbook creation, styled headers, proper column formatting, currency formatting, and company branding support.",
+        "agentType": "code-implementation",
+        "status": "completed",
+        "successCriteria": [
+          "exceljs installed in package.json",
+          "ExcelService class created with methods: createWorkbook, addSheet, downloadWorkbook, getWorkbookBlob",
+          "Support for styled headers, borders, number formats, column widths",
+          "Company header row generation method"
+        ],
+        "filesInvolved": [
+          "package.json",
+          "src/lib/excel/excel.service.ts",
+          "src/lib/excel/index.ts"
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Create General Ledger Report Formatter (GL Template)",
+        "description": "Implement GL report formatter matching the template: Date | Entry Type | Reference | Contra Acc | Description | Debit | Credit | Cumulative. Group transactions by account with opening/closing balances per month. Add 'Prepared by' line in header. Extend existing GLReportsService to add generateGLReportFormatted() method or create a formatter utility.",
+        "agentType": "code-implementation",
+        "status": "pending",
+        "successCriteria": [
+          "GL report shows transactions grouped by account code",
+          "Monthly opening/closing balances displayed",
+          "Running cumulative balance column",
+          "Contra account column populated from journal entry counter-entries",
+          "Company header with 'Prepared by' line"
+        ],
+        "filesInvolved": [
+          "src/lib/reporting/gl-reports-service.ts",
+          "src/lib/reporting/formatters/gl-formatter.ts"
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Create Trial Balance Report Formatter (TB Template)",
+        "description": "Implement TB report formatter matching the template: External Ref | Account Code | Account Name | DR | CR. Add totals row that must balance. Include Net Loss/Profit calculation. Ensure debit/credit columns display properly.",
+        "agentType": "code-implementation",
+        "status": "pending",
+        "successCriteria": [
+          "TB report lists all accounts with debit OR credit balance",
+          "Accounts sorted by code",
+          "Totals row shows balanced debits = credits",
+          "Net Loss/Profit line calculated and displayed",
+          "Company header with 'Prepared by' line"
+        ],
+        "filesInvolved": [
+          "src/lib/reporting/gl-reports-service.ts",
+          "src/lib/reporting/formatters/tb-formatter.ts"
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Create Income Statement Report Formatter (IS Template)",
+        "description": "Implement IS report formatter with hierarchical structure: SALES section, COST OF SALES section, GROSS PROFIT line, OTHER INCOME section, EXPENSES section with detail items, NET PROFIT/LOSS.",
+        "agentType": "code-implementation",
+        "status": "pending",
+        "successCriteria": [
+          "Hierarchical structure with SALES, COST OF SALES, GROSS PROFIT, OTHER INCOME, EXPENSES, NET PROFIT sections",
+          "Proper indentation for subsections and detail lines",
+          "Section subtotals displayed",
+          "GROSS PROFIT = SALES - COST OF SALES",
+          "NET PROFIT/LOSS at bottom"
+        ],
+        "filesInvolved": [
+          "src/lib/reporting/financial-statements-service.ts",
+          "src/lib/reporting/formatters/is-formatter.ts"
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Create Balance Sheet Report Formatter (BS Template)",
+        "description": "Implement BS report formatter with hierarchical structure: ASSETS (Non-current Assets with Fixed Assets/Other Fixed Assets, Current Assets), EQUITY AND LIABILITIES (Capital and Reserves, Non-current Liabilities, Current Liabilities). Each level needs subtotals.",
+        "agentType": "code-implementation",
+        "status": "pending",
+        "successCriteria": [
+          "Hierarchical structure matching template layout",
+          "Non-current Assets split into Fixed Assets and Other Fixed Assets",
+          "Current Assets section",
+          "Capital and Reserves (Equity) section",
+          "Non-current and Current Liabilities sections",
+          "Subtotals at each level",
+          "Total Assets = Total Equity and Liabilities"
+        ],
+        "filesInvolved": [
+          "src/lib/reporting/financial-statements-service.ts",
+          "src/lib/reporting/formatters/bs-formatter.ts"
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Implement PDF Export for All Report Types",
+        "description": "Extend the centralized PDF service to generate PDFs for GL, TB, IS, and BS reports matching template visual layouts. Add methods like generateGLPDF(), generateTBPDF(), generateISPDF(), generateBSPDF() that produce properly styled pdfMake documents.",
+        "agentType": "code-implementation",
+        "status": "pending",
+        "successCriteria": [
+          "generateGLPDF() produces GL report matching template",
+          "generateTBPDF() produces TB report matching template",
+          "generateISPDF() produces IS report matching template",
+          "generateBSPDF() produces BS report matching template",
+          "All PDFs include company header with logo support",
+          "All PDFs include 'Prepared by' line"
+        ],
+        "filesInvolved": [
+          "src/lib/pdf/pdf.service.ts",
+          "src/lib/pdf/report-pdf-builders.ts"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Implement Excel Export for All Report Types",
+        "description": "Add Excel export methods to the Excel service for GL, TB, IS, and BS reports. Each method should produce properly formatted .xlsx files matching the template layouts with styled headers, proper column widths, number formatting for currency.",
+        "agentType": "code-implementation",
+        "status": "pending",
+        "successCriteria": [
+          "generateGLExcel() produces Excel file matching GL template",
+          "generateTBExcel() produces Excel file matching TB template",
+          "generateISExcel() produces Excel file matching IS template",
+          "generateBSExcel() produces Excel file matching BS template",
+          "Currency columns formatted with proper number format",
+          "Headers styled with bold, borders, background colors"
+        ],
+        "filesInvolved": [
+          "src/lib/excel/excel.service.ts",
+          "src/lib/excel/report-excel-builders.ts"
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Update Reports Page UI with Export Buttons",
+        "description": "Add PDF and Excel export buttons to the reports page for each report type. Connect buttons to the new export services. Show loading state during export. Add toast notifications for success/error.",
+        "agentType": "code-implementation",
+        "status": "pending",
+        "successCriteria": [
+          "Each report tab has PDF and Excel export buttons",
+          "Clicking PDF downloads the PDF for that report",
+          "Clicking Excel downloads the .xlsx for that report",
+          "Loading spinner shown during export",
+          "Success toast shown after download"
+        ],
+        "filesInvolved": [
+          "app/workspace/[companyId]/reports/page.tsx"
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Create Smoke Test Guide for Report Exports",
+        "description": "Create a comprehensive smoke test guide (smoke-test-financial-reports.md) documenting how to verify all four report types export correctly to both PDF and Excel formats.",
+        "agentType": "documentation",
+        "status": "pending",
+        "successCriteria": [
+          "Document covers all 4 report types (GL, TB, IS, BS)",
+          "Document covers both PDF and Excel exports",
+          "Step-by-step verification procedures included",
+          "Checklist format for easy verification"
+        ],
+        "filesInvolved": [
+          "smoke-test-financial-reports.md"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "End-to-End Testing of Report Exports",
+        "description": "Perform end-to-end testing of all report exports. Verify that each report type (GL, TB, IS, BS) exports correctly to both PDF and Excel formats. Check visual layout matches templates, data accuracy, proper formatting.",
+        "agentType": "qa-testing",
+        "status": "pending",
+        "successCriteria": [
+          "GL report exports to PDF and Excel with correct columns and grouping",
+          "TB report exports with balanced totals",
+          "IS report exports with correct hierarchy and calculations",
+          "BS report exports with balanced Assets = Equity + Liabilities",
+          "All exports include company header",
+          "Currency formatting is correct throughout"
+        ],
+        "filesInvolved": [
+          "app/workspace/[companyId]/reports/page.tsx",
+          "src/lib/pdf/pdf.service.ts",
+          "src/lib/excel/excel.service.ts"
+        ]
+      }
+    ]
+  },
+  "execution": {
+    "current_task_id": 1,
+    "total_iterations": 1
+  },
+  "metrics": {
+    "tasks_completed": 1,
+    "tasks_failed": 0,
+    "estimated_remaining": 9
+  },
+  "reference": {
+    "template_file": "/home/dachu/Downloads/templates/Templates.xlsx",
+    "template_summary": {
+      "GL": "Date | Entry Type | Reference | Contra Acc | Description | Debit | Credit | Cumulative - Grouped by account",
+      "TB": "External Ref | Account Code | Account Name | DR | CR - Balanced totals",
+      "IS": "SALES > COST OF SALES > GROSS PROFIT > OTHER INCOME > EXPENSES > NET PROFIT",
+      "BS": "ASSETS (Non-current, Current) | EQUITY AND LIABILITIES - Balanced"
+    }
+  },
+  "updated_at": "2026-01-15T07:27:04Z"
+}

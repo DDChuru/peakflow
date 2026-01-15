@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debit vs. Credit - Visual Guide</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #475569;
+            --debit-color: #10b981; /* Green */
+            --credit-color: #ef4444; /* Red */
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--secondary);
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            color: #1e293b;
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #64748b;
+            margin-top: 10px;
+        }
+
+        /* The Equation Section */
+        .equation-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            flex-wrap: wrap;
+        }
+
+        .eq-item {
+            padding: 15px 30px;
+            border-radius: 8px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+        }
+
+        .eq-symbol {
+            color: #94a3b8;
+        }
+
+        /* T-Account Visual */
+        .t-account-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 50px;
+        }
+
+        .side {
+            padding: 20px;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .debit-side {
+            background-color: rgba(16, 185, 129, 0.1); /* Light Green */
+            border: 2px solid var(--debit-color);
+        }
+
+        .credit-side {
+            background-color: rgba(239, 68, 68, 0.1); /* Light Red */
+            border: 2px solid var(--credit-color);
+        }
+
+        .side-title {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 800;
+            font-size: 1.8rem;
+            text-align: center;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .debit-text { color: var(--debit-color); }
+        .credit-text { color: var(--credit-color); }
+
+        .rules-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .rule-item {
+            background: white;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .increase { color: var(--debit-color); }
+        .decrease { color: var(--credit-color); }
+        
+        .arrow-up::before { content: "▲ "; }
+        .arrow-down::before { content: "▼ "; }
+
+        /* The DEALER Mnemonic */
+        .dealer-section {
+            background: #1e293b;
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .dealer-title {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+
+        .dealer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .mnemonic-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+
+        .mnemonic-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.2);
+        }
+
+        .letter {
+            font-size: 2rem;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .word {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .d-group { border-bottom: 4px solid var(--debit-color); }
+        .c-group { border-bottom: 4px solid var(--credit-color); }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Accounting Fundamentals</h1>
+        <div class="subtitle">The Dual Aspect Concept: Every transaction affects two accounts.</div>
+    </header>
+
+    <!-- The Accounting Equation -->
+    <div class="equation-box">
+        <div class="eq-item">ASSETS</div>
+        <div class="eq-symbol">=</div>
+        <div class="eq-item">LIABILITIES</div>
+        <div class="eq-symbol">+</div>
+        <div class="eq-item">EQUITY</div>
+    </div>
+
+    <!-- Main Visual Split -->
+    <div class="t-account-wrapper">
+        <!-- DEBIT SIDE -->
+        <div class="side debit-side">
+            <span class="side-title debit-text">Dr. (Debit)</span>
+            <div style="text-align: center; margin-bottom: 15px; opacity: 0.8;">The "Left" Side</div>
+            
+            <ul class="rules-list">
+                <li class="rule-item">
+                    <span>Assets</span>
+                    <span class="increase arrow-up">Increase</span>
+                </li>
+                <li class="rule-item">
+                    <span>Expenses</span>
+                    <span class="increase arrow-up">Increase</span>
+                </li>
+                <li class="rule-item">
+                    <span>Liabilities</span>
+                    <span class="decrease arrow-down">Decrease</span>
+                </li>
+                <li class="rule-item">
+                    <span>Equity</span>
+                    <span class="decrease arrow-down">Decrease</span>
+                </li>
+                <li class="rule-item">
+                    <span>Revenue</span>
+                    <span class="decrease arrow-down">Decrease</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- CREDIT SIDE -->
+        <div class="side credit-side">
+            <span class="side-title credit-text">Cr. (Credit)</span>
+            <div style="text-align: center; margin-bottom: 15px; opacity: 0.8;">The "Right" Side</div>
+
+            <ul class="rules-list">
+                <li class="rule-item">
+                    <span>Liabilities</span>
+                    <span class="increase arrow-up">Increase</span>
+                </li>
+                <li class="rule-item">
+                    <span>Equity</span>
+                    <span class="increase arrow-up">Increase</span>
+                </li>
+                <li class="rule-item">
+                    <span>Revenue</span>
+                    <span class="increase arrow-up">Increase</span>
+                </li>
+                <li class="rule-item">
+                    <span>Assets</span>
+                    <span class="decrease arrow-down">Decrease</span>
+                </li>
+                <li class="rule-item">
+                    <span>Expenses</span>
+                    <span class="decrease arrow-down">Decrease</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Mnemonic Section -->
+    <div class="dealer-section">
+        <h2 class="dealer-title">Remember the Acronym: D.E.A.L.E.R.</h2>
+        <div class="dealer-grid">
+            <div class="mnemonic-card d-group">
+                <span class="letter">D</span>
+                <span class="word">Drawings</span>
+                <div style="font-size: 0.7rem; margin-top:5px; color:#cbd5e1">Debit to Increase</div>
+            </div>
+            <div class="mnemonic-card d-group">
+                <span class="letter">E</span>
+                <span class="word">Expenses</span>
+                <div style="font-size: 0.7rem; margin-top:5px; color:#cbd5e1">Debit to Increase</div>
+            </div>
+            <div class="mnemonic-card d-group">
+                <span class="letter">A</span>
+                <span class="word">Assets</span>
+                <div style="font-size: 0.7rem; margin-top:5px; color:#cbd5e1">Debit to Increase</div>
+            </div>
+            
+            <!-- Separator visually -->
+            
+            <div class="mnemonic-card c-group">
+                <span class="letter">L</span>
+                <span class="word">Liabilities</span>
+                <div style="font-size: 0.7rem; margin-top:5px; color:#cbd5e1">Credit to Increase</div>
+            </div>
+            <div class="mnemonic-card c-group">
+                <span class="letter">E</span>
+                <span class="word">Equity</span>
+                <div style="font-size: 0.7rem; margin-top:5px; color:#cbd5e1">Credit to Increase</div>
+            </div>
+            <div class="mnemonic-card c-group">
+                <span class="letter">R</span>
+                <span class="word">Revenue</span>
+                <div style="font-size: 0.7rem; margin-top:5px; color:#cbd5e1">Credit to Increase</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Generated for Peakflow Documentation</p>
+    </footer>
+</div>
+
+</body>
+</html>
