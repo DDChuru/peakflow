@@ -164,7 +164,7 @@
         "title": "Create Smoke Test Guide for Report Exports",
         "description": "Create a comprehensive smoke test guide (smoke-test-financial-reports.md) documenting how to verify all four report types export correctly to both PDF and Excel formats.",
         "agentType": "documentation",
-        "status": "pending",
+        "status": "completed",
         "successCriteria": [
           "Document covers all 4 report types (GL, TB, IS, BS)",
           "Document covers both PDF and Excel exports",
@@ -198,13 +198,13 @@
     ]
   },
   "execution": {
-    "current_task_id": 8,
-    "total_iterations": 8
+    "current_task_id": 9,
+    "total_iterations": 9
   },
   "metrics": {
-    "tasks_completed": 8,
+    "tasks_completed": 9,
     "tasks_failed": 0,
-    "estimated_remaining": 2
+    "estimated_remaining": 1
   },
   "reference": {
     "template_file": "/home/dachu/Downloads/templates/Templates.xlsx",
@@ -215,5 +215,5 @@
       "BS": "ASSETS (Non-current, Current) | EQUITY AND LIABILITIES - Balanced"
     }
   },
-  "updated_at": "2026-01-15T08:02:15Z"
+  "updated_at": "2026-01-15T08:07:12Z"
 }
