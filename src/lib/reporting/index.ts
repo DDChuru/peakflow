@@ -42,4 +42,10 @@ export {
   type JournalEntryDetail,
   type JournalEntriesReport,
   type JournalEntryFilters,
+  // Formatted GL Report types
+  type GLEntryType,
+  type FormattedGLEntry,
+  type FormattedGLMonthlySection,
+  type FormattedGLReportOptions,
+  type FormattedGLReport,
 } from './gl-reports-service';

@@ -147,6 +147,116 @@ export interface JournalEntryFilters {
 }
 
 // ============================================================================
+// FORMATTED GL REPORT TYPES
+// ============================================================================
+
+/**
+ * Entry type classification for formatted GL report
+ */
+export type GLEntryType =
+  | 'Opening Balance'
+  | 'Journal Entry'
+  | 'Bank Import'
+  | 'Bank Transfer'
+  | 'AR Invoice'
+  | 'AR Payment'
+  | 'AP Bill'
+  | 'AP Payment'
+  | 'Adjustment'
+  | 'Accrual'
+  | 'Revaluation'
+  | 'Closing Balance';
+
+/**
+ * Single formatted entry in the GL report
+ * Columns: Date | Entry Type | Reference | Contra Acc | Description | Debit | Credit | Cumulative
+ */
+export interface FormattedGLEntry {
+  date: Date;
+  entryType: GLEntryType;
+  reference: string;
+  contraAccount: string; // The offsetting account code(s)
+  description: string;
+  debit: number;
+  credit: number;
+  cumulative: number; // Running cumulative balance
+  // Metadata for drill-down
+  journalEntryId?: string;
+  source?: string;
+}
+
+/**
+ * Monthly period section with opening/closing balances
+ */
+export interface FormattedGLMonthlySection {
+  monthKey: string; // Format: YYYY-MM
+  monthLabel: string; // Format: "January 2025"
+  openingBalance: number;
+  entries: FormattedGLEntry[];
+  closingBalance: number;
+  periodDebits: number;
+  periodCredits: number;
+}
+
+/**
+ * Options for generating formatted GL report
+ */
+export interface FormattedGLReportOptions {
+  startDate: Date;
+  endDate: Date;
+  preparedBy?: string;
+  includeZeroBalanceMonths?: boolean;
+}
+
+/**
+ * Complete formatted General Ledger Report
+ * Matches template format with monthly grouping
+ */
+export interface FormattedGLReport {
+  // Header information
+  companyId: string;
+  companyName?: string;
+  accountCode: string;
+  accountName: string;
+  accountType: string;
+  preparedBy: string;
+  generatedAt: Date;
+  reportPeriod: {
+    startDate: Date;
+    endDate: Date;
+  };
+
+  // Monthly sections with entries
+  monthlySections: FormattedGLMonthlySection[];
+
+  // Report totals
+  openingBalance: number; // Opening balance at report start
+  closingBalance: number; // Closing balance at report end
+  totalDebits: number;
+  totalCredits: number;
+  netMovement: number;
+}
+
+/**
+ * Internal type for raw GL entry data from Firestore
+ * Used for type safety in formatted report generation
+ */
+interface RawGLEntryData {
+  id: string;
+  tenantId: string;
+  accountCode: string;
+  accountName?: string;
+  journalEntryId?: string;
+  transactionDate: Date | { toDate(): Date };
+  debit?: number;
+  credit?: number;
+  description?: string;
+  source?: string;
+  reference?: string;
+  dimensions?: Record<string, string>;
+}
+
+// ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 
@@ -822,6 +932,353 @@ export class GLReportsService {
       console.error('❌ [GLReportsService] Error getting chart of accounts:', error);
       throw new Error(`Failed to get chart of accounts: ${error.message}`);
     }
+  }
+
+  // ==========================================================================
+  // FORMATTED GL REPORT (Template Format)
+  // ==========================================================================
+
+  /**
+   * Generate a formatted General Ledger report matching template format
+   *
+   * Columns: Date | Entry Type | Reference | Contra Acc | Description | Debit | Credit | Cumulative
+   *
+   * Features:
+   * - Transactions grouped by month with opening/closing balances
+   * - Entry type classification (Journal Entry, Bank Import, AR Invoice, etc.)
+   * - Contra account display showing offsetting account(s)
+   * - Running cumulative balance
+   * - "Prepared by" header line
+   */
+  async generateGLReportFormatted(
+    accountCode: string,
+    options: FormattedGLReportOptions
+  ): Promise<FormattedGLReport> {
+    try {
+      console.log('📊 [GLReportsService] Generating Formatted GL Report', {
+        companyId: this.companyId,
+        accountCode,
+        startDate: options.startDate,
+        endDate: options.endDate,
+      });
+
+      // Get account info from Chart of Accounts
+      const chartMap = await this.getChartOfAccounts();
+      const accountInfo = chartMap.get(accountCode);
+      const accountName = accountInfo?.name || `Account ${accountCode}`;
+      const accountType = accountInfo?.type || this.getAccountType(accountCode);
+
+      // Get opening balance before start date
+      const openingBalance = await this.getAccountBalance(accountCode, options.startDate);
+
+      // Get all ledger entries with associated journal data
+      const rawEntries = await this.getGLEntriesWithJournalData(
+        accountCode,
+        options.startDate,
+        options.endDate
+      );
+
+      // Group entries by month
+      const monthlyMap = new Map<string, {
+        entries: RawGLEntryData[];
+        monthLabel: string;
+      }>();
+
+      for (const entry of rawEntries) {
+        const entryDate = toDate(entry.transactionDate);
+        const monthKey = this.getMonthKey(entryDate);
+        const monthLabel = this.getMonthLabel(entryDate);
+
+        if (!monthlyMap.has(monthKey)) {
+          monthlyMap.set(monthKey, { entries: [], monthLabel });
+        }
+        monthlyMap.get(monthKey)!.entries.push(entry);
+      }
+
+      // Sort months chronologically
+      const sortedMonthKeys = Array.from(monthlyMap.keys()).sort();
+
+      // Build monthly sections with formatted entries
+      const monthlySections: FormattedGLMonthlySection[] = [];
+      let runningBalance = openingBalance;
+      let totalDebits = 0;
+      let totalCredits = 0;
+
+      for (const monthKey of sortedMonthKeys) {
+        const { entries: monthEntries, monthLabel } = monthlyMap.get(monthKey)!;
+        const sectionOpeningBalance = runningBalance;
+
+        // Sort entries within month by date and then by ID for consistency
+        monthEntries.sort((a, b) => {
+          const dateA = toDate(a.transactionDate).getTime();
+          const dateB = toDate(b.transactionDate).getTime();
+          return dateA !== dateB ? dateA - dateB : (a.id || '').localeCompare(b.id || '');
+        });
+
+        // Format entries for this month
+        const formattedEntries: FormattedGLEntry[] = [];
+        let periodDebits = 0;
+        let periodCredits = 0;
+
+        for (const entry of monthEntries) {
+          const debit = entry.debit || 0;
+          const credit = entry.credit || 0;
+
+          // Calculate cumulative balance based on account type
+          if (accountType === 'asset' || accountType === 'expense') {
+            runningBalance += debit - credit;
+          } else {
+            runningBalance += credit - debit;
+          }
+
+          // Get entry type and contra account
+          const entryType = this.classifyEntryType(entry.source);
+          const contraAccount = await this.getContraAccount(
+            entry.journalEntryId,
+            accountCode,
+            chartMap
+          );
+
+          formattedEntries.push({
+            date: toDate(entry.transactionDate),
+            entryType,
+            reference: entry.reference || entry.journalEntryId || '',
+            contraAccount,
+            description: entry.description || 'No description',
+            debit: round(debit),
+            credit: round(credit),
+            cumulative: round(runningBalance),
+            journalEntryId: entry.journalEntryId,
+            source: entry.source,
+          });
+
+          periodDebits += debit;
+          periodCredits += credit;
+        }
+
+        totalDebits += periodDebits;
+        totalCredits += periodCredits;
+
+        // Only add sections with entries (or optionally include zero-balance months)
+        if (formattedEntries.length > 0 || options.includeZeroBalanceMonths) {
+          monthlySections.push({
+            monthKey,
+            monthLabel,
+            openingBalance: round(sectionOpeningBalance),
+            entries: formattedEntries,
+            closingBalance: round(runningBalance),
+            periodDebits: round(periodDebits),
+            periodCredits: round(periodCredits),
+          });
+        }
+      }
+
+      const report: FormattedGLReport = {
+        companyId: this.companyId,
+        accountCode,
+        accountName,
+        accountType,
+        preparedBy: options.preparedBy || 'System Generated',
+        generatedAt: new Date(),
+        reportPeriod: {
+          startDate: options.startDate,
+          endDate: options.endDate,
+        },
+        monthlySections,
+        openingBalance: round(openingBalance),
+        closingBalance: round(runningBalance),
+        totalDebits: round(totalDebits),
+        totalCredits: round(totalCredits),
+        netMovement: round(totalDebits - totalCredits),
+      };
+
+      console.log('✅ [GLReportsService] Formatted GL Report generated', {
+        accountCode,
+        monthCount: monthlySections.length,
+        totalEntries: monthlySections.reduce((sum, s) => sum + s.entries.length, 0),
+        openingBalance: report.openingBalance,
+        closingBalance: report.closingBalance,
+      });
+
+      return report;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ [GLReportsService] Error generating Formatted GL Report:', error);
+      throw new Error(`Failed to generate Formatted GL Report: ${errorMessage}`);
+    }
+  }
+
+  // ==========================================================================
+  // HELPER METHODS - FORMATTED GL REPORT
+  // ==========================================================================
+
+  /**
+   * Get GL entries with associated journal data for contra account lookup
+   */
+  private async getGLEntriesWithJournalData(
+    accountCode: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<RawGLEntryData[]> {
+    try {
+      const ledgerRef = collection(db, 'general_ledger');
+      const q = query(
+        ledgerRef,
+        where('tenantId', '==', this.companyId),
+        where('accountCode', '==', accountCode),
+        where('transactionDate', '>=', Timestamp.fromDate(startDate)),
+        where('transactionDate', '<=', Timestamp.fromDate(endDate))
+      );
+
+      const snapshot = await getDocs(q);
+      const entries: RawGLEntryData[] = [];
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        entries.push({
+          id: doc.id,
+          tenantId: data.tenantId || '',
+          accountCode: data.accountCode || '',
+          accountName: data.accountName,
+          journalEntryId: data.journalEntryId,
+          transactionDate: data.transactionDate,
+          debit: data.debit,
+          credit: data.credit,
+          description: data.description,
+          source: data.source,
+          reference: data.reference,
+          dimensions: data.dimensions,
+        });
+      });
+
+      return entries;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('❌ [GLReportsService] Error getting GL entries with journal data:', error);
+      throw new Error(`Failed to get GL entries: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Classify entry type based on source
+   */
+  private classifyEntryType(source: string | undefined): GLEntryType {
+    if (!source) return 'Journal Entry';
+
+    const sourceUpper = source.toUpperCase();
+
+    // Bank-related
+    if (sourceUpper.includes('BANK_IMPORT') || sourceUpper === 'BANK IMPORT') {
+      return 'Bank Import';
+    }
+    if (sourceUpper.includes('BANK_TRANSFER') || sourceUpper === 'BANK TRANSFER') {
+      return 'Bank Transfer';
+    }
+
+    // AR-related
+    if (sourceUpper.includes('AR_INVOICE') || sourceUpper.includes('ACCOUNTS_RECEIVABLE') ||
+        sourceUpper === 'INVOICE') {
+      return 'AR Invoice';
+    }
+    if (sourceUpper.includes('AR_PAYMENT') || sourceUpper.includes('RECEIPT')) {
+      return 'AR Payment';
+    }
+
+    // AP-related
+    if (sourceUpper.includes('AP_BILL') || sourceUpper.includes('ACCOUNTS_PAYABLE') ||
+        sourceUpper === 'BILL') {
+      return 'AP Bill';
+    }
+    if (sourceUpper.includes('AP_PAYMENT') || sourceUpper.includes('DISBURSEMENT')) {
+      return 'AP Payment';
+    }
+
+    // Adjustments and special entries
+    if (sourceUpper.includes('ADJUSTMENT')) {
+      return 'Adjustment';
+    }
+    if (sourceUpper.includes('ACCRUAL')) {
+      return 'Accrual';
+    }
+    if (sourceUpper.includes('REVALUATION')) {
+      return 'Revaluation';
+    }
+    if (sourceUpper.includes('OPENING') || sourceUpper.includes('OPENING_BALANCE')) {
+      return 'Opening Balance';
+    }
+
+    // Default to Journal Entry
+    return 'Journal Entry';
+  }
+
+  /**
+   * Get contra account(s) for a journal entry
+   * Returns the account code(s) that offset the current account
+   */
+  private async getContraAccount(
+    journalEntryId: string | undefined,
+    currentAccountCode: string,
+    _chartMap: Map<string, { name: string; type: AccountType }> // Reserved for future use (display account names)
+  ): Promise<string> {
+    if (!journalEntryId) return '-';
+
+    try {
+      const ledgerRef = collection(db, 'general_ledger');
+      const q = query(
+        ledgerRef,
+        where('tenantId', '==', this.companyId),
+        where('journalEntryId', '==', journalEntryId)
+      );
+
+      const snapshot = await getDocs(q);
+      const contraAccounts: string[] = [];
+
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const accountCode = data.accountCode as string | undefined;
+        // Include accounts that are different from the current account
+        if (accountCode && accountCode !== currentAccountCode) {
+          contraAccounts.push(accountCode);
+        }
+      });
+
+      // Remove duplicates
+      const uniqueContraAccounts = Array.from(new Set(contraAccounts));
+
+      if (uniqueContraAccounts.length === 0) {
+        return '-';
+      }
+
+      // If more than 3 contra accounts, show first 2 and "..."
+      if (uniqueContraAccounts.length > 3) {
+        return `${uniqueContraAccounts.slice(0, 2).join(', ')} + ${uniqueContraAccounts.length - 2} more`;
+      }
+
+      return uniqueContraAccounts.join(', ');
+    } catch (error) {
+      console.warn('⚠️ [GLReportsService] Error getting contra account:', error);
+      return '-';
+    }
+  }
+
+  /**
+   * Get month key in format YYYY-MM
+   */
+  private getMonthKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
+  /**
+   * Get month label in format "January 2025"
+   */
+  private getMonthLabel(date: Date): string {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return `${months[date.getMonth()]} ${date.getFullYear()}`;
   }
 }
 
