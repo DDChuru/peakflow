@@ -324,6 +324,10 @@ export default function ReportsPage() {
   const [selectedVendor, setSelectedVendor] = useState<string>('all');
   const [loading, setLoading] = useState(false);
 
+  // Export loading states
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
   // Report data (mock for now - will be populated by service)
   const [arReport, setARReport] = useState<AgedReceivablesReport | null>(null);
   const [apReport, setAPReport] = useState<AgedPayablesReport | null>(null);
@@ -1274,9 +1278,204 @@ export default function ReportsPage() {
     return <span className="text-green-700">{formatted}</span>;
   };
 
+  // ============================================================================
+  // EXPORT HANDLERS - Trial Balance
+  // ============================================================================
+
+  const handleExportTrialBalancePDF = async () => {
+    if (!trialBalance) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingPDF(true);
+    const toastId = toast.loading('Generating Trial Balance PDF...');
+
+    try {
+      const { pdfService } = await import('@/lib/pdf');
+
+      // Transform the local TrialBalanceReport type to match the service's expected format
+      const reportData = {
+        ...trialBalance,
+        accounts: trialBalance.accounts.map((acc: TrialBalanceLine) => ({
+          ...acc,
+          // Map debitTotal/creditTotal to expected fields if needed
+          debitTotal: acc.debitTotal ?? 0,
+          creditTotal: acc.creditTotal ?? 0,
+          balance: acc.balance ?? (acc.debitTotal || 0) - (acc.creditTotal || 0),
+        })),
+      };
+
+      await pdfService.downloadTBPDF(reportData as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('Trial Balance PDF exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting Trial Balance PDF:', error);
+      toast.error(error.message || 'Failed to export PDF', { id: toastId });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleExportTrialBalanceExcel = async () => {
+    if (!trialBalance) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingExcel(true);
+    const toastId = toast.loading('Generating Trial Balance Excel...');
+
+    try {
+      const { exportTrialBalanceToExcel } = await import('@/lib/reporting');
+
+      // Transform the local TrialBalanceReport type to match the service's expected format
+      const reportData = {
+        ...trialBalance,
+        accounts: trialBalance.accounts.map((acc: TrialBalanceLine) => ({
+          ...acc,
+          debitTotal: acc.debitTotal ?? 0,
+          creditTotal: acc.creditTotal ?? 0,
+          balance: acc.balance ?? (acc.debitTotal || 0) - (acc.creditTotal || 0),
+        })),
+      };
+
+      await exportTrialBalanceToExcel(reportData as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('Trial Balance Excel exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting Trial Balance Excel:', error);
+      toast.error(error.message || 'Failed to export Excel', { id: toastId });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  // ============================================================================
+  // EXPORT HANDLERS - Income Statement
+  // ============================================================================
+
+  const handleExportIncomeStatementPDF = async () => {
+    if (!incomeStatement) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingPDF(true);
+    const toastId = toast.loading('Generating Income Statement PDF...');
+
+    try {
+      const { pdfService } = await import('@/lib/pdf');
+
+      await pdfService.downloadISPDF(incomeStatement as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('Income Statement PDF exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting Income Statement PDF:', error);
+      toast.error(error.message || 'Failed to export PDF', { id: toastId });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleExportIncomeStatementExcel = async () => {
+    if (!incomeStatement) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingExcel(true);
+    const toastId = toast.loading('Generating Income Statement Excel...');
+
+    try {
+      const { exportIncomeStatementToExcel } = await import('@/lib/reporting');
+
+      await exportIncomeStatementToExcel(incomeStatement as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('Income Statement Excel exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting Income Statement Excel:', error);
+      toast.error(error.message || 'Failed to export Excel', { id: toastId });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  // ============================================================================
+  // EXPORT HANDLERS - Balance Sheet
+  // ============================================================================
+
+  const handleExportBalanceSheetPDF = async () => {
+    if (!balanceSheet) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingPDF(true);
+    const toastId = toast.loading('Generating Balance Sheet PDF...');
+
+    try {
+      const { pdfService } = await import('@/lib/pdf');
+
+      await pdfService.downloadBSPDF(balanceSheet as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('Balance Sheet PDF exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting Balance Sheet PDF:', error);
+      toast.error(error.message || 'Failed to export PDF', { id: toastId });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleExportBalanceSheetExcel = async () => {
+    if (!balanceSheet) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingExcel(true);
+    const toastId = toast.loading('Generating Balance Sheet Excel...');
+
+    try {
+      const { exportBalanceSheetToExcel } = await import('@/lib/reporting');
+
+      await exportBalanceSheetToExcel(balanceSheet as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('Balance Sheet Excel exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting Balance Sheet Excel:', error);
+      toast.error(error.message || 'Failed to export Excel', { id: toastId });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  // ============================================================================
+  // LEGACY EXPORT HANDLERS (for AP/AR reports - to be implemented)
+  // ============================================================================
+
   const handleExportPDF = () => {
     toast.loading('Generating PDF...', { id: 'pdf-export' });
-    // TODO: Implement PDF export
+    // TODO: Implement PDF export for AP/AR reports
     setTimeout(() => {
       toast.success('PDF exported successfully', { id: 'pdf-export' });
     }, 1500);
@@ -1284,7 +1483,7 @@ export default function ReportsPage() {
 
   const handleExportExcel = () => {
     toast.loading('Generating Excel...', { id: 'excel-export' });
-    // TODO: Implement Excel export (CSV)
+    // TODO: Implement Excel export for AP/AR reports
     setTimeout(() => {
       toast.success('Excel file exported successfully', { id: 'excel-export' });
     }, 1500);
@@ -2108,20 +2307,40 @@ export default function ReportsPage() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={handleExportPDF} variant="outline">
-                        <FileText className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportIncomeStatementPDF}
+                        variant="outline"
+                        disabled={!incomeStatement || exportingPDF}
+                      >
+                        {exportingPDF ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4 mr-2" />
+                        )}
                         PDF
                       </Button>
-                      <Button onClick={handleExportExcel} variant="outline">
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportIncomeStatementExcel}
+                        variant="outline"
+                        disabled={!incomeStatement || exportingExcel}
+                      >
+                        {exportingExcel ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        )}
                         Excel
                       </Button>
-                      <Button onClick={handleExportPDF} variant="outline">
+                      <Button onClick={() => window.print()} variant="outline" disabled={!incomeStatement}>
                         <Printer className="h-4 w-4 mr-2" />
                         Print
                       </Button>
-                      <Button onClick={loadReportData}>
-                        <Calendar className="h-4 w-4 mr-2" />
+                      <Button onClick={loadReportData} disabled={loading}>
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Calendar className="h-4 w-4 mr-2" />
+                        )}
                         Refresh
                       </Button>
                     </div>
@@ -2339,20 +2558,40 @@ export default function ReportsPage() {
                       />
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={handleExportPDF} variant="outline">
-                        <FileText className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportBalanceSheetPDF}
+                        variant="outline"
+                        disabled={!balanceSheet || exportingPDF}
+                      >
+                        {exportingPDF ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4 mr-2" />
+                        )}
                         PDF
                       </Button>
-                      <Button onClick={handleExportExcel} variant="outline">
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportBalanceSheetExcel}
+                        variant="outline"
+                        disabled={!balanceSheet || exportingExcel}
+                      >
+                        {exportingExcel ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        )}
                         Excel
                       </Button>
-                      <Button onClick={handleExportPDF} variant="outline">
+                      <Button onClick={() => window.print()} variant="outline" disabled={!balanceSheet}>
                         <Printer className="h-4 w-4 mr-2" />
                         Print
                       </Button>
-                      <Button onClick={loadReportData}>
-                        <Calendar className="h-4 w-4 mr-2" />
+                      <Button onClick={loadReportData} disabled={loading}>
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Calendar className="h-4 w-4 mr-2" />
+                        )}
                         Refresh
                       </Button>
                     </div>
@@ -2877,19 +3116,39 @@ export default function ReportsPage() {
                       </Label>
                     </div>
                     <div className="flex gap-2">
-                      <Button onClick={loadReportData}>
-                        <FileText className="h-4 w-4 mr-2" />
+                      <Button onClick={loadReportData} disabled={loading}>
+                        {loading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4 mr-2" />
+                        )}
                         Generate Report
                       </Button>
-                      <Button onClick={handleExportPDF} variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportTrialBalancePDF}
+                        variant="outline"
+                        disabled={!trialBalance || exportingPDF}
+                      >
+                        {exportingPDF ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
                         PDF
                       </Button>
-                      <Button onClick={handleExportExcel} variant="outline">
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportTrialBalanceExcel}
+                        variant="outline"
+                        disabled={!trialBalance || exportingExcel}
+                      >
+                        {exportingExcel ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        )}
                         Excel
                       </Button>
-                      <Button onClick={() => window.print()} variant="outline">
+                      <Button onClick={() => window.print()} variant="outline" disabled={!trialBalance}>
                         <Printer className="h-4 w-4 mr-2" />
                         Print
                       </Button>

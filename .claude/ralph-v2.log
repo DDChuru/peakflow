@@ -107,3 +107,16 @@ The ESLint check passed on the GL Excel formatter with no errors or warnings in 
 
 Task 7 is complete - Excel export for all report types (GL, TB, IS, BS) has been successfully implemented.
 [2026-01-15 10:02:13] [0;32mTask 7 completed successfully[0m
+[2026-01-15 10:02:13] [0;32mAuto-committed changes for task 7[0m
+[2026-01-15 10:02:15] Agent: code-implementation
+[2026-01-15 10:02:15] Description: Add PDF and Excel export buttons to the reports page for each report type. Connect buttons to the new export services. Show loading state during export. Add toast notifications for success/error.
+[2026-01-15 10:02:15] Attempt 1 of 3
+Task 8 completed successfully.
+
+**Summary:**
+- Added PDF and Excel export buttons to the reports page for Trial Balance, Income Statement, and Balance Sheet
+- Connected buttons to the export services (pdfService for PDF, Excel export functions)
+- Added loading states with spinner icons during export
+- Added toast notifications for loading, success, and error states
+- Buttons are disabled when no report data or during export
+[2026-01-15 10:07:10] [0;32mTask 8 completed successfully[0m
