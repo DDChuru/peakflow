@@ -69,3 +69,13 @@ export {
   type ISExcelFormatterOptions,
   type FormattedISLine,
 } from './is-excel-formatter';
+
+// Balance Sheet Excel Formatter
+export {
+  BSExcelFormatter,
+  createBSExcelFormatter,
+  exportBalanceSheetToExcel,
+  getBalanceSheetExcelBlob,
+  type BSExcelFormatterOptions,
+  type FormattedBSLine,
+} from './bs-excel-formatter';
