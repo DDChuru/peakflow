@@ -59,3 +59,13 @@ export {
   type TBExcelFormatterOptions,
   type FormattedTBLine,
 } from './tb-excel-formatter';
+
+// Income Statement Excel Formatter
+export {
+  ISExcelFormatter,
+  createISExcelFormatter,
+  exportIncomeStatementToExcel,
+  getIncomeStatementExcelBlob,
+  type ISExcelFormatterOptions,
+  type FormattedISLine,
+} from './is-excel-formatter';
