@@ -49,3 +49,13 @@ export {
   type FormattedGLReportOptions,
   type FormattedGLReport,
 } from './gl-reports-service';
+
+// Trial Balance Excel Formatter
+export {
+  TBExcelFormatter,
+  createTBExcelFormatter,
+  exportTrialBalanceToExcel,
+  getTrialBalanceExcelBlob,
+  type TBExcelFormatterOptions,
+  type FormattedTBLine,
+} from './tb-excel-formatter';
