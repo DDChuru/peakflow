@@ -80,6 +80,16 @@ export {
   type FormattedBSLine,
 } from './bs-excel-formatter';
 
+// General Ledger Excel Formatter
+export {
+  GLExcelFormatter,
+  createGLExcelFormatter,
+  exportGeneralLedgerToExcel,
+  getGeneralLedgerExcelBlob,
+  type GLExcelFormatterOptions,
+  type FormattedGLLine,
+} from './gl-excel-formatter';
+
 // ============================================================================
 // PDF EXPORT
 // ============================================================================
