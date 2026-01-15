@@ -1470,6 +1470,128 @@ export default function ReportsPage() {
   };
 
   // ============================================================================
+  // EXPORT HANDLERS - General Ledger
+  // ============================================================================
+
+  const handleExportGLPDF = async () => {
+    if (!glAccount) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingPDF(true);
+    const toastId = toast.loading('Generating General Ledger PDF...');
+
+    try {
+      const { pdfService } = await import('@/lib/pdf');
+
+      // Transform glAccount to the format expected by the PDF service
+      const reportData = {
+        accountCode: glAccount.accountCode,
+        accountName: glAccount.accountName,
+        reportPeriod: {
+          startDate: new Date(glStartDate),
+          endDate: new Date(glEndDate),
+        },
+        openingBalance: glAccount.openingBalance || 0,
+        closingBalance: glAccount.closingBalance || 0,
+        totalDebits: glAccount.totalDebits ?? glAccount.totalDebit ?? 0,
+        totalCredits: glAccount.totalCredits ?? glAccount.totalCredit ?? 0,
+        netMovement: (glAccount.totalDebits ?? glAccount.totalDebit ?? 0) - (glAccount.totalCredits ?? glAccount.totalCredit ?? 0),
+        preparedBy: user?.displayName || user?.email || 'System',
+        monthlySections: [{
+          monthLabel: `${new Date(glStartDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - ${new Date(glEndDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+          openingBalance: glAccount.openingBalance || 0,
+          closingBalance: glAccount.closingBalance || 0,
+          periodDebits: glAccount.totalDebits ?? glAccount.totalDebit ?? 0,
+          periodCredits: glAccount.totalCredits ?? glAccount.totalCredit ?? 0,
+          entries: glAccount.entries.map((entry: any, idx: number) => ({
+            date: new Date(entry.entryDate),
+            entryType: entry.source || 'Journal Entry',
+            reference: entry.reference || '',
+            contraAccount: '',
+            description: entry.description || '',
+            debit: entry.debit || 0,
+            credit: entry.credit || 0,
+            cumulative: entry.balance || 0,
+          })),
+        }],
+      };
+
+      await pdfService.downloadGLPDF(reportData as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('General Ledger PDF exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting General Ledger PDF:', error);
+      toast.error(error.message || 'Failed to export PDF', { id: toastId });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  const handleExportGLExcel = async () => {
+    if (!glAccount) {
+      toast.error('Please generate the report first');
+      return;
+    }
+
+    setExportingExcel(true);
+    const toastId = toast.loading('Generating General Ledger Excel...');
+
+    try {
+      const { exportGeneralLedgerToExcel } = await import('@/lib/reporting');
+
+      // Transform glAccount to the format expected by the Excel formatter
+      const reportData = {
+        accountCode: glAccount.accountCode,
+        accountName: glAccount.accountName,
+        reportPeriod: {
+          startDate: new Date(glStartDate),
+          endDate: new Date(glEndDate),
+        },
+        openingBalance: glAccount.openingBalance || 0,
+        closingBalance: glAccount.closingBalance || 0,
+        totalDebits: glAccount.totalDebits ?? glAccount.totalDebit ?? 0,
+        totalCredits: glAccount.totalCredits ?? glAccount.totalCredit ?? 0,
+        netMovement: (glAccount.totalDebits ?? glAccount.totalDebit ?? 0) - (glAccount.totalCredits ?? glAccount.totalCredit ?? 0),
+        preparedBy: user?.displayName || user?.email || 'System',
+        monthlySections: [{
+          monthLabel: `${new Date(glStartDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} - ${new Date(glEndDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+          openingBalance: glAccount.openingBalance || 0,
+          closingBalance: glAccount.closingBalance || 0,
+          periodDebits: glAccount.totalDebits ?? glAccount.totalDebit ?? 0,
+          periodCredits: glAccount.totalCredits ?? glAccount.totalCredit ?? 0,
+          entries: glAccount.entries.map((entry: any) => ({
+            date: new Date(entry.entryDate),
+            entryType: entry.source || 'Journal Entry',
+            reference: entry.reference || '',
+            contraAccount: '',
+            description: entry.description || '',
+            debit: entry.debit || 0,
+            credit: entry.credit || 0,
+            cumulative: entry.balance || 0,
+          })),
+        }],
+      };
+
+      await exportGeneralLedgerToExcel(reportData as any, {
+        companyName: company?.name || 'Company',
+        preparedBy: user?.displayName || user?.email || 'System',
+      });
+
+      toast.success('General Ledger Excel exported successfully', { id: toastId });
+    } catch (error: any) {
+      console.error('Error exporting General Ledger Excel:', error);
+      toast.error(error.message || 'Failed to export Excel', { id: toastId });
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  // ============================================================================
   // LEGACY EXPORT HANDLERS (for AP/AR reports - to be implemented)
   // ============================================================================
 
@@ -3387,12 +3509,28 @@ export default function ReportsPage() {
                         <FileText className="h-4 w-4 mr-2" />
                         Generate Report
                       </Button>
-                      <Button onClick={handleExportPDF} variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportGLPDF}
+                        variant="outline"
+                        disabled={!glAccount || exportingPDF}
+                      >
+                        {exportingPDF ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4 mr-2" />
+                        )}
                         PDF
                       </Button>
-                      <Button onClick={handleExportExcel} variant="outline">
-                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      <Button
+                        onClick={handleExportGLExcel}
+                        variant="outline"
+                        disabled={!glAccount || exportingExcel}
+                      >
+                        {exportingExcel ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        )}
                         Excel
                       </Button>
                     </div>
