@@ -25,6 +25,7 @@ import {
   Calculator,
   BarChart3,
   BookOpen,
+  GraduationCap,
   Menu,
   X,
   LogOut,
@@ -205,6 +206,11 @@ export function WorkspaceLayout({ children, companyId, companyName }: WorkspaceL
       name: 'Reports',
       href: hasCompany ? `/workspace/${activeCompanyId}/reports` : '#',
       icon: BarChart3,
+    },
+    {
+      name: 'Manuals',
+      href: hasCompany ? `/workspace/${activeCompanyId}/manuals` : '#',
+      icon: GraduationCap,
     },
     {
       name: 'AI Assistant',
